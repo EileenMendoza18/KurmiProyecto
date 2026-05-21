@@ -1,0 +1,258 @@
+@import url("../../RESOURCES/css/index.css");
+
+/* Reset del contenedor body para layout limpio */
+.div__body {
+    background-color: #F4EEFF;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+main.nosotros-main {
+    margin-top: 14vh;
+    display: flex !important; /* Destruye el grid del main.css */
+    flex-direction: column;
+    align-items: center;
+    gap: 35px;
+    padding: 20px;
+    width: 100%;
+    flex: 1;
+}
+
+.nosotros-principal-titulo {
+    color: #463877;
+    font-size: 2.2rem;
+    font-weight: bold;
+    margin-bottom: 15px;
+    text-align: center;
+}
+
+/* --- TARJETAS ESTRUCTURALES --- */
+.tarjetaNosotros {
+    background-color: white;
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important; /* Fuerza las dos columnas perfectas */
+    width: 90%;
+    max-width: 1050px;
+    gap: 40px;
+    padding: 35px;
+    align-items: center;
+    border-radius: 25px;
+    overflow: hidden;
+    box-shadow: 0 4px 20px rgba(70, 56, 119, 0.04);
+}
+
+.tarjetaNosotros div:nth-child(2){
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    text-align: left;
+}
+
+.tarjetaNosotros h2 {
+    color: #463877;
+    font-size: 1.6rem;
+    font-weight: bold;
+    margin: 0;
+}
+
+.tarjetaNosotros p {
+    color: #756a9b;
+    font-size: 0.95rem;
+    line-height: 1.6;
+    margin: 0;
+}
+
+/* --- TARJETA 1: IMAGEN ÚNICA ESTILO FIGMA --- */
+.imagen-unika-contenedor {
+    width: 100%;
+    height: 280px;
+    border-radius: 20px;
+}
+
+.imagen-unika {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* --- JUEGO TRIDIMENSIONAL DE 3 IMÁGENES (MISIÓN/VISIÓN) --- */
+.derecha, .izquierda {
+    display: grid !important;
+    grid-template-columns: repeat(3, 1fr) !important;
+    align-items: center;
+    gap: 12px;
+    position: relative;
+    width: 100%;
+    height: 280px;
+    overflow: visible !important; /* Permite que la del centro flote hacia afuera */
+    padding: 0 !important;
+}
+
+.derecha img, .izquierda img {
+    width: 100%;
+    height: 190px;
+    object-fit: cover;
+    border-radius: 20px;
+    box-shadow: 0 4px 10px rgba(70, 56, 119, 0.08);
+    transition: transform 0.3s ease, opacity 0.3s ease, box-shadow 0.3s ease, z-index 0.1s ease;
+}
+
+/* Estado estático base (Estilo Figma original) */
+.derecha img:nth-child(1), .derecha img:nth-child(3),
+.izquierda img:nth-child(1), .izquierda img:nth-child(3) {
+    transform: scale(0.88);
+    opacity: 0.75;
+    z-index: 1;
+}
+
+.derecha img:nth-child(2), .izquierda img:nth-child(2) {
+    transform: scale(1.15);
+    height: 230px;
+    z-index: 2;
+    box-shadow: 0 10px 25px rgba(70, 56, 119, 0.22);
+    border: 3px solid white;
+    opacity: 1;
+}
+
+/* ==================================================================
+   🔥 EFECTO ENFOQUE ASIMÉTRICO (INTERACTIVO AL PASAR EL CURSOR)
+   ================================================================== */
+
+/* 1. Cuando se pasa el mouse por encima del contenedor, opaca las tres por defecto */
+.derecha:hover img, 
+.izquierda:hover img {
+    opacity: 0.35;
+    transform: scale(0.85);
+    box-shadow: none;
+    z-index: 1;
+}
+
+/* 2. La imagen específica sobre la que está el puntero se engrandece, se ilumina y pasa al frente */
+.derecha img:hover, 
+.izquierda img:hover {
+    opacity: 1 !important;
+    transform: scale(1.25) !important; /* Crece notablemente */
+    z-index: 5 !important;            /* Pasa por encima de todas las demás */
+    box-shadow: 0 12px 30px rgba(70, 56, 119, 0.3) !important;
+    border: 3px solid white;
+    cursor: pointer;
+}
+
+/* Si la imagen que seleccionas es justo la del centro, haz que crezca un poco más */
+.derecha img:nth-child(2):hover, 
+.izquierda img:nth-child(2):hover {
+    transform: scale(1.3) !important;
+}
+
+/* --- SECCIÓN CONTACTANOS --- */
+.contacto-titulo {
+    color: #463877;
+    font-size: 1.8rem;
+    margin-top: 20px;
+    font-weight: bold;
+}
+
+.contacto {
+    background-color: white;
+    width: 90%;
+    max-width: 1050px;
+    display: grid;
+    grid-template-columns: 35% 65%;
+    gap: 30px;
+    padding: 35px;
+    border-radius: 25px;
+    align-items: center;
+    box-shadow: 0 4px 20px rgba(70, 56, 119, 0.04);
+}
+
+.contacto__logo-contenedor {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+}
+
+.contacto__logo {
+    width: 85%;
+    height: auto;
+    object-fit: contain;
+}
+
+.contacto__lista-cards {
+    background-color: #DCD6F7 !important;
+    width: 100%;
+    padding: 25px !important;
+    border-radius: 20px;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 15px !important;
+}
+
+.contacto .card {
+    display: flex !important;
+    align-items: center !important;
+    background-color: white !important;
+    padding: 12px 25px !important;
+    border-radius: 12px !important;
+    gap: 20px !important;
+    width: 100%;
+}
+
+.card__img {
+    width: 35px;
+    height: 35px;
+    background-color: #F4EEFF;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.card__img img {
+    width: 60%;
+    height: 60%;
+    object-fit: contain;
+}
+
+.card__info {
+    display: flex;
+    flex-direction: column;
+    text-align: left;
+    gap: 3px;
+}
+
+.card__nombre {
+    color: #463877 !important;
+    font-weight: bold;
+    font-size: 0.95rem;
+    margin: 0 !important;
+}
+
+.card__correo {
+    color: #756a9b !important;
+    font-size: 0.85rem;
+    margin: 0 !important;
+}
+
+/* --- BOTÓN FINAL --- */
+.btn-tienda {
+    background-color: #463877;
+    border: none;
+    padding: 12px 35px;
+    border-radius: 25px;
+    margin-bottom: 30px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.btn-tienda:hover {
+    background-color: #ba99e9;
+}
+
+.btn-tienda a {
+    color: white;
+    text-decoration: none;
+    font-weight: bold;
+    font-size: 1rem;
+}
