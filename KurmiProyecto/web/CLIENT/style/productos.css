@@ -1,0 +1,17 @@
+@import url("../../RESOURCES/css/index.css");
+@import url("aside.css");
+
+
+.div__body {
+    background-color: #F4EEFF;
+    display: grid;
+    grid-template-columns: 80px 1fr;
+    grid-template-rows: auto 1fr auto;
+    min-height: 100vh;
+    width: 100%;
+}
+
+#footer {
+    grid-column: span 2;
+    width: 100%;
+}

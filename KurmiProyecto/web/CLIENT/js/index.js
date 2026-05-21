@@ -39,6 +39,10 @@ async function cargarModulos() {
             cargarTestimoniosDinamicos();
         }
 
+        if (document.getElementById('contenedorProductosCategoria')) {
+            cargarProductosPorCategoria();
+        }
+
     } catch (error) {
         console.error("Error crítico en la inicialización de módulos de Kurmi:", error);
     }
@@ -106,79 +110,77 @@ async function cargarGaleriaDinamica(contenedorId, servletURL) {
 
             // --- BOTÓN FAVORITOS (LIKE) ---
             // --- BOTÓN FAVORITOS (LIKE) ---
-if (btnLike) {
-    btnLike.addEventListener('click', async (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        console.log("=== ¡CLICK EN FAVORITOS DETECTADO! ===");
-        try {
-            const response = await fetch(`/KurmiProyect/FavoritosServlet?idProducto=${idReal}`);
-            const textoRespuesta = await response.text();
+        if (btnLike) {
+            btnLike.addEventListener('click', async (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log("=== ¡CLICK EN FAVORITOS DETECTADO! ===");
+                try {
+                    const response = await fetch(`/KurmiProyect/FavoritosServlet?idProducto=${idReal}`);
+                    const textoRespuesta = await response.text();
 
-            // 👇 AGREGA ESTOS DOS LOGS
-            console.log("Status HTTP:", response.status);
-            console.log("Respuesta favoritos:", JSON.stringify(textoRespuesta));
+                    // 👇 AGREGA ESTOS DOS LOGS
+                    console.log("Status HTTP:", response.status);
+                    console.log("Respuesta favoritos:", JSON.stringify(textoRespuesta));
 
-            if (textoRespuesta.includes("Debes iniciar sesión") || response.url.includes("inicioSesion.html")) {
-                window.location.href = '/KurmiProyect/inicioSesion.html?error=session';
-                return;
-            }
-                console.log("retorno valor");
-            if (textoRespuesta.includes("correctamente a la base")) {
-                console.log("retorno valor");
-                await mostrarNotificacionDinamica("favoritos");
-            } else {
-                console.warn("No se pudo añadir a favoritos: " + textoRespuesta);
-            }
-        } catch (err) {
-            console.error("Error al procesar la lista de favoritos:", err);
+                    if (textoRespuesta.includes("Debes iniciar sesión") || response.url.includes("inicioSesion.html")) {
+                        window.location.href = '/KurmiProyect/inicioSesion.html?error=session';
+                        return;
+                    }
+                    if (textoRespuesta.includes("correctamente a la base")) {
+                        await mostrarNotificacionDinamica("favoritos");
+                    } else {
+                        console.warn("No se pudo añadir a favoritos: " + textoRespuesta);
+                    }
+                } catch (err) {
+                    console.error("Error al procesar la lista de favoritos:", err);
+                }
+            });
         }
-    });
-}
 
             // --- BOTÓN AGREGAR AL CARRITO ---
-if (btnCarrito) {
-    btnCarrito.addEventListener('click', async (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        
-        console.log("=== ¡CLICK EN EL CARRITO DETECTADO! ===");
-        
-        // Forzar conversión limpia para evitar valores corruptos enviados al Servlet
-        const idRealClean = parseInt(idReal);
-        const precioRealClean = parseFloat(precioReal);
+            if (btnCarrito) {
+                btnCarrito.addEventListener('click', async (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
 
-        if (isNaN(idRealClean) || isNaN(precioRealClean)) {
-            console.error("Error: ID o Precio no son números válidos.", idReal, precioReal);
-            return;
-        }
+                    console.log("=== ¡CLICK EN EL CARRITO DETECTADO! ===");
 
-        try {
-            // Aseguramos la ruta absoluta del Servlet de Kurmi
-            const urlPeticion = `/KurmiProyect/CarritoServlet?idProducto=${idRealClean}&precio=${precioRealClean}&cantidad=1`;
-            const response = await fetch(urlPeticion);
-            const textoRespuesta = await response.text();
+                    // Forzar conversión limpia para evitar valores corruptos enviados al Servlet
+                    const idRealClean = parseInt(idReal);
+                    const precioRealClean = parseFloat(precioReal);
 
-            console.log("Respuesta cruda del servidor:", textoRespuesta);
+                    if (isNaN(idRealClean) || isNaN(precioRealClean)) {
+                        console.error("Error: ID o Precio no son números válidos.", idReal, precioReal);
+                        return;
+                    }
 
-            // CONTROL DE SESIÓN EXPIRADA: Redirección dinámica según tu estructura de carpetas
-            if (textoRespuesta.includes("Debes iniciar sesión") || response.url.includes("inicioSesion.html")) {
-                // Modifica esta ruta para que apunte exactamente a donde guardas tu login
-                window.location.href = '/KurmiProyect/CLIENT/html/inicioSesion.html?error=session';
-                return;
+                    try {
+                        // Aseguramos la ruta absoluta del Servlet de Kurmi
+                        const urlPeticion = `/KurmiProyect/CarritoServlet?idProducto=${idRealClean}&precio=${precioRealClean}&cantidad=1`;
+                        const response = await fetch(urlPeticion);
+                        const textoRespuesta = await response.text();
+
+                        console.log("Respuesta cruda del servidor:", textoRespuesta);
+
+                        // CONTROL DE SESIÓN EXPIRADA: Redirección dinámica según tu estructura de carpetas
+                        if (textoRespuesta.includes("Debes iniciar sesión") || response.url.includes("inicioSesion.html")) {
+                            // Modifica esta ruta para que apunte exactamente a donde guardas tu login
+                            window.location.href = '/KurmiProyect/CLIENT/html/inicioSesion.html?error=session';
+                            return;
+                        }
+
+                        // VALIDACIÓN EXACTA DEL TEXTO RETORNADO POR TU SERVLET
+                        if (textoRespuesta.includes("agregado al carrito")) {
+                            await mostrarNotificacionDinamica("carrito");
+                        } else {
+                            console.error("El backend rechazó la inserción en el carrito: ", textoRespuesta);
+                        }
+                    } catch (err) {
+                        console.error("Error crítico atrapado en el catch del carrito:", err);
+                    }
+                });
             }
-
-            // VALIDACIÓN EXACTA DEL TEXTO RETORNADO POR TU SERVLET
-            if (textoRespuesta.includes("agregado al carrito")) {
-                await mostrarNotificacionDinamica("carrito");
-            } else {
-                console.error("El backend rechazó la inserción en el carrito: ", textoRespuesta);
-            }
-        } catch (err) {
-            console.error("Error crítico atrapado en el catch del carrito:", err);
-        }
-    });
-}
         
             contenedor.appendChild(nuevaTarjeta);
         });
@@ -215,6 +217,14 @@ async function cargarCategoriasGaleria(contenedorId) {
             const pNombre = nuevaCat.querySelector('p');
             if (pNombre) pNombre.textContent = nombreCat;
 
+            nuevaCat.setAttribute('data-categoria', nombreCat.trim());
+            nuevaCat.style.cursor = 'pointer';
+
+            // 2. Evento exclusivo de redirección por categoría hacia tienda.html
+            nuevaCat.addEventListener('click', () => {
+                const urlDestino = `/KurmiProyect/CLIENT/html/Productos.html?cat=${encodeURIComponent(nombreCat.trim())}`;
+                window.location.href = urlDestino;
+            });
             contenedor.appendChild(nuevaCat);
         });
 
@@ -351,3 +361,123 @@ function inicializarBotonProductos() {
 }
 
 inicializarBotonProductos();
+
+/**
+ * 8. CARGA DE PRODUCTOS FILTRADOS POR CATEGORÍA (VISTA PRODUCTOS)
+ * Se ejecuta el filtrado y renderizado dinámico de productos en la interfaz.
+ * Se recupera el parámetro de la categoría directamente desde los argumentos de la URL.
+ * Se realiza la petición asíncrona hacia el servlet encargado de los artículos.
+ * Se procesan las tarjetas una a una mediante un ciclo for...of seguro.
+ * Se controla el flujo de datos mediante bloques de validación try y catch.
+ */
+async function cargarProductosPorCategoria() {
+    try {
+        // Se capturan los parámetros de la URL actual
+        const urlParams = new URLSearchParams(window.location.search);
+        const catSeleccionada = urlParams.get('cat');
+
+        // Se verifica si no existe una categoría seleccionada para detener el proceso
+        if (!catSeleccionada) return;
+
+        // Se realiza la petición al Servlet que trae todos los productos
+        const responseProductos = await fetch('/KurmiProyect/ObtenerProductosServlet');
+        const productos = await responseProductos.json();
+
+        // Se obtiene la plantilla HTML base de la tarjeta de producto
+        const responseTemplate = await fetch('../../components/tarjetaProducto.html');
+        const templateHTML = await responseTemplate.text();
+
+        const parser = new DOMParser();
+        const docTemplate = parser.parseFromString(templateHTML, 'text/html');
+        const plantillaOriginal = docTemplate.querySelector('.tarjeta');
+
+        const contenedor = document.getElementById('contenedorProductosCategoria');
+        if (!contenedor || !plantillaOriginal) return;
+
+        // Se limpia el contenedor antes de inyectar los elementos filtrados
+        contenedor.innerHTML = '';
+
+        // Se recorren los productos utilizando un ciclo for...of y validación por try/catch
+        for (const prod of productos) {
+            try {
+                // Se verifica si el producto pertenece a la categoría de la URL
+                // (Se asume que tu objeto producto trae una propiedad '.categoria' o '.nombreCategoria')
+                const categoriaProd = prod.categoria || prod.nombreCategoria || '';
+                
+                if (categoriaProd.trim().toLowerCase() === catSeleccionada.trim().toLowerCase()) {
+                    
+                    const nuevaTarjeta = plantillaOriginal.cloneNode(true);
+                    
+                    const imagen = nuevaTarjeta.querySelector('img');
+                    const [pNombre, pDesc, pPrecio] = nuevaTarjeta.querySelectorAll('p');
+                    
+                    const idReal = prod.id || prod.idProducto || prod.id_producto || '';
+                    const nombreReal = prod.nombre || prod.nombreProducto || '';
+                    const precioReal = prod.precio || 0;
+
+                    if (imagen) {
+                        imagen.src = `../../RESOURCES/img/${prod.imagen || 'inicioHelado.png'}`;
+                        imagen.alt = nombreReal;
+                    }
+                    if (pNombre) pNombre.textContent = nombreReal;
+                    if (pDesc) pDesc.textContent = prod.descripcion;
+                    if (pPrecio) pPrecio.textContent = `$${precioReal.toLocaleString()}`;
+                    
+                    // Se asigna la lógica del botón comprar
+                    const btnComprar = nuevaTarjeta.querySelector('button'); 
+                    if (btnComprar) {
+                        btnComprar.addEventListener('click', () => {
+                            window.location.href = `formularioPago.html?id=${idReal}&nombre=${encodeURIComponent(nombreReal)}&precio=${precioReal}`;
+                        });
+                    }
+
+                    // Se configuran los escuchadores para Favoritos y Carrito del clon
+                    const todosLosBotones = nuevaTarjeta.querySelectorAll('button');
+                    const btnLike = todosLosBotones[1];
+                    const btnCarrito = todosLosBotones[2];
+
+                    if (btnLike) {
+                        btnLike.addEventListener('click', async (e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            try {
+                                const response = await fetch(`/KurmiProyect/FavoritosServlet?idProducto=${idReal}`);
+                                const textoRespuesta = await response.text();
+                                if (textoRespuesta.includes("correctamente a la base")) {
+                                    await mostrarNotificacionDinamica("favoritos");
+                                }
+                            } catch (err) {
+                                console.error("Error en favoritos:", err);
+                            }
+                        });
+                    }
+
+                    if (btnCarrito) {
+                        btnCarrito.addEventListener('click', async (e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            try {
+                                const urlPeticion = `/KurmiProyect/CarritoServlet?idProducto=${parseInt(idReal)}&precio=${parseFloat(precioReal)}&cantidad=1`;
+                                const response = await fetch(urlPeticion);
+                                const textoRespuesta = await response.text();
+                                if (textoRespuesta.includes("agregado al carrito")) {
+                                    await mostrarNotificacionDinamica("carrito");
+                                }
+                            } catch (err) {
+                                console.error("Error en carrito:", err);
+                            }
+                        });
+                    }
+
+                    // Se añade la tarjeta aprobada al contenedor visual
+                    contenedor.appendChild(nuevaTarjeta);
+                }
+            } catch (errorInterno) {
+                console.error("Se presentó un error procesando un producto individual:", errorInterno);
+            }
+        }
+
+    } catch (errorCritico) {
+        console.error("Se detectó un fallo crítico cargando los productos filtrados:", errorCritico);
+    }
+}
