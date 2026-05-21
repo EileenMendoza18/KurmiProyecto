@@ -169,7 +169,7 @@ if (btnCarrito) {
             }
 
             // VALIDACIÓN EXACTA DEL TEXTO RETORNADO POR TU SERVLET
-            if (textoRespuesta.incluides("agregado al carrito")) {
+            if (textoRespuesta.includes("agregado al carrito")) {
                 await mostrarNotificacionDinamica("carrito");
             } else {
                 console.error("El backend rechazó la inserción en el carrito: ", textoRespuesta);
@@ -303,7 +303,7 @@ async function mostrarNotificacionDinamica(tipo) {
             const responseTemplate = await fetch('/KurmiProyect/components/notificacion.html');
             const templateHTML = await responseTemplate.text();
             
-            // Inyectamos el HTML directamente al final del body para no perder nodos
+            // Inyectamos el HTML directamente al final del body
             document.body.insertAdjacentHTML('beforeend', templateHTML);
             toastContainer = document.querySelector('.toast-container');
         } catch (error) {
@@ -312,12 +312,12 @@ async function mostrarNotificacionDinamica(tipo) {
         }
     }
 
-    // 2. Captura por clases nativas o IDs para asegurar compatibilidad
-    const toastIcon = document.getElementById('toastIcon') || toastContainer.querySelector('.toast-icon');
-    const toastMessage = document.getElementById('toastMessage') || toastContainer.querySelector('.toast-content p') || toastContainer.querySelector('p');
+    // 2. Captura interna buscando directamente dentro del contenedor recuperado
+    const toastIcon = toastContainer.querySelector('.toast-icon') || toastContainer.querySelector('#toastIcon');
+    const toastMessage = toastContainer.querySelector('p') || toastContainer.querySelector('#toastMessage');
 
-    if (!toastContainer || !toastIcon || !toastMessage) {
-        console.warn("Estructura interna no encontrada, reintentando selectores directos...");
+    if (!toastIcon || !toastMessage) {
+        console.warn("Estructura interna no encontrada en el componente de notificación.");
         return;
     }
 
@@ -329,32 +329,16 @@ async function mostrarNotificacionDinamica(tipo) {
         toastIcon.textContent = "💜"; 
         toastMessage.textContent = "¡Artículo añadido a tu lista de favoritos!";
     }
-
-    // 4. FORZAR ESTILOS DIRECTOS (Ignora por completo las restricciones de tu archivo CSS)
-    toastContainer.style.position = 'fixed';
-    toastContainer.style.top = '10%';
-    toastContainer.style.left = '50%';
-    toastContainer.style.transform = 'translate(-50%, -50%)'; // Lo centra perfectamente arriba
-    toastContainer.style.zIndex = '999999'; // Lo pone al frente de TODO
-    toastContainer.style.backgroundColor = '#7c3aed'; // Color morado vivo de Kurmi
-    toastContainer.style.color = '#ffffff'; // Texto blanco para que contraste
-    toastContainer.style.padding = '16px 32px';
-    toastContainer.style.borderRadius = '12px';
-    toastContainer.style.display = 'flex'; // Activa el layout alineado
-    toastContainer.style.alignItems = 'center';
-    toastContainer.style.gap = '15px';
-    toastContainer.style.boxShadow = '0px 10px 25px rgba(0,0,0,0.3)';
-    toastContainer.style.transition = 'all 0.3s ease';
     
-    // Removemos clases de ocultamiento por si acaso
+    // 4. CONTROL DE ANIMACIÓN POR CLASES CSS
+    // Quitamos 'hidden' y añadimos 'visible' para activar la transición del CSS
     toastContainer.classList.remove('hidden');
     toastContainer.classList.add('visible');
 
     // 5. Ocultamiento automático tras 3 segundos
     setTimeout(() => {
-        toastContainer.style.display = 'none';
-        toastContainer.classList.add('hidden');
         toastContainer.classList.remove('visible');
+        toastContainer.classList.add('hidden');
     }, 3000);
 }
 function inicializarBotonProductos() {
