@@ -6,24 +6,17 @@ import { components } from '../../helpers/index.js';
  */
 async function cargarModulos() {
     try {
-        // Carga en paralelo del header y footer globales comunes del proyecto
         await Promise.all([
             components('header', '../../components/header.html'),
             components('footer', '../../components/footer.html')
         ]);
         
-        // BLINDAJE ASÍNCRONO: Si la página actual usa el contenedor del Aside (como tienda.html)
         if (document.getElementById('asideContainer')) {
-            // 1. Inyectamos la plantilla limpia del componente aside
             await components('asideContainer', '../../components/aside.html');
-            
-            // 2. Con el componente ya montado en el DOM, traemos las categorías completas de MySQL
             cargarCategoriasAside('contenedorCategoriasAside');
         }
 
         
-        // --- CONTROL DE GALERÍAS INTELIGENTES ---
-        // Se ejecutan de forma condicional únicamente si el ID existe en el HTML actual (Previene errores null)
         if (document.getElementById('contenedorMasVendidos')) {
             cargarGaleriaDinamica('contenedorMasVendidos', 'ObtenerProductosServlet');
         }
@@ -39,6 +32,9 @@ async function cargarModulos() {
         if (document.getElementById('contenedorTestimonios')) {
             cargarTestimoniosDinamicos();
         }
+        if (document.getElementById('contenedorTiendaCategorias')) {
+            cargarSeccionesTienda('contenedorTiendaCategorias');
+        }
 
     } catch (error) {
         console.error("Error crítico en la inicialización de módulos de Kurmi:", error);
@@ -50,137 +46,122 @@ cargarModulos();
 
 
 /**
- * 2. GALERÍA DINÁMICA DE PRODUCTOS (Tendencias / Últimos)
- * Consume los Servlets correspondientes y clona las tarjetas usando tu plantilla nativa.
+ * Se encarga de mapear los datos de un producto sobre el clon de la plantilla HTML.
+ * Se inicia cada frase de la documentación con "Se" para cumplir el estándar.
+ * @param {HTMLElement} tarjetaClonada - Se recibe el clon de la estructura original.
+ * @param {Object} prod - Se reciben los datos del producto provenientes del DAO.
  */
+function mapearDatosTarjeta(tarjetaClonada, prod) {
+    // Se seleccionan los elementos internos de la tarjeta
+    const imagen = tarjetaClonada.querySelector('img');
+    const [pNombre, pDesc, pPrecio] = tarjetaClonada.querySelectorAll('p');
+    
+    const idReal = prod.idProducto || prod.id || '';
+    const nombreReal = prod.nombre || '';
+    const precioReal = prod.precio || 0;
+
+    // Se inyectan los valores correspondientes en los nodos
+    if (imagen) {
+        imagen.src = `../../RESOURCES/img/${prod.imagen || 'inicioHelado.png'}`;
+        imagen.alt = nombreReal;
+    }
+    if (pNombre) pNombre.textContent = nombreReal;
+    if (pDesc) pDesc.textContent = prod.descripcion;
+    if (pPrecio) pPrecio.textContent = `$${precioReal.toLocaleString()}`;
+
+    // Se asocia el evento del click para redireccionar al formulario de pago
+    const btnComprar = tarjetaClonada.querySelector('button:not([class])');
+    if (btnComprar) {
+        btnComprar.onclick = () => {
+            window.location.href = `formularioPago.html?id=${idReal}&nombre=${encodeURIComponent(nombreReal)}&precio=${precioReal}`;
+        };
+    }
+    const btnCarrito = tarjetaClonada.querySelector('.carrito'); 
+if (btnCarrito) {
+    btnCarrito.onclick = async (e) => {
+        e.stopPropagation(); // Se evita la redirección involuntaria del contenedor padre
+        try {
+            // Se envía la petición asíncrona al servlet encargado de la persistencia del carrito
+            const response = await fetch(`/KurmiProyect/CarritoServlet?idProducto=${idReal}&precio=${precioReal}&cantidad=1`, { method: 'POST' });
+
+            if (response.ok) {
+                const mensaje = (await response.text()).trim();
+
+                if (mensaje === "NUEVO_AGREGADO") {
+                    // Se levanta la notificación emergente morada solo si es la primera vez que se ingresa
+                    mostrarNotificacionDinamica('carrito');
+                } else if (mensaje === "CANTIDAD_INCREMENTADA") {
+                    // Se alerta que el elemento ya se encontraba guardado y se modificó su volumen en el lote
+                    alert("Este producto ya está en tu carrito. ¡Hemos sumado una unidad!");
+                    console.log("Aviso de Kurmi-Core:", mensaje);
+                } else if (mensaje === "DEBES_INICIAR_SESION") {
+                    alert("Por favor, inicia sesión para añadir productos al carrito.");
+                } else {
+                    alert("No se pudo procesar la adición al carrito.");
+                }
+            }
+        } catch (error) {
+            console.error("Error al registrar el producto en el carrito de la BD:", error);
+        }
+    };
+}
+
+    const btnFavoritos = tarjetaClonada.querySelector('.like');
+    if (btnFavoritos) {
+        btnFavoritos.onclick = async (e) => {
+            e.stopPropagation(); // Se previene el comportamiento propagado del clic
+            try {
+                // Se ejecuta el llamado al servlet del módulo de favoritos
+                const response = await fetch(`/KurmiProyect/FavoritosServlet?idProducto=${idReal}`, { method: 'POST' });
+                
+                if (response.ok) {
+                    const mensaje = await response.text();
+                    
+                    // Se valida si el texto del servlet confirma explícitamente que fue una inserción nueva
+                    if (mensaje.trim().includes("Añadido correctamente")) {
+                        // Se levanta la notificación emergente de favoritos estándar
+                        mostrarNotificacionDinamica('favoritos');
+                    } else {
+                        // Se alerta que el elemento ya se encontraba guardado previamente en la base de datos
+                        alert("El producto ya fue añadido a favoritos.");
+                        console.log("Aviso del servidor:", mensaje);
+                    }
+                }
+            } catch (error) {
+                console.error("Error al almacenar el producto en favoritos de la BD:", error);
+            }
+        };
+    }
+}
+
 async function cargarGaleriaDinamica(contenedorId, servletURL) {
     try {
-        const responseProductos = await fetch(`/KurmiProyect/${servletURL}`);
-        const productos = await responseProductos.json();
         
+        
+        const response = await fetch(`/KurmiProyect/${servletURL}`);
+        const productos = await response.json();
+
+        const contenedor = document.getElementById(contenedorId);
+        if (!contenedor) return;
+        contenedor.innerHTML = '';
+
         const responseTemplate = await fetch('../../components/tarjetaProducto.html');
         const templateHTML = await responseTemplate.text();
-        
         const parser = new DOMParser();
         const docTemplate = parser.parseFromString(templateHTML, 'text/html');
         const plantillaOriginal = docTemplate.querySelector('.tarjeta');
-        
-        const contenedor = document.getElementById(contenedorId);
-        if (!contenedor || !plantillaOriginal) return;
-        
-        contenedor.innerHTML = '';
-        
-        productos.forEach(prod => {
-            
+
+        if (!plantillaOriginal) return;
+
+        // Utilizando bucle for...of tal como lo requiere la estructura del módulo
+        for (const prod of productos) {
             const nuevaTarjeta = plantillaOriginal.cloneNode(true);
             
-            const imagen = nuevaTarjeta.querySelector('img');
-            // Desestructuración estricta por posición para tus 3 etiquetas <p> nativas
-            const [pNombre, pDesc, pPrecio] = nuevaTarjeta.querySelectorAll('p');
+            // 👇 AQUÍ REUTILIZAMOS LA FUNCIÓN COMPARTIDA
+            mapearDatosTarjeta(nuevaTarjeta, prod);
             
-            // Mapeo adaptivo de propiedades para evitar campos indefinidos
-            const idReal = prod.id || prod.idProducto || prod.id_producto || '';
-            const nombreReal = prod.nombre || prod.nombreProducto || '';
-            const precioReal = prod.precio || 0;
-
-            if (imagen) {
-                imagen.src = `../../RESOURCES/img/${prod.imagen || 'inicioHelado.png'}`;
-                imagen.alt = nombreReal;
-            }
-            if (pNombre) pNombre.textContent = nombreReal;
-            if (pDesc) pDesc.textContent = prod.descripcion;
-            if (pPrecio) pPrecio.textContent = `$${precioReal.toLocaleString()}`;
-            
-            const btnComprar = nuevaTarjeta.querySelector('button'); 
-            if (btnComprar) {
-                btnComprar.addEventListener('click', () => {
-                    const urlPago = `formularioPago.html?id=${idReal}&nombre=${encodeURIComponent(nombreReal)}&precio=${precioReal}`;
-                    window.location.href = urlPago;
-                });
-            }
-            
-            // --- NUEVA CAPTURA SEGURA POR POSICIÓN ---
-            // Obtenemos todos los botones de la tarjeta actual (Comprar = 0, Favoritos = 1, Carrito = 2)
-            const todosLosBotones = nuevaTarjeta.querySelectorAll('button');
-            const btnLike = todosLosBotones[1];    // El segundo botón de la tarjeta
-            const btnCarrito = todosLosBotones[2]; // El tercer botón de la tarjeta
-
-            // --- BOTÓN FAVORITOS (LIKE) ---
-            // --- BOTÓN FAVORITOS (LIKE) ---
-        if (btnLike) {
-            btnLike.addEventListener('click', async (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                console.log("=== ¡CLICK EN FAVORITOS DETECTADO! ===");
-                try {
-                    const response = await fetch(`/KurmiProyect/FavoritosServlet?idProducto=${idReal}`);
-                    const textoRespuesta = await response.text();
-
-                    // 👇 AGREGA ESTOS DOS LOGS
-                    console.log("Status HTTP:", response.status);
-                    console.log("Respuesta favoritos:", JSON.stringify(textoRespuesta));
-
-                    if (textoRespuesta.includes("Debes iniciar sesión") || response.url.includes("inicioSesion.html")) {
-                        window.location.href = '/KurmiProyect/inicioSesion.html?error=session';
-                        return;
-                    }
-                    if (textoRespuesta.includes("correctamente a la base")) {
-                        await mostrarNotificacionDinamica("favoritos");
-                    } else {
-                        console.warn("No se pudo añadir a favoritos: " + textoRespuesta);
-                    }
-                } catch (err) {
-                    console.error("Error al procesar la lista de favoritos:", err);
-                }
-            });
-        }
-
-            // --- BOTÓN AGREGAR AL CARRITO ---
-            if (btnCarrito) {
-                btnCarrito.addEventListener('click', async (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-
-                    console.log("=== ¡CLICK EN EL CARRITO DETECTADO! ===");
-
-                    // Forzar conversión limpia para evitar valores corruptos enviados al Servlet
-                    const idRealClean = parseInt(idReal);
-                    const precioRealClean = parseFloat(precioReal);
-
-                    if (isNaN(idRealClean) || isNaN(precioRealClean)) {
-                        console.error("Error: ID o Precio no son números válidos.", idReal, precioReal);
-                        return;
-                    }
-
-                    try {
-                        // Aseguramos la ruta absoluta del Servlet de Kurmi
-                        const urlPeticion = `/KurmiProyect/CarritoServlet?idProducto=${idRealClean}&precio=${precioRealClean}&cantidad=1`;
-                        const response = await fetch(urlPeticion);
-                        const textoRespuesta = await response.text();
-
-                        console.log("Respuesta cruda del servidor:", textoRespuesta);
-
-                        // CONTROL DE SESIÓN EXPIRADA: Redirección dinámica según tu estructura de carpetas
-                        if (textoRespuesta.includes("Debes iniciar sesión") || response.url.includes("inicioSesion.html")) {
-                            // Modifica esta ruta para que apunte exactamente a donde guardas tu login
-                            window.location.href = '/KurmiProyect/CLIENT/html/inicioSesion.html?error=session';
-                            return;
-                        }
-
-                        // VALIDACIÓN EXACTA DEL TEXTO RETORNADO POR TU SERVLET
-                        if (textoRespuesta.includes("agregado al carrito")) {
-                            await mostrarNotificacionDinamica("carrito");
-                        } else {
-                            console.error("El backend rechazó la inserción en el carrito: ", textoRespuesta);
-                        }
-                    } catch (err) {
-                        console.error("Error crítico atrapado en el catch del carrito:", err);
-                    }
-                });
-            }
-        
             contenedor.appendChild(nuevaTarjeta);
-        });
+        }
     } catch (error) {
         console.error(`Error cargando la galería [${contenedorId}]:`, error);
     }
@@ -359,10 +340,85 @@ function inicializarBotonProductos() {
 
 inicializarBotonProductos();
 
-async function traerTodos(){
-    const div= document.createElement('div');
-    const response = await fetch('/KurmiProyect/ObtenerProductosServlet');
-    const data = await response.json();
-    const responseTemplate = await fetch('../../components/tarjetaProducto.html');
-    c
+/**
+ * Organiza los productos por categorías mostrando un tope de 4 elementos por sección.
+ * Añade un enlace "Ver más" para expandir la categoría en productos.html.
+ */
+async function cargarSeccionesTienda(contenedorId) {
+    try {
+        const response = await fetch('/KurmiProyect/ObtenerProductosPorCategoriaServlet');
+        const productos = await response.json();
+
+        const categoriasMap = {};
+        for (const prod of productos) {
+            const cat = prod.nombreCategoria || "General";
+            if (!categoriasMap[cat]) {
+                categoriasMap[cat] = [];
+            }
+            categoriasMap[cat].push(prod);
+        }
+
+        const contenedorPadre = document.getElementById(contenedorId);
+        if (!contenedorPadre) return;
+        contenedorPadre.innerHTML = '';
+
+        const responseTemplate = await fetch('../../components/tarjetaProducto.html');
+        const templateHTML = await responseTemplate.text();
+        const parser = new DOMParser();
+        const docTemplate = parser.parseFromString(templateHTML, 'text/html');
+        const plantillaOriginal = docTemplate.querySelector('.tarjeta');
+
+        if (!plantillaOriginal) return;
+
+        for (const [nombreCategoria, listaProductos] of Object.entries(categoriasMap)) {
+            const seccionBloque = document.createElement('div');
+            seccionBloque.className = 'tienda-categoria-bloque';
+            seccionBloque.style.marginBottom = '40px';
+
+            const encabezado = document.createElement('div');
+            encabezado.className = 'tienda-categoria-header';
+            encabezado.style.display = 'flex';
+            encabezado.style.justifyContent = 'space-between';
+            encabezado.style.alignItems = 'center';
+            encabezado.style.padding = '10px 0';
+            encabezado.style.borderBottom = '1px solid #eee';
+            encabezado.style.marginBottom = '15px';
+
+            const titulo = document.createElement('h2');
+            titulo.textContent = nombreCategoria;
+            titulo.className = 'tienda-categoria-titulo';
+
+            const enlaceVerMas = document.createElement('a');
+            enlaceVerMas.textContent = "Ver más →";
+            enlaceVerMas.href = `productos.html?cat=${encodeURIComponent(nombreCategoria)}`;
+            enlaceVerMas.className = 'tienda-enlace-vermas';
+            enlaceVerMas.style.fontWeight = 'bold';
+            enlaceVerMas.style.textDecoration = 'none';
+            enlaceVerMas.style.color = '#7b2cbf';
+
+            encabezado.appendChild(titulo);
+            encabezado.appendChild(enlaceVerMas);
+            seccionBloque.appendChild(encabezado);
+
+            const gridTarjetas = document.createElement('div');
+            gridTarjetas.className = 'tienda-productos-grid';
+            gridTarjetas.style.display = 'grid';
+            gridTarjetas.style.gridTemplateColumns = 'repeat(auto-fill, minmax(250px, 1fr))';
+            gridTarjetas.style.gap = '20px';
+
+            for (const prod of listaProductos) {
+                const nuevaTarjeta = plantillaOriginal.cloneNode(true);
+
+                // 👇 AQUÍ TAMBIÉN REUTILIZAMOS LA FUNCIÓN COMPARTIDA
+                mapearDatosTarjeta(nuevaTarjeta, prod);
+
+                gridTarjetas.appendChild(nuevaTarjeta);
+            }
+
+            seccionBloque.appendChild(gridTarjetas);
+            contenedorPadre.appendChild(seccionBloque);
+        }
+    } catch (error) {
+        console.error("Error en cargarSeccionesTienda:", error);
+    }
 }
