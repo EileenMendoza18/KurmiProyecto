@@ -105,3 +105,11 @@ aside label img {
     font-weight: bold;
     font-size: 0.9rem;
 }
+
+/* Alinea de forma horizontal el icono generado y su respectivo texto */
+.item-menu-lateral {
+    display: flex;
+    align-items: center;
+    gap: 10px; /* Separación horizontal entre el icono y el nombre de la categoría */
+    width: 100%;
+}

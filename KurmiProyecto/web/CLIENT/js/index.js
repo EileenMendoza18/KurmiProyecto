@@ -21,6 +21,7 @@ async function cargarModulos() {
             cargarCategoriasAside('contenedorCategoriasAside');
         }
 
+        
         // --- CONTROL DE GALERÍAS INTELIGENTES ---
         // Se ejecutan de forma condicional únicamente si el ID existe en el HTML actual (Previene errores null)
         if (document.getElementById('contenedorMasVendidos')) {
@@ -37,10 +38,6 @@ async function cargarModulos() {
         
         if (document.getElementById('contenedorTestimonios')) {
             cargarTestimoniosDinamicos();
-        }
-
-        if (document.getElementById('contenedorProductosCategoria')) {
-            cargarProductosPorCategoria();
         }
 
     } catch (error) {
@@ -222,7 +219,7 @@ async function cargarCategoriasGaleria(contenedorId) {
 
             // 2. Evento exclusivo de redirección por categoría hacia tienda.html
             nuevaCat.addEventListener('click', () => {
-                const urlDestino = `/KurmiProyect/CLIENT/html/Productos.html?cat=${encodeURIComponent(nombreCat.trim())}`;
+                const urlDestino = `/KurmiProyect/CLIENT/html/tienda.html?cat=${encodeURIComponent(nombreCat.trim())}`;
                 window.location.href = urlDestino;
             });
             contenedor.appendChild(nuevaCat);
@@ -362,122 +359,10 @@ function inicializarBotonProductos() {
 
 inicializarBotonProductos();
 
-/**
- * 8. CARGA DE PRODUCTOS FILTRADOS POR CATEGORÍA (VISTA PRODUCTOS)
- * Se ejecuta el filtrado y renderizado dinámico de productos en la interfaz.
- * Se recupera el parámetro de la categoría directamente desde los argumentos de la URL.
- * Se realiza la petición asíncrona hacia el servlet encargado de los artículos.
- * Se procesan las tarjetas una a una mediante un ciclo for...of seguro.
- * Se controla el flujo de datos mediante bloques de validación try y catch.
- */
-async function cargarProductosPorCategoria() {
-    try {
-        // Se capturan los parámetros de la URL actual
-        const urlParams = new URLSearchParams(window.location.search);
-        const catSeleccionada = urlParams.get('cat');
-
-        // Se verifica si no existe una categoría seleccionada para detener el proceso
-        if (!catSeleccionada) return;
-
-        // Se realiza la petición al Servlet que trae todos los productos
-        const responseProductos = await fetch('/KurmiProyect/ObtenerProductosServlet');
-        const productos = await responseProductos.json();
-
-        // Se obtiene la plantilla HTML base de la tarjeta de producto
-        const responseTemplate = await fetch('../../components/tarjetaProducto.html');
-        const templateHTML = await responseTemplate.text();
-
-        const parser = new DOMParser();
-        const docTemplate = parser.parseFromString(templateHTML, 'text/html');
-        const plantillaOriginal = docTemplate.querySelector('.tarjeta');
-
-        const contenedor = document.getElementById('contenedorProductosCategoria');
-        if (!contenedor || !plantillaOriginal) return;
-
-        // Se limpia el contenedor antes de inyectar los elementos filtrados
-        contenedor.innerHTML = '';
-
-        // Se recorren los productos utilizando un ciclo for...of y validación por try/catch
-        for (const prod of productos) {
-            try {
-                // Se verifica si el producto pertenece a la categoría de la URL
-                // (Se asume que tu objeto producto trae una propiedad '.categoria' o '.nombreCategoria')
-                const categoriaProd = prod.categoria || prod.nombreCategoria || '';
-                
-                if (categoriaProd.trim().toLowerCase() === catSeleccionada.trim().toLowerCase()) {
-                    
-                    const nuevaTarjeta = plantillaOriginal.cloneNode(true);
-                    
-                    const imagen = nuevaTarjeta.querySelector('img');
-                    const [pNombre, pDesc, pPrecio] = nuevaTarjeta.querySelectorAll('p');
-                    
-                    const idReal = prod.id || prod.idProducto || prod.id_producto || '';
-                    const nombreReal = prod.nombre || prod.nombreProducto || '';
-                    const precioReal = prod.precio || 0;
-
-                    if (imagen) {
-                        imagen.src = `../../RESOURCES/img/${prod.imagen || 'inicioHelado.png'}`;
-                        imagen.alt = nombreReal;
-                    }
-                    if (pNombre) pNombre.textContent = nombreReal;
-                    if (pDesc) pDesc.textContent = prod.descripcion;
-                    if (pPrecio) pPrecio.textContent = `$${precioReal.toLocaleString()}`;
-                    
-                    // Se asigna la lógica del botón comprar
-                    const btnComprar = nuevaTarjeta.querySelector('button'); 
-                    if (btnComprar) {
-                        btnComprar.addEventListener('click', () => {
-                            window.location.href = `formularioPago.html?id=${idReal}&nombre=${encodeURIComponent(nombreReal)}&precio=${precioReal}`;
-                        });
-                    }
-
-                    // Se configuran los escuchadores para Favoritos y Carrito del clon
-                    const todosLosBotones = nuevaTarjeta.querySelectorAll('button');
-                    const btnLike = todosLosBotones[1];
-                    const btnCarrito = todosLosBotones[2];
-
-                    if (btnLike) {
-                        btnLike.addEventListener('click', async (e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            try {
-                                const response = await fetch(`/KurmiProyect/FavoritosServlet?idProducto=${idReal}`);
-                                const textoRespuesta = await response.text();
-                                if (textoRespuesta.includes("correctamente a la base")) {
-                                    await mostrarNotificacionDinamica("favoritos");
-                                }
-                            } catch (err) {
-                                console.error("Error en favoritos:", err);
-                            }
-                        });
-                    }
-
-                    if (btnCarrito) {
-                        btnCarrito.addEventListener('click', async (e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            try {
-                                const urlPeticion = `/KurmiProyect/CarritoServlet?idProducto=${parseInt(idReal)}&precio=${parseFloat(precioReal)}&cantidad=1`;
-                                const response = await fetch(urlPeticion);
-                                const textoRespuesta = await response.text();
-                                if (textoRespuesta.includes("agregado al carrito")) {
-                                    await mostrarNotificacionDinamica("carrito");
-                                }
-                            } catch (err) {
-                                console.error("Error en carrito:", err);
-                            }
-                        });
-                    }
-
-                    // Se añade la tarjeta aprobada al contenedor visual
-                    contenedor.appendChild(nuevaTarjeta);
-                }
-            } catch (errorInterno) {
-                console.error("Se presentó un error procesando un producto individual:", errorInterno);
-            }
-        }
-
-    } catch (errorCritico) {
-        console.error("Se detectó un fallo crítico cargando los productos filtrados:", errorCritico);
-    }
+async function traerTodos(){
+    const div= document.createElement('div');
+    const response = await fetch('/KurmiProyect/ObtenerProductosServlet');
+    const data = await response.json();
+    const responseTemplate = await fetch('../../components/tarjetaProducto.html');
+    c
 }
