@@ -20,27 +20,26 @@ import java.util.List;
 {
     "/ObtenerProductosServlet"
 })
-public class ObtenerProductosServlet extends HttpServlet
-{
-
+public class ObtenerProductosServlet extends HttpServlet {
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
-            throws ServletException, IOException
-    {
+            throws ServletException, IOException {
         response.setContentType("application/json;charset=UTF-8");
-        try (PrintWriter out = response.getWriter())
-        {
+        try (PrintWriter out = response.getWriter()) {
             ProductoDAO dao = new ProductoDAO();
-            List<ProductoDTO> ListaMasVendidos = dao.obtenerMasVendidos(6);
-            System.out.println(ListaMasVendidos.size());
-            
-            String jsonOutput = new Gson().toJson(ListaMasVendidos);
-            
+            String origen = request.getParameter("origen"); // "inicio" o "tienda"
+            List<ProductoDTO> lista;
+
+            if ("inicio".equalsIgnoreCase(origen)) {
+                lista = dao.obtenerMasVendidos(6); // solo 6 productos
+            } else {
+                lista = dao.obtenerTodos(); // todos los productos
+            }
+
+            String jsonOutput = new Gson().toJson(lista);
             out.print(jsonOutput);
-    
-        }catch(Exception e){
+        } catch (Exception e) {
             e.printStackTrace();
         }
     }
-
 }

@@ -89,4 +89,26 @@ public class ProductoDAO
         }
         return lista;
     }
+    public List<ProductoDTO> obtenerTodos() {
+    List<ProductoDTO> lista = new ArrayList<>();
+    String sql = "SELECT ID_Producto, Nombre_Producto, Valor_Producto, Descripcion_Producto " +
+                 "FROM Productos";
+    try (Connection con = cn.getConexion();
+         PreparedStatement ps = con.prepareStatement(sql);
+         ResultSet rs = ps.executeQuery()) {
+        while (rs.next()) {
+            ProductoDTO dto = new ProductoDTO();
+            dto.setIdProducto(rs.getInt("ID_Producto"));
+            dto.setNombre(rs.getString("Nombre_Producto"));
+            dto.setDescripcion(rs.getString("Descripcion_Producto"));
+            dto.setPrecio(rs.getDouble("Valor_Producto"));
+            dto.setImagen("inicioHelado.png"); // o el campo real de tu BD
+            lista.add(dto);
+        }
+    } catch (Exception e) {
+        System.err.println("Error en ProductoDAO (obtenerTodos): " + e.getMessage());
+    }
+    return lista;
+}
+
 }

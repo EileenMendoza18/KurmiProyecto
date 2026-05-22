@@ -359,10 +359,30 @@ function inicializarBotonProductos() {
 
 inicializarBotonProductos();
 
-async function traerTodos(){
-    const div= document.createElement('div');
-    const response = await fetch('/KurmiProyect/ObtenerProductosServlet');
-    const data = await response.json();
-    const responseTemplate = await fetch('../../components/tarjetaProducto.html');
-    c
+async function crearSeccionCategoria(nombreCategoria, servletURL, contenedorPrincipalId) {
+    // Crear el div contenedor
+    const divCategoria = document.createElement('div');
+    divCategoria.classList.add('categoria-section');
+
+    // Crear el título h2
+    const titulo = document.createElement('h2');
+    titulo.classList.add('products__title');
+    titulo.textContent = nombreCategoria;
+    divCategoria.appendChild(titulo);
+
+    // Crear el div para las tarjetas
+    const grid = document.createElement('div');
+    grid.classList.add('products__grid');
+    divCategoria.appendChild(grid);
+
+    // Llamar a cargarGaleriaDinamica para llenar el grid
+    await cargarGaleriaDinamica(grid.id = `grid-${nombreCategoria}`, servletURL);
+
+    // Insertar todo en el contenedor principal
+    const contenedorPrincipal = document.getElementById(contenedorPrincipalId);
+    contenedorPrincipal.appendChild(divCategoria);
 }
+
+
+crearSeccionCategoria("Helados", "/KurmiProyect/ObtenerProductosServlet?origen=tienda&cat=Helados", "contenedorMasVendidos");
+crearSeccionCategoria("Postres", "/KurmiProyect/ObtenerProductosServlet?origen=tienda&cat=Postres", "contenedorMasVendidos");
