@@ -24,11 +24,9 @@ public class FavoritosServlet extends HttpServlet {
      * @throws IOException 
      */
     @Override
-    protected void doPost(HttpServletRequest request, HttpServletResponse response) 
+    protected void doGet(HttpServletRequest request, HttpServletResponse response) 
             throws ServletException, IOException {
-        response.setContentType("text/plain");
-        response.setCharacterEncoding("UTF-8");
-        response.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+        
         try {
             HttpSession session = request.getSession(false); 
             
@@ -52,22 +50,14 @@ public class FavoritosServlet extends HttpServlet {
 
             int idProductoReal = Integer.parseInt(idProductoParam);
 
-            boolean yaExiste = favoritosDAO.existeFavorito(idProductoReal, idUsuarioReal);
-            if (yaExiste) {
-                // Se envía la respuesta exacta que espera el JavaScript para lanzar el alert de duplicado
-                response.getWriter().write("El producto ya fue añadido a favoritos");
-            } else {
-                // 5. Se invoca la capa del modelo mediante el DAO para persistir en MySQL
-                boolean guardadoExitoso = favoritosDAO.agregarFavorito(idProductoReal, idUsuarioReal);
+            // 4. Invocar la capa del modelo mediante el DAO para persistir en MySQL
+            boolean guardadoExitoso = favoritosDAO.agregarFavorito(idProductoReal, idUsuarioReal);
 
-                // Se controla el flujo de la respuesta según el resultado de la base de datos
-                if (guardadoExitoso) {
-                    // Se envía el texto exacto que limpia el flujo del fetch en index.js
-                    response.getWriter().write("Añadido correctamente");
-                } else {
-                    // Se asume la existencia previa por la restricción UNIQUE en caso de fallar el booleano
-                    response.getWriter().write("El producto ya fue añadido a favoritos");
-                }
+            // 5. Controlar el flujo de la respuesta según el resultado de la base de datos
+            if (guardadoExitoso) {
+                response.getWriter().write("Añadido correctamente a la base de datos");
+            } else {
+                response.getWriter().write("El producto ya se encuentra en tus favoritos o hubo un error");
             }
 
         } catch (NumberFormatException e) {

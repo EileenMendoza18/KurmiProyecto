@@ -15,7 +15,6 @@ public class ProductoDTO {
     private String unidadMedida;
     private double precio;
     private String imagen; // Cambiado de int a String
-    private String categoria;
 
     public ProductoDTO() {}
 
@@ -36,7 +35,4 @@ public class ProductoDTO {
 
     public String getImagen() { return imagen; }
     public void setImagen(String imagen) { this.imagen = imagen; }
-    
-    public String getCategoria() { return categoria; }
-    public void setCategoria(String categoria) { this.categoria = categoria; }
 }
