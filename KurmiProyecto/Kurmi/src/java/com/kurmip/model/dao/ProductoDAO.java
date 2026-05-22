@@ -9,6 +9,7 @@ import com.kurmip.model.dto.ProductoDTO;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -89,4 +90,67 @@ public class ProductoDAO
         }
         return lista;
     }
+
+    public List<ProductoDTO> obtenerProductosAgrupadosPorCategoria() {
+        List<ProductoDTO> lista = new ArrayList<>();
+        // Se asigna un número de fila particionado por categoría para limitar a 4 por grupo
+        String sql = "SELECT * FROM (" +
+                     "  SELECT p.ID_Producto, p.Nombre_Producto, p.Valor_Producto, p.Descripcion_Producto, c.Nombre_Categoria, " +
+                     "         ROW_NUMBER() OVER(PARTITION BY rcs.ID_Categoria ORDER BY p.ID_Producto DESC) as fila " +
+                     "  FROM Productos p " +
+                     "  JOIN RelaCatSabor rcs ON p.ID_RelaCategSabor = rcs.ID_RelaCatSabor " +
+                     "  JOIN Categorias c ON rcs.ID_Categoria = c.ID_Categoria" +
+                     ") as temporal " +
+                     "WHERE fila <= 4";
+
+        try (Connection con = cn.getConexion();
+             PreparedStatement ps = con.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+
+            while (rs.next()) {
+                ProductoDTO dto = new ProductoDTO();
+                dto.setIdProducto(rs.getInt("ID_Producto"));
+                dto.setNombre(rs.getString("Nombre_Producto"));
+                dto.setPrecio(rs.getDouble("Valor_Producto"));
+                dto.setDescripcion(rs.getString("Descripcion_Producto"));
+                dto.setCategoria(rs.getString("Nombre_Categoria")); // Requiere atributo en DTO
+                dto.setImagen("inicioHelado.png");
+                lista.add(dto);
+            }
+        } catch (Exception e) {
+            System.err.println("Error en ProductoDAO (Agrupados): " + e.getMessage());
+        }
+        return lista;
+    }
+
+    public List<ProductoDTO> obtenerProductosPorCategoriaCompleta(String categoria) {
+        List<ProductoDTO> lista = new ArrayList<>();
+        String sql = "SELECT p.ID_Producto, p.Nombre_Producto, p.Valor_Producto, p.Descripcion_Producto " +
+                     "FROM Productos p " +
+                     "JOIN RelaCatSabor rcs ON p.ID_RelaCategSabor = rcs.ID_RelaCatSabor " +
+                     "JOIN Categorias c ON rcs.ID_Categoria = c.ID_Categoria " +
+                     "WHERE c.Nombre_Categoria = ?";
+
+        try (Connection con = cn.getConexion();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+
+            ps.setString(1, categoria);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    ProductoDTO dto = new ProductoDTO();
+                    dto.setIdProducto(rs.getInt("ID_Producto"));
+                    dto.setNombre(rs.getString("Nombre_Producto"));
+                    dto.setPrecio(rs.getDouble("Valor_Producto"));
+                    dto.setDescripcion(rs.getString("Descripcion_Producto"));
+                    dto.setImagen("inicioHelado.png");
+                    lista.add(dto);
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("Error en ProductoDAO (Por Categoria): " + e.getMessage());
+        }
+        return lista;
+    }
+
+    
 }
