@@ -8,7 +8,7 @@ public class Conexion {
     private static final String DATABASE = "Kurmi";
     private static final String URL = "jdbc:mysql://localhost:3306/" + DATABASE;
     private static final String USER = "root"; // Ajusta si usas 'sofia_admin'
-    private static final String PASSWORD = "e1leen987456*/-+"; // Tu contraseña de MySQL
+    private static final String PASSWORD = "#Aprendiz2024"; // Tu contraseña de MySQL
     private static final String DRIVER = "com.mysql.cj.jdbc.Driver";
 
     public Connection getConexion() {
