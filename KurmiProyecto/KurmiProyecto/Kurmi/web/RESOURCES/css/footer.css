@@ -1,0 +1,57 @@
+footer{
+    position: relative; /* Asegura que se quede abajo al final del flujo */
+    width: 100%;
+    display: flex;
+    flex-wrap: wrap;
+    background-color: #DCD6F7;
+    align-items: center;
+    justify-content: space-evenly;
+    text-align: center;
+    color: rgba(0, 0, 0, 0.719);
+    grid-row: 3;
+    z-index: 3;
+}
+
+footer div{
+    padding: 20px;
+    display: flex;
+    align-items: center;
+}
+
+footer p{
+    font-size: 0.6rem;
+}
+footer nav{
+    display: flex;
+    gap: 10px;
+}
+.redes{
+    width: 30%;
+    display: flex;
+    flex-direction: column;
+    align-items: top;
+    justify-content: center;
+    gap: 15px;
+}
+
+.redes div {
+    background-color: #cbb4fffd;
+    width: 3.2vw;
+    height: 5vh;
+    border-radius:50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+
+}
+
+.redes div:hover {
+    background-color: #eee7fffd;
+    
+}
+.redes img{
+    
+    width: 20px;
+    height: 2vh;
+}
