@@ -1,0 +1,67 @@
+ @import url("./index.css");
+
+
+.form{
+    background-color: #e6e0fd;
+    border-radius: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    /* justify-items: center; */
+    width: 90%;
+    max-width: 700px;
+    padding: 40px;
+    font-size: 0.7rem;
+    color: #00000086;
+    gap: 50px;
+    height: auto;
+    margin: 20px;
+}
+
+.form input{
+    width: 100%;
+    border-radius: 10px;
+    border: none;
+    padding: 12px;
+    color: #000000af;
+}
+.form >div:nth-child(2){
+    width: 100%;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+
+}
+
+.form >div:nth-child(2) div{
+    
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    flex: 1 1 280px;
+}
+input::placeholder{
+    color: #58585886;
+    font-size:0.65rem ;
+}
+
+
+p a{
+    color:#8f85bd;
+}
+.div__form{
+    display: flex;
+    gap: 30px;
+    align-items: center;
+    justify-content: space-between;
+}
+.aceptar{
+    display: flex;
+    gap: 10px;
+    justify-items:left;
+}
+.aceptar input{
+    width: 20px;
+}

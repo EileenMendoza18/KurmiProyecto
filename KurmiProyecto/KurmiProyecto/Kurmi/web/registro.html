@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registro - Kurmi</title>
+    <link rel="stylesheet" href="./RESOURCES/css/index.css">
+</head>
+<body>
+    <div class="contenedor-principal">
+        <div id="header"></div>
+        
+        <main class="acceso">
+            <img src="./RESOURCES/img/fondo.avif" alt="Fondo Kurmi" class="acceso__fondo">
+            <img src="./RESOURCES/img/logo.png" alt="Logo Kurmi" class="acceso__logo">
+            
+            <form action="RegistroServlet" method="POST" class="form">
+                <h1>Bienvenidos a Kurmi</h1>
+                <div>
+                    <div>
+                        <label for="nombre">Ingresa tu nombres</label>
+                        <input id="nombre" name="inputNombre" type="text" placeholder="Ejemplo: Juan" class="nombres">
+                        <span id="errorNombre" class="formulario-registro__error"></span>
+                    </div>
+                    
+                    <div>
+                        <label for="apellido">Ingresa tus apellidos</label>
+                        <input id="apellido" name="inputApellido" type="text" placeholder="Ejemplo: Pérez" class="apellidos">
+                        <span id="errorApellido" class="formulario-registro__error"></span>
+                    </div>
+                    
+                    <div>
+                        <label for="telefono">Ingresa tu telefono</label>
+                        <input id="telefono" name="inputTelefono" type="number" placeholder="Ejemplo: 3001234567" class="telefono">
+                        <span id="errorTelefono" class="formulario-registro__error"></span>
+                    </div>
+                    
+                    <div>
+                        <label for="correo">Ingresa tu correo electronico</label>
+                        <input id="correo" name="Correo_Usu" type="text" placeholder="Ejemplo: example@gmail.com" class="correo">
+                        <span id="errorCorreo" class="formulario-registro__error"></span>
+                    </div>
+                    
+                    <div>
+                        <label for="fecha">Ingresa tu fecha de nacimiento</label>
+                        <input id="fecha" name="inputFecha" type="date" class="fecha">
+                        <span id="errorFecha" class="formulario-registro__error"></span>
+                    </div>
+                    
+                    <div>
+                        <label for="selectRol">Selecciona tu tipo de cuenta</label>
+                        <select name="inputRol" id="selectRol" class="select-rol">
+                            <option value="" disabled selected>Escoge un rol</option>
+                            <option value="1">Cliente</option>
+                            <option value="3">Proveedor</option>
+                        </select>
+                        <span id="errorRol" class="formulario-registro__error"></span>
+                    </div>
+
+                    <div>
+                        <label for="contrasena">Ingresa una contraseña</label>
+                        <input id="contrasena" name="Contrasena_Usu" type="password" placeholder="Ejemplo: 1234M" class="contrasena">
+                        <span id="errorContrasena" class="formulario-registro__error"></span>
+                    </div>
+                    
+                    <div>
+                        <label for="contrasenaConfrm">Confirma tu contraseña</label>
+                        <input id="contrasenaConfrm" name="inputContrasenaConf" type="password" placeholder="Ejemplo: 1234M" class="contrasenaConfirm">
+                        <span id="errorContrasenaConfirm" class="formulario-registro__error"></span>
+                    </div>
+                    
+                    <div>
+                        <label for="direccion">Ingresa tu dirección de residencia</label>
+                        <input id="direccion" name="inputDireccion" type="text" placeholder="Ejemplo: Calle 12 #34-56" class="direccion">
+                        <span id="errorDireccion" class="formulario-registro__error"></span>
+                    </div>
+                </div>
+                
+                <button type="submit">Registrarme</button>
+                
+                <div class="div__form">
+                    <div class="aceptar">
+                        <input id="chkTerminos" name="inputCheck" type="checkbox">
+                        <p class="terminos">Aceptas nuestros <a href="#">Terminos y condiciones</a></p>
+                        <span id="errorcheck" class="formulario-registro__error"></span>
+                    </div>
+                    <p>Si estas registrado/a da click <a href="./inicioSesion.html">aqui</a></p>
+                </div>
+                
+            </form>
+        </main>
+        
+        <div id="footer"></div>
+    </div>
+    
+    <script src="./helpers/app.js" type="module"></script>
+</body>
+</html>

@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <link rel="stylesheet" href="./RESOURCES/css/index.css">
+</head>
+<body>
+    <div class="contenedor-principal">
+        <div id="header">
+
+        </div>
+        <main class="acceso">
+            <img src="./RESOURCES/img/fondo.avif" alt="" class="acceso__fondo">
+            <img src="./RESOURCES/img/logo.png" alt="" class="acceso__logo">
+            <form action="LoginServlet" method="POST" class="formulario-login">
+                <h1 class="formulario-login__titulo">Ingresa con tu cuenta...</h1>
+                <label class="formulario-login__etiqueta" for="">Ingresa tu correo electronico</label>
+                <input type="text" name="Correo_Usu" placeholder="Ejemplo: example@gmail.com" class="correo">
+                <span id="errorCorreo" class="formulario-login__error"></span>
+
+                <label for="">Ingresa tu contraseña</label>
+                <input type="password" name="Contrasena_Usu" placeholder="Ejemplo: 1234M" class="contrasena">
+                <span id="errorContrasena" class="formulario-login__error"></span>
+
+                <button type="submit" class="formulario-login__boton">Ingresar</button>
+                <p class="formulario-login__registro">Si no estas registrado/a da click <a href="./registro.html">aqui</a></p>
+            </form>
+        </main>
+        <div id="footer">
+
+        </div>
+    </div>
+    <script src="./helpers/app.js" type="module"></script>
+</body>
+</html>
