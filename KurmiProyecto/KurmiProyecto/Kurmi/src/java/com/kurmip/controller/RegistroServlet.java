@@ -50,11 +50,6 @@ public class RegistroServlet extends HttpServlet {
             nuevoUsuario.setDireccion(direccion);
             nuevoUsuario.setIdRol(idRol);
 
-            if (idRol == 3) {
-                nuevoUsuario.setIdRol(3); // 3 = Pendiente en EstadoCliente
-            } else {
-                nuevoUsuario.setIdRol(1); // 1 = Activo por defecto
-            }
             // 4. Invocar la capa del modelo mediante el DAO para persistir en MySQL
             UsuarioDAO dao = new UsuarioDAO();
             boolean guardadoExitoso = dao.registrar(nuevoUsuario);
