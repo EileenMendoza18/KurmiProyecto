@@ -24,44 +24,42 @@ public class ProductoDAO
     PreparedStatement ps;
     ResultSet rs;
     public List<ProductoDTO> obtenerMasVendidos(int limite) {
-        
         List<ProductoDTO> lista = new ArrayList<>();
-        // Agrupamos por producto y sumamos la cantidad total vendida
+
+        // Tu nueva consulta: Une el detalle del carrito con la tabla de PEDIDOS reales
         String sql = "SELECT p.ID_Producto, p.Nombre_Producto, p.Valor_Producto, p.Descripcion_Producto " +
-             "FROM Productos p " +
-             "JOIN Carrito_Detalle cd ON p.ID_Producto = cd.ID_Producto " +
-             "WHERE cd.Estado_Carrito = 3 " +
-             "GROUP BY p.ID_Producto, p.Nombre_Producto, p.Valor_Producto, p.Descripcion_Producto " + // Agregada aquí también
-             "ORDER BY SUM(cd.Cantidad_producto) DESC " +
-             "LIMIT ?";
+                     "FROM Productos p " +
+                     "JOIN Carrito_Detalle cd ON p.ID_Producto = cd.ID_Producto " +
+                     "JOIN Pedidos_Cliente pc ON cd.ID_Carrito = pc.ID_Carrito " + // <- Garantiza que sea una venta real
+                     "GROUP BY p.ID_Producto, p.Nombre_Producto, p.Valor_Producto, p.Descripcion_Producto " +
+                     "ORDER BY SUM(cd.Cantidad_producto) DESC " +
+                     "LIMIT ?";
 
         try {
             con = cn.getConexion();
             ps = con.prepareStatement(sql);
             ps.setInt(1, limite);
             rs = ps.executeQuery();
-            
+
             while (rs.next()) {
                 ProductoDTO dto = new ProductoDTO();
                 dto.setIdProducto(rs.getInt("ID_Producto"));
-                dto.setNombre(rs.getString("Nombre_Producto")); // Nombre con Nombre
-                dto.setDescripcion(rs.getString("Descripcion_Producto")); // ESTA ES LA QUE FALTA O ESTÁ MAL
+                dto.setNombre(rs.getString("Nombre_Producto"));
+                dto.setDescripcion(rs.getString("Descripcion_Producto"));
                 dto.setPrecio(rs.getDouble("Valor_Producto"));
-                dto.setImagen("inicioHelado.png");
+                dto.setImagen("inicioHelado.png"); // Imagen por defecto de tu maquetación
                 lista.add(dto);
             }
-            
+
         } catch (Exception e) {
-            System.err.println("Error en ProductoDAO: " + e.getMessage());
-        }finally {
-            // Es buena práctica cerrar los recursos manualmente en el Software Factory
+            System.err.println("Error en ProductoDAO (Más Vendidos Real): " + e.getMessage());
+        } finally {
             try { if (rs != null) rs.close(); } catch (Exception e) {}
             try { if (ps != null) ps.close(); } catch (Exception e) {}
             try { if (con != null) con.close(); } catch (Exception e) {}
         }
         return lista;
-    } 
-    
+    }    
     public List<ProductoDTO> obtenerUltimosProductos(int limite) {
         List<ProductoDTO> lista = new ArrayList<>();
         // Ordenamos por ID de forma descendente para traer los últimos registros
