@@ -6,6 +6,8 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.*;
 import java.io.IOException;
+import java.util.List;
+import com.google.gson.Gson;
 
 /**
  * Controlador Servlet encargado de gestionar la adición de productos al carrito de compras.
@@ -16,7 +18,7 @@ import java.io.IOException;
 public class CarritoServlet extends HttpServlet {
     
     private final CarritoDAO carritoDAO = new CarritoDAO();
-
+    private final Gson gson = new Gson();
     /**
      * Procesa la petición GET enviada por el formulario o fetch asíncrono.
      * * @param request Petición del cliente con los parámetros de texto.
@@ -24,6 +26,41 @@ public class CarritoServlet extends HttpServlet {
      * @throws ServletException
      * @throws IOException 
      */
+    @Override
+    protected void doGet(HttpServletRequest request, HttpServletResponse response) 
+            throws ServletException, IOException {
+        
+        response.setContentType("application/json");
+        response.setCharacterEncoding("UTF-8");
+        response.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+        
+        try {
+            HttpSession session = request.getSession(false); 
+            
+            // Se valida la existencia de una sesión activa de Kurmi
+            if (session == null || session.getAttribute("usuarioLogueado") == null) {
+                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                response.getWriter().write("[]");
+                return; 
+            }
+
+            UsuarioDTO user = (UsuarioDTO) session.getAttribute("usuarioLogueado");
+            int idUsuarioReal = user.getId();
+
+            // 👇 NOTA: Asegúrate de que el método en tu CarritoDAO se llame así o ajústalo a tu firma exacta
+            List<com.kurmip.model.dto.CarritoDetalleDTO> listaProductosCarrito = carritoDAO.obtenerProductosDelCarrito(idUsuarioReal);
+
+            // Se serializan los objetos DTO directamente a formato JSON string
+            String jsonRespuesta = this.gson.toJson(listaProductosCarrito);
+            
+            response.getWriter().write(jsonRespuesta);
+
+        } catch (Exception e) {
+            System.err.println("Error crítico en la lectura asíncrona del Carrito (doGet): " + e.getMessage());
+            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            response.getWriter().write("[]");
+        }
+    }
     @Override
 protected void doPost(HttpServletRequest request, HttpServletResponse response) 
         throws ServletException, IOException {
