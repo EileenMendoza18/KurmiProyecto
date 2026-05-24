@@ -8,22 +8,74 @@
 </head>
 <body>
     <div class="div__body">
-        <div id="header">
-
+    <div id="header">
         </div>
 
-        <main id="main">
-            <img src="../../RESOURCES/img/carrito.png" alt="">
-            <div>
+    <main id="main">
+        <div class="carrito__vacio hidden">
+            <img src="../../RESOURCES/img/carrito.png" alt="Carrito vacío">
+            <div class="vacio__info">
                 <h1>Tu carrito esta vacio</h1>
                 <p>Agrega productos para verlos aquí</p>
-                <a href="../html/Productos.html" class="btn__primary">Explorar productos</a>
+                <a href="../html/tienda.html" class="btn__primary">Explorar productos</a>
             </div>
-        </main>
-        <div id="footer">
+        </div>
+
+        <div class="carrito__contenedor">
+            
+            <section class="carrito__resumen">
+                <h1 class="resumen__titulo">Este es tu carrito de compras</h1>
+                <div class="resumen__imagen-container">
+                    <img src="../../RESOURCES/img/carrito.png" alt="Carrito de compras" class="resumen__img">
+                </div>
+                <div class="resumen__total-badge">
+                    <span>Total: 150.000</span>
+                </div>
+            </section>
+
+            <section class="carrito__lista-productos">
+                <div class="productos__header">
+                    <h2>Productos seleccionados: <span id="contador-productos">4</span></h2>
+                </div>
+
+                <div class="productos__grid">
+                    
+                    <div class="producto__card">
+                        <div class="card__imagen">
+                            <img src="../../RESOURCES/img/inicioHelado.png" alt="postres de maracuy...">
+                        </div>
+                        <div class="card__detalles">
+                            <p class="card__nombre">postres de maracuy...</p>
+                            <p class="card__precio">$150.000</p>
+                        </div>
+                        <div class="card__acciones">
+                            <div class="acciones__contador">
+                                <button class="btn-cantidad" type="button">-</button>
+                                <span class="cantidad-valor">1</span>
+                                <button class="btn-cantidad" type="button">+</button>
+                            </div>
+                            <button class="btn-eliminar" type="button">
+                                🗑️
+                            </button>
+                            <label class="checkbox-container">
+                                <input type="checkbox" checked>
+                                <span class="custom-checkbox"></span>
+                            </label>
+                        </div>
+                    </div>
+                    </div>
+
+                <div class="productos__footer">
+                    <button class="btn__primary btn__comprar">Comprar</button>
+                </div>
+            </section>
 
         </div>
-    </div>
-    <script src="../js/index.js" type="module"></script>
+    </main>
+
+    <div id="footer">
+        </div>
+</div>
+<script src="../js/index.js" type="module"></script>
 </body>
 </html>
