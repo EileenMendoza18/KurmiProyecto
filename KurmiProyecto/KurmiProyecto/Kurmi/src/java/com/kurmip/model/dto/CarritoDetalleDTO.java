@@ -8,6 +8,9 @@ public class CarritoDetalleDTO {
     private double precio;       // Antes: precioUnitario (JS busca item.precio)
     private double subtotal;
     private String imagen;       // JS busca item.imagen
+    private int estadoDetalle;
+    private int idCarrito;
+
 
     public CarritoDetalleDTO() {}
 
@@ -32,4 +35,11 @@ public class CarritoDetalleDTO {
 
     public String getImagen() { return imagen; }
     public void setImagen(String imagen) { this.imagen = imagen; }
+
+    public int getEstadoDetalle() { return estadoDetalle; }
+    public void setEstadoDetalle(int estadoDetalle) { this.estadoDetalle = estadoDetalle; }
+
+    public int getIdCarrito() { return idCarrito; }
+    public void setIdCarrito(int idCarrito) { this.idCarrito = idCarrito; }
+
 }

@@ -10,39 +10,49 @@
 <body>
     <div id="header"></div>
 
-    <main class="pago-container">
+    <main class="pago-container" id="bloquePago">
         <h2>Detalles de tu Pedido</h2>
         
         <div class="resumen-producto" id="resumenCompra">
             Cargando producto elegido...
         </div>
 
-        <form action="/KurmiProyect/ProcesarCompraServlet" method="POST">
-            <input type="hidden" id="inputProductoId" name="productoId">
-            <input type="hidden" id="inputTotal" name="totalPago">
+        <form action="../../ProcesarCompraServlet" method="POST" id="formPago">
+            
+            <div class="form-group">
+                <label for="nombre">Nombre de quien recibe:</label>
+                <input type="text" name="nombre" id="nombre" required placeholder="Ej. Eileen Mendoza">
+            </div>
 
             <div class="form-group">
-                <label for="nombre">Nombre Completo de quien recibe:</label>
-                <input type="text" id="nombre" name="nombre" required>
+                <label for="direccion">Dirección de Destino:</label>
+                <input type="text" name="direccion" id="direccion" required placeholder="Ej. Calle 12 # 34-56">
             </div>
-            <div class="form-group">
-                <label for="direccion">Dirección de Entrega:</label>
-                <input type="text" id="direccion" name="direccion" required>
-            </div>
+
             <div class="form-group">
                 <label for="telefono">Teléfono de Contacto:</label>
-                <input type="tel" id="telefono" name="telefono" required>
+                <input type="tel" name="telefono" id="telefono" required placeholder="Ej. 3143615361">
             </div>
+
             <div class="form-group">
-                <label for="metodoPago">Método de Pago:</label>
-                <select id="metodoPago" name="metodoPago" required>
-                    <option value="Daviplata">Daviplata</option>
-                    <option value="Nequi">Nequi</option>
-                    <option value="Efectivo">Contra Entrega (Efectivo)</option>
+                <label for="idMetodo">Método de Pago:</label>
+                <select name="idMetodo" id="idMetodo" required>
+                    <option value="" disabled selected>Selecciona un método</option>
+                    <option value="1">Efectivo</option>
+                    <option value="5">Nequi</option>
+                    <option value="6">Daviplata</option>
                 </select>
             </div>
 
-            <button type="submit" class="btn-pagar">Confirmar y Pagar</button>
+            <input type="hidden" name="totalPago" id="totalPago" value="0">
+            <input type="hidden" name="idCarrito" id="idCarrito" value="0">
+            <input type="hidden" name="idProducto" id="hiddenId">
+            <input type="hidden" name="nombreProducto" id="hiddenNombre">
+            <input type="hidden" name="precioProducto" id="hiddenPrecio">
+
+            <div id="mensajeError" style="color: red; margin: 10px 0; display: none; font-weight: bold; text-align: center;"></div>
+
+            <button type="submit" class="btn-pagar">Finalizar Compra</button>
         </form>
     </main>
 

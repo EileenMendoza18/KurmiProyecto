@@ -1,94 +1,89 @@
-package com.kurmi.model.dao;
+package com.kurmip.model.dao;
 
-import com.kurmi.db.Conexion; // Ajusta a tu clase de conexión
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
+import com.kurmip.db.Conexion;
+import com.kurmip.model.dto.PedidoDTO;
+import java.sql.*;
 
 public class PedidoDAO {
+    private final Conexion cn = new Conexion();
+    private Connection con;
+    private PreparedStatement ps;
+    private ResultSet rs;
 
-    public boolean registrarCompraCompleta(int idUsuario, String nombre, String direccion, String telefono, String metodoPago, double total) {
-        Connection con = null;
-        PreparedStatement psPedido = null;
-        PreparedStatement psPago = null;
-        PreparedStatement psCarrito = null;
-        ResultSet rsKeys = null;
-
+    /**
+     * Registra un pedido, su método de pago y actualiza el estado del carrito a 'Vendido' (3)
+     * todo dentro de una única transacción atómica.
+     */
+    public boolean registrarCompraCompleta(PedidoDTO pedido) {
+        String sqlPedido = "INSERT INTO Pedidos_Cliente (ID_Cliente, ID_Carrito, Estado_Pedido, Total_Pago, Nombre_Receptor, Direccion_Envio, Telefono_Envio) VALUES (?, ?, 2, ?, ?, ?, ?)";
+        String sqlPago = "INSERT INTO Pago_Pedido (ID_Pedido, ID_Metodo, Monto_Pagado, Estado_Pago) VALUES (?, ?, ?, 2)";
+        String sqlUpdateCarrito ="UPDATE Carrito_Detalle cd " +
+                                    "JOIN Carrito_Compras cc ON cd.ID_Carrito = cc.ID_Carrito " +
+                                    "SET cd.Estado_Carrito = 3 " +
+                                    "WHERE cc.ID_Cliente = ? AND cd.Estado_Carrito IN (4, 5)";
+        
         try {
-            con = Conexion.getConnection();
-            con.setAutoCommit(false); // CRÍTICO: Desactivamos el auto-commit para manejar la transacción manualmente
+            con = cn.getConexion();
+            con.setAutoCommit(false); // Apertura de transacción segura
 
-            // 1. INSERTAR EN LA TABLA PEDIDOS_CLIENTE
-            String sqlPedido = "INSERT INTO pedidos (id_usuario, nombre_receptor, direccion, telefono, total, fecha, estado) VALUES (?, ?, ?, ?, ?, NOW(), 'Procesado')";
-            // Solicitamos el ID autogenerado del pedido
-            psPedido = con.prepareStatement(sqlPedido, Statement.RETURN_GENERATED_KEYS);
-            psPedido.setInt(1, idUsuario);
-            psPedido.setString(2, nombre);
-            psPedido.setString(3, direccion);
-            psPedido.setString(4, telefono);
-            psPedido.setDouble(5, total);
+            // 1. Registro del Pedido Base
+            ps = con.prepareStatement(sqlPedido, Statement.RETURN_GENERATED_KEYS);
+            ps.setInt(1, pedido.getIdUsuario());
+            ps.setInt(2, pedido.getIdCarrito() == 0 ? 1 : pedido.getIdCarrito());
+            ps.setDouble(3, pedido.getTotal());
+            ps.setString(4, pedido.getNombreReceptor());
+            ps.setString(5, pedido.getDireccion());
+            ps.setString(6, pedido.getTelefono());
             
-            int filasPedido = psPedido.executeUpdate();
+            int filasPedido = ps.executeUpdate();
             if (filasPedido == 0) {
-                throw new SQLException("No se pudo crear el registro del pedido.");
+                con.rollback();
+                return false;
             }
 
-            // Obtener el ID del pedido recién creado
-            rsKeys = psPedido.getGeneratedKeys();
-            int idPedidoGenerado = -1;
-            if (rsKeys.next()) {
-                idPedidoGenerado = rsKeys.getInt(1);
-            } else {
-                throw new SQLException("No se pudo obtener el ID del pedido generado.");
+            // Capturar la llave autogenerada del Pedido
+            rs = ps.getGeneratedKeys();
+            int idPedidoGenerado = 0;
+            if (rs.next()) {
+                idPedidoGenerado = rs.getInt(1);
             }
 
-            // 2. INSERTAR EN LA TABLA PAGO_PEDIDO
-            String sqlPago = "INSERT INTO pago_pedido (id_pedido, metodo_pago, monto, fecha_pago, estado_pago) VALUES (?, ?, ?, NOW(), 'Aprobado')";
-            psPago = con.prepareStatement(sqlPago);
-            psPago.setInt(1, idPedidoGenerado);
-            psPago.setString(2, metodoPago);
-            psPago.setDouble(3, total);
-            psPago.executeUpdate();
-
-            // 3. ACTUALIZAR EL ESTADO DEL DETALLE_CARRITO A 'vendido'
-            // Modificamos el detalle uniendo con la cabecera de carrito correspondiente al usuario donde esté 'activo'
-            String sqlActualizarCarrito = "UPDATE detalle_carrito dc " +
-                                          "INNER JOIN carrito c ON dc.id_carrito = c.id_carrito " +
-                                          "SET dc.estado = 'vendido' " +
-                                          "WHERE c.id_usuario = ? AND dc.estado = 'activo'";
+            // 2. Registro de la Auditoría del Pago asociado
+            ps = con.prepareStatement(sqlPago);
+            ps.setInt(1, idPedidoGenerado);
+            ps.setInt(2, pedido.getIdMetodo()); 
+            ps.setDouble(3, pedido.getTotal());
             
-            psCarrito = con.prepareStatement(sqlActualizarCarrito);
-            psCarrito.setInt(1, idUsuario);
-            psCarrito.executeUpdate();
+            int filasPago = ps.executeUpdate();
+            if (filasPago == 0) {
+                con.rollback();
+                return false;
+            }
 
-            // Si todas las consultas se ejecutaron sin errores, guardamos los cambios definitivamente
-            con.commit();
+            ps = con.prepareStatement(sqlUpdateCarrito);
+            ps.setInt(1, pedido.getIdUsuario());
+            ps.executeUpdate();
+
+            // Si todo el lote se ejecutó correctamente, guardamos los cambios de forma definitiva en MySQL
+            con.commit(); 
             return true;
 
-        } catch (SQLException e) {
-            System.err.println("Error crítico en el proceso de compra de la BD: " + e.getMessage());
-            if (con != null) {
-                try {
-                    System.out.println("Ejecutando Rollback: revirtiendo cambios en la base de datos...");
-                    con.rollback(); // Cancela todos los cambios realizados si algo falló
-                } catch (SQLException ex) {
-                    ex.printStackTrace();
-                }
-            }
+        } catch (Exception e) {
+            System.err.println("Excepción controlada en PedidoDAO: " + e.getMessage());
+            try { if (con != null) con.rollback(); } catch (SQLException ex) { ex.printStackTrace(); }
             return false;
         } finally {
-            // Cerramos los recursos abiertos para optimizar memoria
-            try {
-                if (rsKeys != null) rsKeys.close();
-                if (psPedido != null) psPedido.close();
-                if (psPago != null) psPago.close();
-                if (psCarrito != null) psCarrito.close();
-                if (con != null) con.close();
-            } catch (SQLException e) {
-                e.printStackTrace();
-            }
+            cerrarConexiones();
+        }
+    }
+
+    private void cerrarConexiones() {
+        try {
+            if (rs != null) rs.close();
+            if (ps != null) ps.close();
+            if (con != null) con.close();
+        } catch (Exception e) {
+            System.err.println("Error al liberar recursos de BD: " + e.getMessage());
         }
     }
 }

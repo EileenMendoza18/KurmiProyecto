@@ -1,50 +1,82 @@
-package com.kurmi.controller;
+package com.kurmip.controller;
 
-import com.kurmi.model.dao.PedidoDAO;
-import com.kurmi.model.dto.UsuarioDTO; // Asegúrate de usar el nombre correcto de tu DTO
+import com.kurmip.model.dao.PedidoDAO;
+import com.kurmip.model.dto.PedidoDTO;
+import com.kurmip.model.dto.UsuarioDTO; 
+import jakarta.servlet.ServletException;
+import jakarta.servlet.annotation.WebServlet;
+import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
-import javax.servlet.ServletException;
-import javax.servlet.annotation.WebServlet;
-import javax.servlet.http.HttpServlet;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import javax.servlet.http.HttpSession;
 
-@WebServlet("/ProcesarCompraServlet")
+@WebServlet(name = "ProcesarCompraServlet", urlPatterns = {"/ProcesarCompraServlet"})
 public class ProcesarCompraServlet extends HttpServlet {
 
     @Override
-    protected void doPost(HttpServletRequest request, HttpServletResponse response)
+    protected void doPost(HttpServletRequest request, HttpServletResponse response) 
             throws ServletException, IOException {
         
         HttpSession session = request.getSession();
-        UsuarioDTO usuarioLogueado = (UsuarioDTO) session.getAttribute("user"); // Cambia "user" por tu clave de sesión
+        UsuarioDTO usuarioLogueado = (UsuarioDTO) session.getAttribute("usuarioLogueado"); 
 
-        // Validar si el usuario tiene sesión activa
         if (usuarioLogueado == null) {
-            response.sendRedirect("CLIENT/html/inicioSesion.html");
+            response.sendRedirect(request.getContextPath() + "/CLIENT/html/inicioSesion.html");
             return;
         }
 
-        // Obtener parámetros del formulario
-        String nombreReceptor = request.getParameter("nombre");
-        String direccionInput = request.getParameter("direccion");
-        String telefonoInput = request.getParameter("telefono");
-        String metodoPago = request.getParameter("metodoPago");
-        double totalPago = Double.parseDouble(request.getParameter("totalPago"));
-        int idUsuario = usuarioLogueado.getId(); // ID del cliente logueado
-
-        PedidoDAO pedidoDAO = new PedidoDAO();
+        // Recuperación de parámetros ocultos para no perder el contexto en fallas
+        String idProd = request.getParameter("idProducto");
+        String nomProd = request.getParameter("nombreProducto");
+        String precProd = request.getParameter("precioProducto");
         
-        // Ejecutamos la inserción y actualización masiva de forma segura
-        boolean resultadoCompra = pedidoDAO.registrarCompraCompleta(idUsuario, nombreReceptor, direccionInput, telefonoInput, metodoPago, totalPago);
-
-        if (resultadoCompra) {
-            // Si todo fue exitoso, redirige a una página de confirmación
-            response.sendRedirect("CLIENT/html/compraExitosa.html");
-        } else {
-            // Si hubo fallas en la transacción de la BD
-            response.sendRedirect("CLIENT/html/errorPago.html");
+        String fallbackParams = "";
+        if (idProd != null && !idProd.isEmpty()) {
+            fallbackParams = "&id=" + idProd + "&nombre=" + nomProd + "&precio=" + precProd;
         }
+
+        try {
+            String nombreReceptor = request.getParameter("nombre").trim();
+            String direccion = request.getParameter("direccion").trim();
+            String telefono = request.getParameter("telefono").trim();
+            int idMetodoPago = Integer.parseInt(request.getParameter("idMetodo"));
+            double totalPago = Double.parseDouble(request.getParameter("totalPago"));
+            int idUsuario = usuarioLogueado.getId(); 
+
+            PedidoDTO nuevoPedido = new PedidoDTO();
+            nuevoPedido.setIdUsuario(idUsuario);
+            nuevoPedido.setNombreReceptor(nombreReceptor);
+            nuevoPedido.setDireccion(direccion);
+            nuevoPedido.setTelefono(telefono);
+            nuevoPedido.setIdMetodo(idMetodoPago); 
+            nuevoPedido.setTotal(totalPago);
+            
+            // Si el parámetro idCarrito existe en el request, lo seteamos en el DTO
+            String idCarParam = request.getParameter("idCarrito");
+            if(idCarParam != null && !idCarParam.isEmpty()){
+                nuevoPedido.setIdCarrito(Integer.parseInt(idCarParam));
+            }
+
+            PedidoDAO pedidoDAO = new PedidoDAO();
+            boolean compraExitosa = pedidoDAO.registrarCompraCompleta(nuevoPedido);
+
+            if (compraExitosa) {
+                // Redirección directa pasándole el estatus exitoso
+                response.sendRedirect(request.getContextPath() + "/CLIENT/html/formularioPago.html?status=success");
+            } else {
+                response.sendRedirect(request.getContextPath() + "/CLIENT/html/formularioPago.html?status=error_db" + fallbackParams);
+            }
+
+        } catch (NumberFormatException | NullPointerException e) {
+            System.err.println("Error de conversión en Servlet: " + e.getMessage());
+            response.sendRedirect(request.getContextPath() + "/CLIENT/html/formularioPago.html?status=invalid_data" + fallbackParams);
+        }
+    }
+
+    @Override
+    protected void doGet(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException {
+        response.sendRedirect(request.getContextPath() + "/CLIENT/html/carrito.html");
     }
 }

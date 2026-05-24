@@ -1,9 +1,5 @@
 import { components } from '../../helpers/index.js';
 
-/**
- * 1. CONTROL DE CICLO DE VIDA Y CARGA DE MÓDULOS (Software Factory)
- * Inicializa y monta los componentes en orden estricto según la página activa.
- */
 async function cargarModulos() {
     try {
         await Promise.all([
@@ -50,13 +46,6 @@ async function cargarModulos() {
 // ÚNICO DISPARADOR GLOBAL AL CARGAR EL SCRIPT
 cargarModulos();
 
-
-/**
- * Se encarga de mapear los datos de un producto sobre el clon de la plantilla HTML.
- * Se inicia cada frase de la documentación con "Se" para cumplir el estándar.
- * @param {HTMLElement} tarjetaClonada - Se recibe el clon de la estructura original.
- * @param {Object} prod - Se reciben los datos del producto provenientes del DAO.
- */
 function mapearDatosTarjeta(tarjetaClonada, prod) {
     // Se seleccionan los elementos internos de la tarjeta
     const imagen = tarjetaClonada.querySelector('img');
@@ -518,7 +507,6 @@ async function cargarProductosPorCategoriaPagina() {
             contenedorPills.appendChild(btnSabor);
         });
 
-        // Carga inicial completa
         pintarGrid(todosLosProductos);
 
     } catch (error) {
@@ -526,11 +514,6 @@ async function cargarProductosPorCategoriaPagina() {
     }
 }
 
-
-/**
- * Se encarga de solicitar los elementos del carrito al servidor y renderizarlos.
- * Se gestionan los estados de contenedor vacío y se acoplan los escuchadores dinámicos.
- */
 async function cargarCarrito() {
     const gridProductos = document.querySelector(".productos__grid");
     const contenedorVacio = document.querySelector(".carrito__vacio");
@@ -569,7 +552,7 @@ async function cargarCarrito() {
             const card = document.createElement("div");
             card.classList.add("producto__card");
             card.setAttribute("data-id", item.idProducto);
-
+            card.setAttribute("data-id-carrito", item.idCarrito || ""); // Se añade el ID de la transacción del carrito
             const cardImagen = document.createElement("div");
             cardImagen.classList.add("card__imagen");
             
@@ -603,14 +586,12 @@ async function cargarCarrito() {
             btnMenos.type = "button";
             btnMenos.textContent = "-";
             
-            // Se asocia el evento para disminuir la cantidad en caliente
             btnMenos.onclick = async () => {
                 let actual = parseInt(cantidadValor.textContent);
                 if (actual > 1) {
                     actual--;
                     cantidadValor.textContent = actual;
                     actualizarTotal();
-                    // Opcional: Se envía el cambio al servlet mediante un fetch POST alterno
                 }
             };
 
@@ -623,13 +604,11 @@ async function cargarCarrito() {
             btnMas.type = "button";
             btnMas.textContent = "+";
             
-            // Se asocia el evento para incrementar el volumen del producto
             btnMas.onclick = async () => {
                 let actual = parseInt(cantidadValor.textContent);
                 actual++;
                 cantidadValor.textContent = actual;
                 actualizarTotal();
-                // Opcional: Se envía el cambio al servlet mediante un fetch POST alterno
             };
 
             accionesContador.appendChild(btnMenos);
@@ -642,30 +621,48 @@ async function cargarCarrito() {
             btnEliminar.title = "Eliminar producto";
             btnEliminar.textContent = "🗑️";
             
-            // Se define el evento de supresión física o lógica del elemento
             btnEliminar.onclick = async () => {
-                if (confirm(`¿Deseas remover ${item.nombre} de tu carrito?`)) {
-                    // Aquí se acoplará el fetch DELETE o POST correspondiente en tus siguientes laboratorios
-                    card.remove();
-                    actualizarTotal();
-                    if (gridProductos.children.length === 0) {
-                        contenedorVacio.classList.remove("hidden");
-                        contenedorContenido.classList.add("hidden");
-                    }
+            if (confirm(`¿Deseas remover ${item.nombre} de tu carrito?`)) {
+                try {
+                    await fetch(`/KurmiProyect/CarritoServlet`, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                        body: `accion=eliminar&idDetalle=${item.idDetalleCarrito}`
+                    });
+                } catch(e) { console.error("Error eliminando:", e); }
+                
+                card.remove();
+                actualizarResumenCarrito();
+                if (gridProductos.children.length === 0) {
+                    contenedorVacio.classList.remove("hidden");
+                    contenedorContenido.classList.add("hidden");
                 }
-            };
+            }
+        };
 
             const labelCheckbox = document.createElement("label");
             labelCheckbox.classList.add("checkbox-container");
 
+            // DESPUÉS — reemplazar por esto:
             const inputCheckbox = document.createElement("input");
             inputCheckbox.type = "checkbox";
-            inputCheckbox.checked = true;
-            inputCheckbox.classList.add("chk-comprar");
-            inputCheckbox.setAttribute("data-precio", item.precio);
-            
-            // Se recalcula el presupuesto final inmediatamente si se altera el estado del check
-            inputCheckbox.onchange = () => actualizarTotal();
+            inputCheckbox.classList.add("chk-comprar");                     // ← FALTABA
+            inputCheckbox.setAttribute("data-precio", item.precio);         // ← FALTABA
+            inputCheckbox.checked = (item.estadoDetalle === 5);
+
+            inputCheckbox.onchange = async () => {
+                const nuevoEstado = inputCheckbox.checked ? 5 : 4;
+                try {
+                    await fetch(`/KurmiProyect/CarritoServlet`, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                        body: `accion=actualizarEstado&idDetalle=${item.idDetalleCarrito}&estado=${nuevoEstado}`
+                    });
+                } catch(e) { console.error("Error actualizando estado:", e); }
+                actualizarResumenCarrito();
+            };
+            // ← SIN la llamada actualizarResumenCarrito() aquí adentro
+
 
             const spanCheckbox = document.createElement("span");
             spanCheckbox.classList.add("custom-checkbox");
@@ -684,17 +681,13 @@ async function cargarCarrito() {
             gridProductos.appendChild(card);
         });
 
-        // Se ejecuta el cómputo final de las casillas activas por defecto
-        actualizarTotal();
+        actualizarResumenCarrito();
 
     } catch (error) {
         console.error("Error al procesar el ciclo interno del carrito:", error);
     }
 }
 
-/**
- * Se encarga de iterar sobre las tarjetas visuales para totalizar los montos seleccionados.
- */
 function actualizarTotal() {
     const totalBadge = document.querySelector(".resumen__total-badge span");
     if (!totalBadge) return;
@@ -713,21 +706,70 @@ function actualizarTotal() {
     totalBadge.textContent = `Total: $${totalAcumulado.toLocaleString('co-CO')}`;
 }
 
-// Asignar eventos a los botones (+ , - , eliminar y checkboxes)
 function asignarEventosAcciones() {
-    // Escuchar cambios en los checkboxes para recalcular el total de inmediato
     document.querySelectorAll(".chk-comprar").forEach(chk => {
         chk.addEventListener("change", actualizarTotal);
     });
 
-    // Aquí puedes añadir los fetch correspondientes para actualizar cantidades o eliminar items de la BD...
 }
-// Busca el botón de comprar en tu vista de carrito
-const btnComprar = document.querySelector(".btn-comprar"); // Ajusta el selector si es necesario
+
+const btnComprar = document.querySelector(".btn__comprar");
 
 if (btnComprar) {
     btnComprar.addEventListener("click", () => {
-        // Redirige a la ventana del formulario de pago
+        const productosAComprar = [];
+        document.querySelectorAll(".producto__card").forEach(tarjeta => {
+            const checkbox = tarjeta.querySelector(".chk-comprar");
+            
+            if (checkbox && checkbox.checked) {
+                const id = tarjeta.getAttribute("data-id");
+                const idCarrito = tarjeta.getAttribute("data-id-carrito"); // Se extrae el ID del atributo
+                const nombre = tarjeta.querySelector(".card__nombre").textContent;
+                const precio = parseFloat(checkbox.getAttribute("data-precio"));
+                const cantidad = parseInt(tarjeta.querySelector(".cantidad-valor").textContent);
+
+                productosAComprar.push({
+                    idProducto: id,
+                    idCarrito: idCarrito,
+                    nombre: nombre,
+                    precio: precio,
+                    cantidad: cantidad
+                });
+            }
+        });
+
+        if (productosAComprar.length === 0) {
+            alert("Por favor, selecciona al menos un producto para proceder al pago.");
+            return;
+        }
+
+        localStorage.setItem("productosCheckout", JSON.stringify(productosAComprar));
+
         window.location.href = "../html/formularioPago.html";
     });
+}
+
+function actualizarResumenCarrito() {
+    let totalAcumulado = 0;
+    let contadorSeleccionados = 0;
+    document.querySelectorAll(".producto__card").forEach(tarjeta => {
+        const checkbox = tarjeta.querySelector(".chk-comprar");
+        
+        if (checkbox && checkbox.checked) {
+            const cantidad = parseInt(tarjeta.querySelector(".cantidad-valor").textContent) || 0;
+            
+            // Extraemos el precio (limpiando caracteres de moneda de ser necesario)
+            const precioTexto = tarjeta.querySelector(".card__precio").textContent;
+            const precio = parseFloat(precioTexto.replace(/[^0-9]/g, '')) || 0;
+
+            totalAcumulado += (precio * cantidad);
+            contadorSeleccionados += 1; // Cuenta el producto como seleccionado
+        }
+    });
+    document.getElementById("contador-productos").textContent = contadorSeleccionados;
+    
+    const badgeTotal = document.querySelector(".resumen__total-badge span");
+    if (badgeTotal) {
+        badgeTotal.textContent = `Total: $${totalAcumulado.toLocaleString('es-CO')}`;
+    }
 }

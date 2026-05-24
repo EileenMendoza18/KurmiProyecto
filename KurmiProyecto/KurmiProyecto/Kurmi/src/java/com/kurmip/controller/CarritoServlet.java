@@ -68,7 +68,22 @@ protected void doPost(HttpServletRequest request, HttpServletResponse response)
     response.setContentType("text/plain");
     response.setCharacterEncoding("UTF-8");
     response.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
-    
+    String accion = request.getParameter("accion");
+
+    if ("actualizarEstado".equals(accion)) {
+        int idDetalle = Integer.parseInt(request.getParameter("idDetalle"));
+        int nuevoEstado = Integer.parseInt(request.getParameter("estado"));
+        boolean ok = carritoDAO.actualizarEstadoDetalle(idDetalle, nuevoEstado);
+        response.getWriter().write(ok ? "OK" : "ERROR");
+        return;
+    }
+
+    if ("eliminar".equals(accion)) {
+        int idDetalle = Integer.parseInt(request.getParameter("idDetalle"));
+        boolean ok = carritoDAO.eliminarProductoDelCarrito(idDetalle);
+        response.getWriter().write(ok ? "OK" : "ERROR");
+        return;
+    }
     try {
         HttpSession session = request.getSession(false); 
         
