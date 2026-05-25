@@ -1,5 +1,9 @@
 import { components } from '../../helpers/index.js';
 
+// Variable global que guarda todos los productos de la tienda para el buscador
+let todosLosProductosTienda = [];
+let plantillaTarjetaTienda = null;
+
 async function cargarModulos() {
     try {
         await Promise.all([
@@ -31,7 +35,8 @@ async function cargarModulos() {
             cargarTestimoniosDinamicos();
         }
         if (document.getElementById('contenedorTiendaCategorias')) {
-            cargarSeccionesTienda('contenedorTiendaCategorias');
+            await cargarSeccionesTienda('contenedorTiendaCategorias');
+            inicializarBuscador();
         }
         // Se añade el disparador seguro para la vista del carrito de compras
         if (document.querySelector('.productos__grid')) {
@@ -351,6 +356,9 @@ async function cargarSeccionesTienda(contenedorId) {
         
         console.log("Productos recibidos del Servlet:", productos);
 
+        // Guardar globalmente para el buscador
+        todosLosProductosTienda = productos;
+
         // 1. Agrupar los productos por su nombre de categoría
         const categoriasMap = {};
         for (const prod of productos) {
@@ -373,9 +381,9 @@ async function cargarSeccionesTienda(contenedorId) {
         const templateHTML = await responseTemplate.text();
         const parser = new DOMParser();
         const docTemplate = parser.parseFromString(templateHTML, 'text/html');
-        const plantillaOriginal = docTemplate.querySelector('.tarjeta');
+        plantillaTarjetaTienda = docTemplate.querySelector('.tarjeta'); // Guardar globalmente
 
-        if (!plantillaOriginal) {
+        if (!plantillaTarjetaTienda) {
             console.error("No se encontró la clase '.tarjeta' dentro de tarjetaProducto.html");
             return;
         }
@@ -407,7 +415,7 @@ async function cargarSeccionesTienda(contenedorId) {
 
             // Inyectar cada producto correspondiente a esta sección
             for (const prod of listaProductos) {
-                const nuevaTarjeta = plantillaOriginal.cloneNode(true);
+                const nuevaTarjeta = plantillaTarjetaTienda.cloneNode(true);
                 mapearDatosTarjeta(nuevaTarjeta, prod);
                 gridTarjetas.appendChild(nuevaTarjeta);
             }
@@ -771,5 +779,98 @@ function actualizarResumenCarrito() {
     const badgeTotal = document.querySelector(".resumen__total-badge span");
     if (badgeTotal) {
         badgeTotal.textContent = `Total: $${totalAcumulado.toLocaleString('es-CO')}`;
+    }
+}
+
+// ─── BUSCADOR EN TIEMPO REAL ──────────────────────────────────────────────────
+function inicializarBuscador() {
+    const inputBuscador = document.querySelector('.buscador-input');
+    const contenedor    = document.getElementById('contenedorTiendaCategorias');
+    if (!inputBuscador || !contenedor) return;
+
+    inputBuscador.addEventListener('input', () => {
+        const termino = inputBuscador.value.trim().toLowerCase();
+
+        // Sin texto → restaurar vista por categorías normal
+        if (!termino) {
+            renderizarPorCategorias(todosLosProductosTienda, contenedor);
+            return;
+        }
+
+        // Filtrar por nombre o categoría
+        const filtrados = todosLosProductosTienda.filter(p => {
+            const nombre    = (p.nombre    || '').toLowerCase();
+            const categoria = (p.categoria || '').toLowerCase();
+            const sabor     = (p.nombreSabor || '').toLowerCase();
+            return nombre.includes(termino) || categoria.includes(termino) || sabor.includes(termino);
+        });
+
+        if (filtrados.length === 0) {
+            contenedor.innerHTML = `
+                <div class="buscador__sin-resultados">
+                    <p>😕 No encontramos productos con "<strong>${inputBuscador.value.trim()}</strong>"</p>
+                    <p>Intenta con otro nombre o categoría.</p>
+                </div>`;
+            return;
+        }
+
+        // Mostrar resultados como una sección plana sin agrupar
+        contenedor.innerHTML = '';
+        const seccion = document.createElement('section');
+        seccion.className = 'categoria-bloque';
+        seccion.style.marginBottom = '40px';
+
+        const titulo = document.createElement('h2');
+        titulo.className = 'categoria-titulo';
+        titulo.style.cssText = 'font-size:1.4rem;color:#4A3B53;margin-bottom:20px;font-weight:600;';
+        titulo.textContent = `Resultados para "${inputBuscador.value.trim()}" (${filtrados.length})`;
+        seccion.appendChild(titulo);
+
+        const grid = document.createElement('div');
+        grid.className = 'tienda-productos-grid';
+        grid.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:25px;';
+
+        for (const prod of filtrados) {
+            const tarjeta = plantillaTarjetaTienda.cloneNode(true);
+            mapearDatosTarjeta(tarjeta, prod);
+            grid.appendChild(tarjeta);
+        }
+
+        seccion.appendChild(grid);
+        contenedor.appendChild(seccion);
+    });
+}
+
+// Renderiza los productos agrupados por categoría (restaurar vista original)
+function renderizarPorCategorias(productos, contenedor) {
+    contenedor.innerHTML = '';
+    const categoriasMap = {};
+    for (const prod of productos) {
+        const cat = prod.categoria || 'General';
+        if (!categoriasMap[cat]) categoriasMap[cat] = [];
+        categoriasMap[cat].push(prod);
+    }
+    for (const [nombreCategoria, lista] of Object.entries(categoriasMap)) {
+        const seccion = document.createElement('section');
+        seccion.className = 'categoria-bloque';
+        seccion.style.marginBottom = '40px';
+
+        const titulo = document.createElement('h2');
+        titulo.className = 'categoria-titulo';
+        titulo.style.cssText = 'font-size:1.6rem;color:#4A3B53;margin-bottom:20px;font-weight:600;';
+        titulo.textContent = nombreCategoria;
+        seccion.appendChild(titulo);
+
+        const grid = document.createElement('div');
+        grid.className = 'tienda-productos-grid';
+        grid.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:25px;';
+
+        for (const prod of lista) {
+            const tarjeta = plantillaTarjetaTienda.cloneNode(true);
+            mapearDatosTarjeta(tarjeta, prod);
+            grid.appendChild(tarjeta);
+        }
+        seccion.appendChild(grid);
+        contenedor.appendChild(seccion);
     }
 }

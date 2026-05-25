@@ -197,3 +197,30 @@ main.tienda-main {
 .botones input[type="image"], .botones button {
     cursor: pointer;
 }
+/* ---- BUSCADOR: sin resultados ---- */
+.buscador__sin-resultados {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 60px 20px;
+    color: #463877;
+    font-size: 1rem;
+    text-align: center;
+}
+
+.buscador__sin-resultados p:first-child {
+    font-size: 1.2rem;
+    font-weight: 600;
+}
+
+.buscador__sin-resultados strong {
+    color: #B1B2FF;
+}
+
+/* ---- BUSCADOR: resaltar input al escribir ---- */
+.buscador-input:focus {
+    border-color: #B1B2FF;
+    box-shadow: 0 0 0 3px rgba(177, 178, 255, 0.25);
+}
