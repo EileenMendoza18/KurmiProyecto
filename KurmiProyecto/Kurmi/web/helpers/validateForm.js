@@ -6,28 +6,24 @@
 
 import { isValidInput } from "./index.js";
 
-export const validateForm = (form, rules)=>{
-    
-    let valid =true;
+export const validateForm = (formulario, reglas) => {
+    let esValido = true;
 
-    for (const name in rules){
-        const field = form.elements[name];
+    for (const llave in reglas) {
+        // Busca el input por su atributo 'name'
+        const inputElement = formulario.querySelector(`[name="${llave}"]`);
+        const regla = reglas[llave];
+        const errorElement = document.getElementById(regla.errorId);
 
-        if (!field) continue;
-
-        const rule = rules[name];
-        const errorElement = document.getElementById(rule.errorId);
-        const isValid = isValidInput(
-            field,
-            rule,
-            errorElement
-        );
-
-        if (!isValid) {
-            valid = false;
+        if (inputElement && errorElement) {
+            // Evaluamos el campo. Si da false, cambiamos la bandera, pero el ciclo SIGUE
+            const resultadoCampo = isValidInput(inputElement, regla, errorElement);
+            if (!resultadoCampo) {
+                esValido = false; 
+            }
         }
     }
 
-    return valid;
-}
+    return esValido; // Retorna false si al menos uno falló, pero los pintó todos en pantalla
+};
 

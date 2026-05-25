@@ -6,7 +6,7 @@ async function init() {
         components('footer', './components/footer.html'),
         components('header', './components/header.html')
     
-    const formulario = document.querySelector("form.form");
+    const formulario = document.querySelector("form.form") || document.querySelector(".formulario-login");
     const inputNombre= document.querySelector(".nombres");
     const inputApellido = document.querySelector(".apellidos");
     const inputTelefono = document.querySelector(".telefono");
@@ -69,30 +69,35 @@ async function init() {
                     reglasValidacion = {
                         inputNombre: {
                             required: true,
+                            requiredMessage: "El nombre es obligatorio",
                             custom: (valor) => /^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/.test(valor.trim()),
                             message: "Los nombres no pueden contener números",
                             errorId: "errorNombre"
                         },
                         inputApellido: {
                             required: true,
+                            requiredMessage: "El apellido es obligatorio",
                             custom: (valor) => /^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/.test(valor.trim()),
                             message: "Los apellidos no pueden contener números",
                             errorId: "errorApellido"
                         },
                         inputTelefono: {
                             required: true,
+                            requiredMessage: "El teléfono es obligatorio",
                             custom: (valor) => /^\d{10}$/.test(valor.trim()),
                             message: "El número de teléfono debe tener mínimo y máximo 10 caracteres",
                             errorId: "errorTelefono"
                         },
                         Correo_Usu: { 
                             required: true,
+                            requiredMessage: "El correo electrónico es obligatorio",
                             custom: (valor) => /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(valor.trim()),
                             message: "El correo debe tener un @ y un dominio válido (ejemplo@dominio.com)",
                             errorId: "errorCorreo"
                         },
                         inputFecha: {
                             required: true,
+                            requiredMessage: "La fecha de nacimiento es obligatoria",
                             custom: (valor) => {
                                 if (!valor) return false;
                                 const fechaIngresada = new Date(valor);
@@ -111,30 +116,36 @@ async function init() {
                         },
                         inputRol: { 
                             required: true,
+                            requiredMessage: "Debe escoger un tipo de cuenta",
                             custom: (valor) => valor !== "" && valor !== null && valor !== "0",
                             message: "Debe escoger un rol",
                             errorId: "errorRol"
                         },
                         Contrasena_Usu: { 
                             required: true,
+                            requiredMessage: "La contraseña es obligatoria",
                             custom: (valor) => /^(?=.*[A-Z])(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]).{6,}$/.test(valor),
                             message: "La contraseña debe tener mínimo 6 dígitos, una letra mayúscula y un carácter especial",
                             errorId: "errorContrasena"
                         },
                         inputContrasenaConf: { 
                             required: true,
+                            requiredMessage: "Debes confirmar tu contraseña",
                             custom: (valor) => valor === inputContraseña.value,
                             message: "Las contraseñas no coinciden",
                             errorId: "errorContrasenaConfirm"
                         },
                         inputDireccion: {
                             required: true,
+                            requiredMessage: "La dirección es obligatoria",
                             custom: (valor) => /^[a-zA-Z0-9\s.,#\-\/°]+$/.test(valor.trim()) && valor.trim().length >= 6,
                             message: "Ingresa una dirección válida (Ejemplo: Calle 12 #34-56)",
                             errorId: "errorDireccion"
                         },
                         inputCheck: { 
                             required: true,
+                            requiredMessage: "Debes aceptar los términos y condiciones para continuar",
+                            
                             custom: (valor, element) => {
                                 const cb = element || document.querySelector(".aceptar input[type='checkbox']");
                                 return cb ? cb.checked : false;

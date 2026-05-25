@@ -42,19 +42,29 @@ public class SessionFilter implements Filter {
                            path.endsWith(".css") || path.endsWith(".js") || path.endsWith(".png") || 
                    path.endsWith(".jpg") || 
                    path.endsWith(".gif") || 
-                   path.contains("RESOURCES/") ||path.contains("LoginServlet") || path.contains("FavoritosServlet")||
-                    path.contains("CarritoServlet");
-        boolean esPrivado = path.contains("/ADMIN/") || path.contains("/PROVIDER/") || path.contains("tienda.html") || path.contains("tendencias.html") 
-                || path.contains("formularioPago.html");
+                   path.contains("RESOURCES/") ||path.contains("LoginServlet") || path.contains("RegistroServlet") || path.contains("FavoritosServlet")||
+                    path.contains("CarritoServlet") || path.endsWith("registro.html") || path.contains("CerrarSesionServlet");
+        boolean esPrivado = path.contains("/ADMIN/") || path.contains("/PROVIDER/") || path.contains("tienda.html") || path.contains("carrito.html") 
+                || path.contains("formularioPago.html") || path.contains("perfil.html") || path.contains("PerfilServlet")|| path.contains("pedidos.html") || path.contains("PedidosServlet") || path.contains("ProcesarCompraServlet") || path.contains("CambiarEstadoPedidoServlet");
 
         if (esPublico) {
             chain.doFilter(request, response);
             return;
         } else if (esPrivado && user == null) {
-            res.sendRedirect(req.getContextPath() + "/inicioSesion.html?error=session");
+            res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+            res.setHeader("Pragma", "no-cache");
+            res.setDateHeader("Expires", 0);
+            // Si es fetch (AJAX), responder 401 en vez de redirigir HTML
+            String accept = req.getHeader("Accept");
+            boolean esAjax = accept != null && accept.contains("application/json") || path.contains("Servlet");
+            if (esAjax || path.contains("PerfilServlet")) {
+                res.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                res.getWriter().write("{}");
+            } else {
+                res.sendRedirect(req.getContextPath() + "/inicioSesion.html?error=session");
+            }
             return;
         } else if (user != null) {
-            // Validar roles
             if (path.contains("/ADMIN/") && !"Administrador".equals(user.getRolNombre())) {
                 res.sendRedirect(req.getContextPath() + "/CLIENT/html/inicio.html?error=denied");
             } else {
