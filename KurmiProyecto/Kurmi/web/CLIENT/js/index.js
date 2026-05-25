@@ -1,9 +1,9 @@
 import { components } from '../../helpers/index.js';
 
-/**
- * 1. CONTROL DE CICLO DE VIDA Y CARGA DE MÓDULOS (Software Factory)
- * Inicializa y monta los componentes en orden estricto según la página activa.
- */
+// Variable global que guarda todos los productos de la tienda para el buscador
+let todosLosProductosTienda = [];
+let plantillaTarjetaTienda = null;
+
 async function cargarModulos() {
     try {
         await Promise.all([
@@ -16,7 +16,9 @@ async function cargarModulos() {
             cargarCategoriasAside('contenedorCategoriasAside');
         }
 
-        
+        if (document.getElementById('contenedorProductosCategoria')) {
+            cargarProductosPorCategoriaPagina();
+        }
         if (document.getElementById('contenedorMasVendidos')) {
             cargarGaleriaDinamica('contenedorMasVendidos', 'ObtenerProductosServlet');
         }
@@ -33,7 +35,12 @@ async function cargarModulos() {
             cargarTestimoniosDinamicos();
         }
         if (document.getElementById('contenedorTiendaCategorias')) {
-            cargarSeccionesTienda('contenedorTiendaCategorias');
+            await cargarSeccionesTienda('contenedorTiendaCategorias');
+            inicializarBuscador();
+        }
+        // Se añade el disparador seguro para la vista del carrito de compras
+        if (document.querySelector('.productos__grid')) {
+            cargarCarrito();
         }
 
     } catch (error) {
@@ -44,13 +51,6 @@ async function cargarModulos() {
 // ÚNICO DISPARADOR GLOBAL AL CARGAR EL SCRIPT
 cargarModulos();
 
-
-/**
- * Se encarga de mapear los datos de un producto sobre el clon de la plantilla HTML.
- * Se inicia cada frase de la documentación con "Se" para cumplir el estándar.
- * @param {HTMLElement} tarjetaClonada - Se recibe el clon de la estructura original.
- * @param {Object} prod - Se reciben los datos del producto provenientes del DAO.
- */
 function mapearDatosTarjeta(tarjetaClonada, prod) {
     // Se seleccionan los elementos internos de la tarjeta
     const imagen = tarjetaClonada.querySelector('img');
@@ -232,7 +232,12 @@ async function cargarCategoriasAside(contenedorId) {
             
             pTexto.textContent = nombreCat;
             divOpcion.appendChild(pTexto);
+            divOpcion.style.cursor = 'pointer'; // Cambia el cursor a una mano al pasar el mouse
             
+            divOpcion.addEventListener('click', () => {
+                // Redirige a la pantalla de productos individuales filtrando por la categoría
+                window.location.href = `Productos.html?categoria=${encodeURIComponent(nombreCat)}`;
+            });
             contenedor.appendChild(divOpcion);
         });
 
@@ -348,10 +353,16 @@ async function cargarSeccionesTienda(contenedorId) {
     try {
         const response = await fetch('/KurmiProyect/ObtenerProductosPorCategoriaServlet');
         const productos = await response.json();
+        
+        console.log("Productos recibidos del Servlet:", productos);
 
+        // Guardar globalmente para el buscador
+        todosLosProductosTienda = productos;
+
+        // 1. Agrupar los productos por su nombre de categoría
         const categoriasMap = {};
         for (const prod of productos) {
-            const cat = prod.nombreCategoria || "General";
+            const cat = prod.categoria || "General";
             if (!categoriasMap[cat]) {
                 categoriasMap[cat] = [];
             }
@@ -359,66 +370,507 @@ async function cargarSeccionesTienda(contenedorId) {
         }
 
         const contenedorPadre = document.getElementById(contenedorId);
-        if (!contenedorPadre) return;
-        contenedorPadre.innerHTML = '';
+        if (!contenedorPadre) {
+            console.error("No se encontró el contenedor padre con ID:", contenedorId);
+            return;
+        }
+        contenedorPadre.innerHTML = ''; // Limpiar contenedor de carga
 
-        const responseTemplate = await fetch('../../components/tarjetaProducto.html');
+        // 2. Traer la plantilla HTML de la tarjeta de producto
+        const responseTemplate = await fetch('/KurmiProyect/components/tarjetaProducto.html');
         const templateHTML = await responseTemplate.text();
         const parser = new DOMParser();
         const docTemplate = parser.parseFromString(templateHTML, 'text/html');
-        const plantillaOriginal = docTemplate.querySelector('.tarjeta');
+        plantillaTarjetaTienda = docTemplate.querySelector('.tarjeta'); // Guardar globalmente
 
-        if (!plantillaOriginal) return;
+        if (!plantillaTarjetaTienda) {
+            console.error("No se encontró la clase '.tarjeta' dentro de tarjetaProducto.html");
+            return;
+        }
 
+        // 3. Iterar por cada categoría agrupada y construir sus bloques independientes
         for (const [nombreCategoria, listaProductos] of Object.entries(categoriasMap)) {
-            const seccionBloque = document.createElement('div');
-            seccionBloque.className = 'tienda-categoria-bloque';
+            
+            // CONSTRUCCIÓN DEL BLOQUE DE LA CATEGORÍA (Aquí se soluciona el ReferenceError)
+            const seccionBloque = document.createElement('section');
+            seccionBloque.className = 'categoria-bloque';
             seccionBloque.style.marginBottom = '40px';
 
-            const encabezado = document.createElement('div');
-            encabezado.className = 'tienda-categoria-header';
-            encabezado.style.display = 'flex';
-            encabezado.style.justifyContent = 'space-between';
-            encabezado.style.alignItems = 'center';
-            encabezado.style.padding = '10px 0';
-            encabezado.style.borderBottom = '1px solid #eee';
-            encabezado.style.marginBottom = '15px';
-
-            const titulo = document.createElement('h2');
-            titulo.textContent = nombreCategoria;
-            titulo.className = 'tienda-categoria-titulo';
-
-            const enlaceVerMas = document.createElement('a');
-            enlaceVerMas.textContent = "Ver más →";
-            enlaceVerMas.href = `productos.html?cat=${encodeURIComponent(nombreCategoria)}`;
-            enlaceVerMas.className = 'tienda-enlace-vermas';
-            enlaceVerMas.style.fontWeight = 'bold';
-            enlaceVerMas.style.textDecoration = 'none';
-            enlaceVerMas.style.color = '#7b2cbf';
-
-            encabezado.appendChild(titulo);
-            encabezado.appendChild(enlaceVerMas);
-            seccionBloque.appendChild(encabezado);
-
+            // Crear el título de la categoría (Ej: "Postres de cuchara", "Postres fritos")
+            const tituloCat = document.createElement('h2');
+            tituloCat.textContent = nombreCategoria;
+            tituloCat.className = 'categoria-titulo';
+            tituloCat.style.fontSize = '1.6rem';
+            tituloCat.style.color = '#4A3B53'; // Tono morado oscuro acorde a tu paleta pastel
+            tituloCat.style.marginBottom = '20px';
+            tituloCat.style.fontWeight = '600';
+            seccionBloque.appendChild(tituloCat);
+            
+            // Crear la rejilla (Grid) donde se alinearán las tarjetas de esta categoría
             const gridTarjetas = document.createElement('div');
             gridTarjetas.className = 'tienda-productos-grid';
             gridTarjetas.style.display = 'grid';
-            gridTarjetas.style.gridTemplateColumns = 'repeat(auto-fill, minmax(250px, 1fr))';
-            gridTarjetas.style.gap = '20px';
+            gridTarjetas.style.gridTemplateColumns = 'repeat(auto-fill, minmax(240px, 1fr))';
+            gridTarjetas.style.gap = '25px';
 
+            // Inyectar cada producto correspondiente a esta sección
             for (const prod of listaProductos) {
-                const nuevaTarjeta = plantillaOriginal.cloneNode(true);
-
-                // 👇 AQUÍ TAMBIÉN REUTILIZAMOS LA FUNCIÓN COMPARTIDA
+                const nuevaTarjeta = plantillaTarjetaTienda.cloneNode(true);
                 mapearDatosTarjeta(nuevaTarjeta, prod);
-
                 gridTarjetas.appendChild(nuevaTarjeta);
             }
 
+            // Unir la rejilla al bloque contenedor y este al contenedor de la página
             seccionBloque.appendChild(gridTarjetas);
             contenedorPadre.appendChild(seccionBloque);
         }
     } catch (error) {
         console.error("Error en cargarSeccionesTienda:", error);
+    }
+}
+
+async function cargarProductosPorCategoriaPagina() {
+    const contenedorGrid = document.getElementById('contenedorProductosCategoria');
+    const contenedorPills = document.getElementById('contenedorSaboresPills');
+    const tituloCategoria = document.getElementById('tituloCategoria');
+    
+    if (!contenedorGrid || !contenedorPills) return;
+
+    try {
+        const urlParams = new URLSearchParams(window.location.search);
+        const categoriaSeleccionada = urlParams.get('categoria');
+
+        if (!categoriaSeleccionada) {
+            contenedorGrid.innerHTML = '<p>No se ha seleccionado ninguna categoría.</p>';
+            return;
+        }
+
+        // Definir el título de la vista dinámicamente
+        if (tituloCategoria) tituloCategoria.textContent = categoriaSeleccionada;
+
+        // 1. Petición al Servlet de la base de datos
+        const response = await fetch(`/KurmiProyect/ObtenerProductosPorCategoriaServlet?categoria=${encodeURIComponent(categoriaSeleccionada)}`);
+        const todosLosProductos = await response.json();
+
+        if (todosLosProductos.length === 0) {
+            contenedorGrid.innerHTML = `<p>No hay productos registrados en la categoría: ${categoriaSeleccionada}</p>`;
+            return;
+        }
+
+        // 2. EXTRAER AUTOMÁTICAMENTE LOS SABORES USANDO EL ATRIBUTO DEL DTO (nombreSabor)
+        const saboresUnicos = new Set();
+        todosLosProductos.forEach(p => {
+            // CAMBIO: Se ajusta para usar el nombre exacto de la propiedad en Java
+            const saborReal = p.nombreSabor; 
+            if (saborReal) saboresUnicos.add(saborReal.trim());
+        });
+
+        // 3. Obtener la plantilla original de tu tarjetaProducto.html
+        const responseTemplate = await fetch('/KurmiProyect/components/tarjetaProducto.html');
+        const templateHTML = await responseTemplate.text();
+        const parser = new DOMParser();
+        const docTemplate = parser.parseFromString(templateHTML, 'text/html');
+        const plantillaOriginal = docTemplate.querySelector('.tarjeta');
+
+        // 4. Función encargada de renderizar las tarjetas en la cuadrícula limpia
+        const pintarGrid = (listaProductos) => {
+            contenedorGrid.innerHTML = '';
+            listaProductos.forEach(prod => {
+                const nuevaTarjeta = plantillaOriginal.cloneNode(true);
+                mapearDatosTarjeta(nuevaTarjeta, prod); 
+                contenedorGrid.appendChild(nuevaTarjeta);
+            });
+        };
+
+        // 5. Crear e inyectar los botones de sabores (Pills) estilo Figma
+        contenedorPills.innerHTML = '';
+
+        // Botón general "Todos"
+        const btnTodos = document.createElement('button');
+        btnTodos.textContent = 'Todos';
+        btnTodos.className = 'btn__sabor activo';
+        btnTodos.addEventListener('click', () => {
+            document.querySelectorAll('.btn__sabor').forEach(b => b.classList.remove('activo'));
+            btnTodos.classList.add('activo');
+            pintarGrid(todosLosProductos);
+        });
+        contenedorPills.appendChild(btnTodos);
+
+        // Crear un botón dinámico por cada sabor detectado
+        saboresUnicos.forEach(sabor => {
+            const btnSabor = document.createElement('button');
+            btnSabor.textContent = sabor;
+            btnSabor.className = 'btn__sabor';
+            
+            btnSabor.addEventListener('click', () => {
+                document.querySelectorAll('.btn__sabor').forEach(b => b.classList.remove('activo'));
+                btnSabor.classList.add('activo');
+
+                // CAMBIO: Filtrar el array completo usando la propiedad nombreSabor
+                const filtrados = todosLosProductos.filter(p => p.nombreSabor === sabor);
+
+                pintarGrid(filtrados);
+            });
+
+            contenedorPills.appendChild(btnSabor);
+        });
+
+        pintarGrid(todosLosProductos);
+
+    } catch (error) {
+        console.error("Error gestionando los filtros y renderizado:", error);
+    }
+}
+
+async function cargarCarrito() {
+    const gridProductos = document.querySelector(".productos__grid");
+    const contenedorVacio = document.querySelector(".carrito__vacio");
+    const contenedorContenido = document.querySelector(".carrito__contenedor");
+    const contadorProductos = document.getElementById("contador-productos");
+
+    // Se verifica la existencia de los nodos esenciales para evitar excepciones en otras vistas
+    if (!gridProductos || !contenedorVacio || !contenedorContenido) return;
+
+    try {
+        // Se ejecuta la petición HTTP bajo la ruta del contexto del servlet unificado
+        const respuesta = await fetch("/KurmiProyect/CarritoServlet");
+        
+        if (!respuesta.ok) throw new Error("Error al recuperar el estado del carrito.");
+        
+        const productos = await respuesta.json();
+
+        // Se evalúa si el arreglo carece de elementos para alternar las pantallas de estado
+        if (!productos || productos.length === 0) {
+            contenedorVacio.classList.remove("hidden");
+            contenedorContenido.classList.add("hidden");
+            return;
+        }
+
+        contenedorVacio.classList.add("hidden");
+        contenedorContenido.classList.remove("hidden");
+
+        // Se actualiza el dígito indicador en la cabecera del bloque
+        if (contadorProductos) contadorProductos.textContent = productos.length;
+
+        // Se purga la rejilla visual de residuos anteriores
+        gridProductos.textContent = "";
+
+        // Se procesa de forma secuencial la construcción atómica de cada tarjeta
+        productos.forEach(item => {
+            const card = document.createElement("div");
+            card.classList.add("producto__card");
+            card.setAttribute("data-id", item.idProducto);
+            card.setAttribute("data-id-carrito", item.idCarrito || ""); // Se añade el ID de la transacción del carrito
+            const cardImagen = document.createElement("div");
+            cardImagen.classList.add("card__imagen");
+            
+            const img = document.createElement("img");
+            img.src = item.imagen || '../../RESOURCES/img/inicioHelado.png'; // Ruta de imagen por defecto si no se proporciona
+            img.alt = item.nombre;
+            cardImagen.appendChild(img);
+
+            const cardDetalles = document.createElement("div");
+            cardDetalles.classList.add("card__detalles");
+
+            const cardNombre = document.createElement("p");
+            cardNombre.classList.add("card__nombre");
+            cardNombre.textContent = item.nombre;
+
+            const cardPrecio = document.createElement("p");
+            cardPrecio.classList.add("card__precio");
+            cardPrecio.textContent = `$${Number(item.precio).toLocaleString('co-CO')}`;
+
+            cardDetalles.appendChild(cardNombre);
+            cardDetalles.appendChild(cardPrecio);
+
+            const cardAcciones = document.createElement("div");
+            cardAcciones.classList.add("card__acciones");
+
+            const accionesContador = document.createElement("div");
+            accionesContador.classList.add("acciones__contador");
+
+            const btnMenos = document.createElement("button");
+            btnMenos.className = "btn-cantidad btn-menos";
+            btnMenos.type = "button";
+            btnMenos.textContent = "-";
+            
+            btnMenos.onclick = async () => {
+                let actual = parseInt(cantidadValor.textContent);
+                if (actual > 1) {
+                    actual--;
+                    cantidadValor.textContent = actual;
+                    actualizarTotal();
+                }
+            };
+
+            const cantidadValor = document.createElement("span");
+            cantidadValor.classList.add("cantidad-valor");
+            cantidadValor.textContent = item.cantidad;
+
+            const btnMas = document.createElement("button");
+            btnMas.className = "btn-cantidad btn-mas";
+            btnMas.type = "button";
+            btnMas.textContent = "+";
+            
+            btnMas.onclick = async () => {
+                let actual = parseInt(cantidadValor.textContent);
+                actual++;
+                cantidadValor.textContent = actual;
+                actualizarTotal();
+            };
+
+            accionesContador.appendChild(btnMenos);
+            accionesContador.appendChild(cantidadValor);
+            accionesContador.appendChild(btnMas);
+
+            const btnEliminar = document.createElement("button");
+            btnEliminar.classList.add("btn-eliminar");
+            btnEliminar.type = "button";
+            btnEliminar.title = "Eliminar producto";
+            btnEliminar.innerHTML = `<img src="../../RESOURCES/img/delete.png" alt="Eliminar">`; // Usar un ícono de basura o cruz para representar la acción de eliminación
+
+            btnEliminar.onclick = async () => {
+            if (confirm(`¿Deseas remover ${item.nombre} de tu carrito?`)) {
+                try {
+                    await fetch(`/KurmiProyect/CarritoServlet`, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                        body: `accion=eliminar&idDetalle=${item.idDetalleCarrito}`
+                    });
+                } catch(e) { console.error("Error eliminando:", e); }
+                
+                card.remove();
+                actualizarResumenCarrito();
+                if (gridProductos.children.length === 0) {
+                    contenedorVacio.classList.remove("hidden");
+                    contenedorContenido.classList.add("hidden");
+                }
+            }
+        };
+
+            const labelCheckbox = document.createElement("label");
+            labelCheckbox.classList.add("checkbox-container");
+
+            // DESPUÉS — reemplazar por esto:
+            const inputCheckbox = document.createElement("input");
+            inputCheckbox.type = "checkbox";
+            inputCheckbox.classList.add("chk-comprar");                     // ← FALTABA
+            inputCheckbox.setAttribute("data-precio", item.precio);         // ← FALTABA
+            inputCheckbox.checked = (item.estadoDetalle === 5);
+
+            inputCheckbox.onchange = async () => {
+                const nuevoEstado = inputCheckbox.checked ? 5 : 4;
+                try {
+                    await fetch(`/KurmiProyect/CarritoServlet`, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                        body: `accion=actualizarEstado&idDetalle=${item.idDetalleCarrito}&estado=${nuevoEstado}`
+                    });
+                } catch(e) { console.error("Error actualizando estado:", e); }
+                actualizarResumenCarrito();
+            };
+            // ← SIN la llamada actualizarResumenCarrito() aquí adentro
+
+
+            const spanCheckbox = document.createElement("span");
+            spanCheckbox.classList.add("custom-checkbox");
+
+            labelCheckbox.appendChild(inputCheckbox);
+            labelCheckbox.appendChild(spanCheckbox);
+
+            cardAcciones.appendChild(accionesContador);
+            cardAcciones.appendChild(btnEliminar);
+            cardAcciones.appendChild(labelCheckbox);
+
+            card.appendChild(cardImagen);
+            card.appendChild(cardDetalles);
+            card.appendChild(cardAcciones);
+
+            gridProductos.appendChild(card);
+        });
+
+        actualizarResumenCarrito();
+
+    } catch (error) {
+        console.error("Error al procesar el ciclo interno del carrito:", error);
+    }
+}
+
+function actualizarTotal() {
+    const totalBadge = document.querySelector(".resumen__total-badge span");
+    if (!totalBadge) return;
+    
+    let totalAcumulado = 0;
+
+    document.querySelectorAll(".producto__card").forEach(tarjeta => {
+        const checkbox = tarjeta.querySelector(".chk-comprar");
+        if (checkbox && checkbox.checked) {
+            const precio = parseFloat(checkbox.getAttribute("data-precio"));
+            const cantidad = parseInt(tarjeta.querySelector(".cantidad-valor").textContent);
+            totalAcumulado += precio * cantidad;
+        }
+    });
+
+    totalBadge.textContent = `Total: $${totalAcumulado.toLocaleString('co-CO')}`;
+}
+
+function asignarEventosAcciones() {
+    document.querySelectorAll(".chk-comprar").forEach(chk => {
+        chk.addEventListener("change", actualizarTotal);
+    });
+
+}
+
+const btnComprar = document.querySelector(".btn__comprar");
+
+if (btnComprar) {
+    btnComprar.addEventListener("click", () => {
+        const productosAComprar = [];
+        document.querySelectorAll(".producto__card").forEach(tarjeta => {
+            const checkbox = tarjeta.querySelector(".chk-comprar");
+            
+            if (checkbox && checkbox.checked) {
+                const id = tarjeta.getAttribute("data-id");
+                const idCarrito = tarjeta.getAttribute("data-id-carrito"); // Se extrae el ID del atributo
+                const nombre = tarjeta.querySelector(".card__nombre").textContent;
+                const precio = parseFloat(checkbox.getAttribute("data-precio"));
+                const cantidad = parseInt(tarjeta.querySelector(".cantidad-valor").textContent);
+
+                productosAComprar.push({
+                    idProducto: id,
+                    idCarrito: idCarrito,
+                    nombre: nombre,
+                    precio: precio,
+                    cantidad: cantidad
+                });
+            }
+        });
+
+        if (productosAComprar.length === 0) {
+            alert("Por favor, selecciona al menos un producto para proceder al pago.");
+            return;
+        }
+
+        localStorage.setItem("productosCheckout", JSON.stringify(productosAComprar));
+
+        window.location.href = "../html/formularioPago.html";
+    });
+}
+
+function actualizarResumenCarrito() {
+    let totalAcumulado = 0;
+    let contadorSeleccionados = 0;
+    document.querySelectorAll(".producto__card").forEach(tarjeta => {
+        const checkbox = tarjeta.querySelector(".chk-comprar");
+        
+        if (checkbox && checkbox.checked) {
+            const cantidad = parseInt(tarjeta.querySelector(".cantidad-valor").textContent) || 0;
+            
+            // Extraemos el precio (limpiando caracteres de moneda de ser necesario)
+            const precioTexto = tarjeta.querySelector(".card__precio").textContent;
+            const precio = parseFloat(precioTexto.replace(/[^0-9]/g, '')) || 0;
+
+            totalAcumulado += (precio * cantidad);
+            contadorSeleccionados += 1; // Cuenta el producto como seleccionado
+        }
+    });
+    document.getElementById("contador-productos").textContent = contadorSeleccionados;
+    
+    const badgeTotal = document.querySelector(".resumen__total-badge span");
+    if (badgeTotal) {
+        badgeTotal.textContent = `Total: $${totalAcumulado.toLocaleString('es-CO')}`;
+    }
+}
+
+// ─── BUSCADOR EN TIEMPO REAL ──────────────────────────────────────────────────
+function inicializarBuscador() {
+    const inputBuscador = document.querySelector('.buscador-input');
+    const contenedor    = document.getElementById('contenedorTiendaCategorias');
+    if (!inputBuscador || !contenedor) return;
+
+    inputBuscador.addEventListener('input', () => {
+        const termino = inputBuscador.value.trim().toLowerCase();
+
+        // Sin texto → restaurar vista por categorías normal
+        if (!termino) {
+            renderizarPorCategorias(todosLosProductosTienda, contenedor);
+            return;
+        }
+
+        // Filtrar por nombre o categoría
+        const filtrados = todosLosProductosTienda.filter(p => {
+            const nombre    = (p.nombre    || '').toLowerCase();
+            const categoria = (p.categoria || '').toLowerCase();
+            const sabor     = (p.nombreSabor || '').toLowerCase();
+            return nombre.includes(termino) || categoria.includes(termino) || sabor.includes(termino);
+        });
+
+        if (filtrados.length === 0) {
+            contenedor.innerHTML = `
+                <div class="buscador__sin-resultados">
+                    <p>😕 No encontramos productos con "<strong>${inputBuscador.value.trim()}</strong>"</p>
+                    <p>Intenta con otro nombre o categoría.</p>
+                </div>`;
+            return;
+        }
+
+        // Mostrar resultados como una sección plana sin agrupar
+        contenedor.innerHTML = '';
+        const seccion = document.createElement('section');
+        seccion.className = 'categoria-bloque';
+        seccion.style.marginBottom = '40px';
+
+        const titulo = document.createElement('h2');
+        titulo.className = 'categoria-titulo';
+        titulo.style.cssText = 'font-size:1.4rem;color:#4A3B53;margin-bottom:20px;font-weight:600;';
+        titulo.textContent = `Resultados para "${inputBuscador.value.trim()}" (${filtrados.length})`;
+        seccion.appendChild(titulo);
+
+        const grid = document.createElement('div');
+        grid.className = 'tienda-productos-grid';
+        grid.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:25px;';
+
+        for (const prod of filtrados) {
+            const tarjeta = plantillaTarjetaTienda.cloneNode(true);
+            mapearDatosTarjeta(tarjeta, prod);
+            grid.appendChild(tarjeta);
+        }
+
+        seccion.appendChild(grid);
+        contenedor.appendChild(seccion);
+    });
+}
+
+// Renderiza los productos agrupados por categoría (restaurar vista original)
+function renderizarPorCategorias(productos, contenedor) {
+    contenedor.innerHTML = '';
+    const categoriasMap = {};
+    for (const prod of productos) {
+        const cat = prod.categoria || 'General';
+        if (!categoriasMap[cat]) categoriasMap[cat] = [];
+        categoriasMap[cat].push(prod);
+    }
+    for (const [nombreCategoria, lista] of Object.entries(categoriasMap)) {
+        const seccion = document.createElement('section');
+        seccion.className = 'categoria-bloque';
+        seccion.style.marginBottom = '40px';
+
+        const titulo = document.createElement('h2');
+        titulo.className = 'categoria-titulo';
+        titulo.style.cssText = 'font-size:1.6rem;color:#4A3B53;margin-bottom:20px;font-weight:600;';
+        titulo.textContent = nombreCategoria;
+        seccion.appendChild(titulo);
+
+        const grid = document.createElement('div');
+        grid.className = 'tienda-productos-grid';
+        grid.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:25px;';
+
+        for (const prod of lista) {
+            const tarjeta = plantillaTarjetaTienda.cloneNode(true);
+            mapearDatosTarjeta(tarjeta, prod);
+            grid.appendChild(tarjeta);
+        }
+        seccion.appendChild(grid);
+        contenedor.appendChild(seccion);
     }
 }

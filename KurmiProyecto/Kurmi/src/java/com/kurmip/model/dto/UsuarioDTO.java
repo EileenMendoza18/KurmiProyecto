@@ -11,14 +11,14 @@ public class UsuarioDTO {
     private int id;
     private String nombres;
     private String apellidos;
-    private String fechaNacimiento; // Manejado como String para facilitar la conversión con inputs HTML5
+    private String fechaNacimiento;
     private String telefono;
     private String correo;
     private String contrasena;
     private String direccion;
-    private int idRol;              // Captura el identificador numérico (1 para Cliente, 3 para Proveedor)
-    private String rolNombre;       // Almacena el texto descriptivo del rol obtenido por JOINs
-    private String estadoNombre;    // Almacena el estado de vinculación ("Activo", "Inactivo", "Pendiente")
+    private int idRol;              
+    private String rolNombre;       
+    private String estadoNombre;    
 
     // Constructor vacío obligatorio para las buenas prácticas de Java Beans
     public UsuarioDTO() {}

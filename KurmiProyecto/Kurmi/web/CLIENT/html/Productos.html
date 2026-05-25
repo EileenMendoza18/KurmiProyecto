@@ -3,25 +3,28 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+    <title>Productos - Kurmi</title>
     <link rel="stylesheet" href="../style/productos.css">
-    
 </head>
 <body>
-    <div class="div__body ">
-        <div id="header">
-
-        </div>
-        <div id="asideContainer">
+    <div class="div__body">
+        <div id="header"></div>
+        
+        <div id="asideContainer"></div> 
+        
+        <main class="products">
+            <h1 class="products__title" id="tituloCategoria">Cargando...</h1>
             
-        </div> 
-        <main id="contenedorProductosCategoria" class="galeria-productos">
+            <div class="sabores__filtros">
+                <span class="sabores__etiqueta">Filtrado &gt;</span>
+                <div id="contenedorSaboresPills" class="sabores__pills">
+                    </div>
+            </div>
 
+            <div id="contenedorProductosCategoria" class="products__grid"></div>
         </main>
-        <div id="footer">
-
-        </div>
-
+        
+        <div id="footer"></div>
     </div>
     <script src="../js/index.js" type="module"></script>
 </body>

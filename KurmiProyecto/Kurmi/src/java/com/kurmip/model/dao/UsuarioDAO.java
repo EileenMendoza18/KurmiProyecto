@@ -133,4 +133,70 @@ public class UsuarioDAO {
             System.err.println("Error al cerrar recursos en UsuarioDAO: " + e.getMessage());
         }
     }
+    // =====================================================================
+    // REEMPLAZAR los dos métodos en UsuarioDAO.java
+    // (antes del método privado cerrarRecursos())
+    // =====================================================================
+
+        public UsuarioDTO obtenerPorId(int idUsuario) {
+            String sql = "SELECT u.UsuarioID, u.Nombres, u.Apellidos, u.Fecha_Nacimiento, " +
+                         "u.Telefono, u.Correo_Usu, u.Direc_Usuario, u.Rol_Usuario, " +
+                         "r.NombreRol, e.NombreEstado " +
+                         "FROM Usuario u " +
+                         "LEFT JOIN Roles r ON u.Rol_Usuario = r.Roles_ID " +
+                         "LEFT JOIN EstadoCliente e ON u.Est_Vinculacion = e.EstadoID " +
+                         "WHERE u.UsuarioID = ?";
+            try {
+                con = cn.getConexion();
+                ps  = con.prepareStatement(sql);
+                ps.setInt(1, idUsuario);
+                rs  = ps.executeQuery();
+                if (rs.next()) {
+                    UsuarioDTO dto = new UsuarioDTO();
+                    dto.setId(rs.getInt("UsuarioID"));
+                    dto.setNombres(rs.getString("Nombres"));
+                    dto.setApellidos(rs.getString("Apellidos"));
+                    dto.setFechaNacimiento(
+                        rs.getDate("Fecha_Nacimiento") != null
+                        ? rs.getDate("Fecha_Nacimiento").toString() : "");
+                    dto.setTelefono(rs.getString("Telefono"));
+                    dto.setCorreo(rs.getString("Correo_Usu"));
+                    dto.setDireccion(rs.getString("Direc_Usuario"));
+                    dto.setIdRol(rs.getInt("Rol_Usuario"));
+                    String rol = rs.getString("NombreRol");
+                    dto.setRolNombre(rol != null ? rol : "Cliente");
+                    dto.setEstadoNombre(rs.getString("NombreEstado"));
+                    return dto;
+                }
+            } catch (Exception e) {
+                System.err.println("Error en obtenerPorId: " + e.getMessage());
+            } finally {
+                cerrarRecursos();
+            }
+            return null;
+        }
+
+        public boolean actualizarPerfil(UsuarioDTO dto) {
+            String sql = "UPDATE Usuario SET Nombres = ?, Apellidos = ?, " +
+                         "Fecha_Nacimiento = ?, Correo_Usu = ?, " +
+                         "Telefono = ?, Direc_Usuario = ? " +
+                         "WHERE UsuarioID = ?";
+            try {
+                con = cn.getConexion();
+                ps  = con.prepareStatement(sql);
+                ps.setString(1, dto.getNombres());
+                ps.setString(2, dto.getApellidos());
+                ps.setString(3, dto.getFechaNacimiento());
+                ps.setString(4, dto.getCorreo());
+                ps.setString(5, dto.getTelefono());
+                ps.setString(6, dto.getDireccion());
+                ps.setInt(7,    dto.getId());
+                return ps.executeUpdate() > 0;
+            } catch (Exception e) {
+                System.err.println("Error en actualizarPerfil: " + e.getMessage());
+                return false;
+            } finally {
+                cerrarRecursos();
+            }
+        }
 }

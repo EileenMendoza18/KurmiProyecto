@@ -16,6 +16,7 @@ public class ProductoDTO {
     private double precio;
     private String imagen; // Cambiado de int a String
     private String categoria;
+    private String nombreSabor;
 
     public ProductoDTO() {}
 
@@ -39,4 +40,7 @@ public class ProductoDTO {
     
     public String getCategoria() { return categoria; }
     public void setCategoria(String categoria) { this.categoria = categoria; }
+    
+    public String getNombreSabor() { return nombreSabor; }
+    public void setNombreSabor(String nombreSabor) { this.nombreSabor = nombreSabor; }
 }
