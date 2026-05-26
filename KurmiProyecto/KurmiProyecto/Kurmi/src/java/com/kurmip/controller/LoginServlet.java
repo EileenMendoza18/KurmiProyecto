@@ -48,7 +48,7 @@ public class LoginServlet extends HttpServlet {
             if ("Administrador".equals(rol)) {
                 response.sendRedirect("ADMIN/html/dashboard.html");
             } else if ("Proveedor".equals(rol)) {
-                response.sendRedirect("PROVIDER/html/inventario.html");
+                response.sendRedirect("PROVIDER/html/proveedor.html");
             } else {
                 response.sendRedirect("CLIENT/html/tienda.html");
             }

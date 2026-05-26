@@ -30,6 +30,8 @@
 }
 
 .filtro__btn {
+    width: auto;
+    height: auto;
     padding: 10px 28px;
     border: 2px solid #DCD6F7;
     border-radius: 30px;

@@ -77,6 +77,25 @@ protected void doPost(HttpServletRequest request, HttpServletResponse response)
         response.getWriter().write(ok ? "OK" : "ERROR");
         return;
     }
+    if ("actualizarCantidad".equals(accion)) {
+        try {
+            int idDetalle     = Integer.parseInt(request.getParameter("idDetalle"));
+            int nuevaCantidad = Integer.parseInt(request.getParameter("cantidad"));
+            int idProducto    = Integer.parseInt(request.getParameter("idProducto"));
+            if (nuevaCantidad < 1) nuevaCantidad = 1;
+            int resultado = carritoDAO.actualizarCantidad(idDetalle, nuevaCantidad, idProducto);
+            if (resultado == -1) {
+                response.getWriter().write("STOCK_SUPERADO");
+            } else if (resultado == 1) {
+                response.getWriter().write("OK");
+            } else {
+                response.getWriter().write("ERROR");
+            }
+        } catch (NumberFormatException e) {
+            response.getWriter().write("ERROR");
+        }
+        return;
+    }
 
     if ("eliminar".equals(accion)) {
         int idDetalle = Integer.parseInt(request.getParameter("idDetalle"));

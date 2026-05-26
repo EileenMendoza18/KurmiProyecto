@@ -13,38 +13,96 @@ public class PedidoDAO {
     private PreparedStatement ps;
     private ResultSet rs;
 
-    /**
-     * Registra un pedido con estado PENDIENTE (1), su método de pago
-     * y cierra el carrito actual marcándolo como Vendido (3).
-     * Cada compra genera un carrito nuevo para la siguiente compra.
-     */
     public boolean registrarCompraCompleta(PedidoDTO pedido) {
-        // Estado_Pedido = 1 (Pendiente) — el proveedor lo cambia a Completado
         String sqlPedido =
             "INSERT INTO Pedidos_Cliente " +
             "(ID_Cliente, ID_Carrito, Estado_Pedido, Total_Pago, Nombre_Receptor, Direccion_Envio, Telefono_Envio) " +
             "VALUES (?, ?, 1, ?, ?, ?, ?)";
-
         String sqlPago =
             "INSERT INTO Pago_Pedido (ID_Pedido, ID_Metodo, Monto_Pagado, Estado_Pago) " +
             "VALUES (?, ?, ?, 1)";
-
-        // Marcar los ítems seleccionados del carrito como Vendido (3)
         String sqlUpdateDetalle =
             "UPDATE Carrito_Detalle SET Estado_Carrito = 3 " +
             "WHERE ID_Carrito = ? AND Estado_Carrito IN (4, 5)";
-
-        // Cerrar el carrito actual (EstadoCarrito = 3 = Vendido)
         String sqlCerrarCarrito =
             "UPDATE Carrito_Compras SET EstadoCarrito = 3 WHERE ID_Carrito = ?";
+        String sqlNuevoCarrito =
+            "INSERT INTO Carrito_Compras (ID_Cliente, EstadoCarrito) VALUES (?, 1)";
 
         try {
             con = cn.getConexion();
             con.setAutoCommit(false);
 
-            int idCarrito = pedido.getIdCarrito() == 0 ? 1 : pedido.getIdCarrito();
+            int idCarrito;
 
-            // 1. Insertar el pedido
+            if (pedido.tieneProductosCheckout()) {
+                // ── FLUJO RECOMPRA ──────────────────────────────────────────────
+                // Crear un carrito temporal nuevo SOLO para los productos del pedido cancelado.
+                // El carrito activo del usuario queda intacto.
+                PreparedStatement psCrear = con.prepareStatement(sqlNuevoCarrito, Statement.RETURN_GENERATED_KEYS);
+                psCrear.setInt(1, pedido.getIdUsuario());
+                psCrear.executeUpdate();
+                ResultSet rsCrear = psCrear.getGeneratedKeys();
+                if (!rsCrear.next()) { con.rollback(); return false; }
+                idCarrito = rsCrear.getInt(1);
+                rsCrear.close();
+                psCrear.close();
+
+                // Insertar ÚNICAMENTE los productos del pedido cancelado en el carrito temporal
+                String sqlInsert =
+                    "INSERT INTO Carrito_Detalle " +
+                    "(ID_Carrito, ID_Producto, Cantidad_Producto, Precio_Unitario_Momento, SubTotal, Estado_Carrito) " +
+                    "VALUES (?, ?, ?, ?, ?, 4)";
+                String[] ids        = pedido.getCheckoutIds();
+                String[] precios    = pedido.getCheckoutPrecios();
+                String[] cantidades = pedido.getCheckoutCantidades();
+
+                for (int i = 0; i < ids.length; i++) {
+                    int    idProd   = Integer.parseInt(ids[i]);
+                    double precio   = Double.parseDouble(precios[i]);
+                    int    cantidad = Integer.parseInt(cantidades[i]);
+                    double subtotal = precio * cantidad;
+
+                    PreparedStatement psIns = con.prepareStatement(sqlInsert);
+                    psIns.setInt(1, idCarrito);
+                    psIns.setInt(2, idProd);
+                    psIns.setInt(3, cantidad);
+                    psIns.setDouble(4, precio);
+                    psIns.setDouble(5, subtotal);
+                    psIns.executeUpdate();
+                    psIns.close();
+                }
+
+            } else {
+                // ── FLUJO COMPRA NORMAL DESDE CARRITO ──────────────────────────
+                idCarrito = pedido.getIdCarrito();
+
+                // Buscar carrito activo si no viene uno válido
+                if (idCarrito <= 0) {
+                    PreparedStatement psBuscar = con.prepareStatement(
+                        "SELECT ID_Carrito FROM Carrito_Compras WHERE ID_Cliente = ? AND EstadoCarrito = 1 LIMIT 1");
+                    psBuscar.setInt(1, pedido.getIdUsuario());
+                    ResultSet rsBuscar = psBuscar.executeQuery();
+                    if (rsBuscar.next()) idCarrito = rsBuscar.getInt("ID_Carrito");
+                    rsBuscar.close();
+                    psBuscar.close();
+                }
+
+                // Si sigue sin carrito, crear uno nuevo
+                if (idCarrito <= 0) {
+                    PreparedStatement psCrear = con.prepareStatement(sqlNuevoCarrito, Statement.RETURN_GENERATED_KEYS);
+                    psCrear.setInt(1, pedido.getIdUsuario());
+                    psCrear.executeUpdate();
+                    ResultSet rsCrear = psCrear.getGeneratedKeys();
+                    if (rsCrear.next()) idCarrito = rsCrear.getInt(1);
+                    rsCrear.close();
+                    psCrear.close();
+                }
+
+                if (idCarrito <= 0) { con.rollback(); return false; }
+            }
+
+            // 1. Insertar pedido
             ps = con.prepareStatement(sqlPedido, Statement.RETURN_GENERATED_KEYS);
             ps.setInt(1, pedido.getIdUsuario());
             ps.setInt(2, idCarrito);
@@ -52,38 +110,42 @@ public class PedidoDAO {
             ps.setString(4, pedido.getNombreReceptor());
             ps.setString(5, pedido.getDireccion());
             ps.setString(6, pedido.getTelefono());
-
-            int filasPedido = ps.executeUpdate();
-            if (filasPedido == 0) { con.rollback(); return false; }
+            if (ps.executeUpdate() == 0) { con.rollback(); return false; }
 
             rs = ps.getGeneratedKeys();
             int idPedidoGenerado = 0;
             if (rs.next()) idPedidoGenerado = rs.getInt(1);
 
-            // 2. Insertar el pago
+            // 2. Insertar pago
             ps = con.prepareStatement(sqlPago);
             ps.setInt(1, idPedidoGenerado);
             ps.setInt(2, pedido.getIdMetodo());
             ps.setDouble(3, pedido.getTotal());
+            if (ps.executeUpdate() == 0) { con.rollback(); return false; }
 
-            int filasPago = ps.executeUpdate();
-            if (filasPago == 0) { con.rollback(); return false; }
-
-            // 3. Marcar ítems del carrito como Vendido (3)
+            // 3. Marcar ítems del carrito como Vendido
             ps = con.prepareStatement(sqlUpdateDetalle);
             ps.setInt(1, idCarrito);
             ps.executeUpdate();
 
-            // 4. Cerrar el carrito actual
+            // 4. Cerrar el carrito usado
             ps = con.prepareStatement(sqlCerrarCarrito);
             ps.setInt(1, idCarrito);
             ps.executeUpdate();
+
+            // 5. Crear nuevo carrito vacío para la siguiente compra
+            //    Solo en compra normal; en recompra el carrito activo del usuario ya existe.
+            if (!pedido.tieneProductosCheckout()) {
+                ps = con.prepareStatement(sqlNuevoCarrito);
+                ps.setInt(1, pedido.getIdUsuario());
+                ps.executeUpdate();
+            }
 
             con.commit();
             return true;
 
         } catch (Exception e) {
-            System.err.println("Excepción controlada en PedidoDAO: " + e.getMessage());
+            System.err.println("Excepción en PedidoDAO: " + e.getMessage());
             try { if (con != null) con.rollback(); } catch (SQLException ex) { ex.printStackTrace(); }
             return false;
         } finally {
@@ -91,36 +153,24 @@ public class PedidoDAO {
         }
     }
 
-    /**
-     * Obtiene los pedidos de un usuario filtrados por estado.
-     * Cada pedido muestra sólo los productos de SU carrito (aislamiento correcto).
-     */
     public List<Map<String, Object>> obtenerPedidosPorUsuario(int idUsuario, int estado) {
         List<Map<String, Object>> listaPedidos = new ArrayList<>();
 
-        // ► FIX: filtramos por p.ID_Carrito = cd.ID_Carrito directamente
-        //   sin filtrar Estado_Carrito para no perder ítems.
-        // ► Se agrega JOIN con Pago_Pedido y Metodo_Pago para mostrar el método de pago.
         String sqlPedidos =
-            "SELECT p.ID_Pedido, p.Fecha_Pedido, p.Total_Pago, " +
-            "COUNT(cd.ID_DetalleCarrito) AS totalProductos, " +
+            "SELECT p.ID_Pedido, p.ID_Carrito, p.Fecha_Pedido, p.Total_Pago, " +
             "mp.Nombre_Metodo AS metodoPago " +
             "FROM Pedidos_Cliente p " +
-            "JOIN Carrito_Detalle cd ON p.ID_Carrito = cd.ID_Carrito " +
             "LEFT JOIN Pago_Pedido pp ON pp.ID_Pedido = p.ID_Pedido " +
             "LEFT JOIN Metodo_Pago mp ON mp.ID_Metodo = pp.ID_Metodo " +
             "WHERE p.ID_Cliente = ? AND p.Estado_Pedido = ? " +
-            "GROUP BY p.ID_Pedido, p.Fecha_Pedido, p.Total_Pago, mp.Nombre_Metodo " +
             "ORDER BY p.Fecha_Pedido DESC";
 
-        // ► FIX: traer productos de ESTE pedido por su ID_Carrito específico
         String sqlProductos =
-            "SELECT pr.ID_Producto, pr.Nombre_Producto, cd.Cantidad_Producto, " +
-            "cd.Precio_Unitario_Momento, cd.SubTotal " +
-            "FROM Pedidos_Cliente p " +
-            "JOIN Carrito_Detalle cd ON p.ID_Carrito = cd.ID_Carrito " +
+            "SELECT pr.ID_Producto, pr.Nombre_Producto, " +
+            "cd.Cantidad_producto, cd.Precio_Unitario_Momento, cd.SubTotal " +
+            "FROM Carrito_Detalle cd " +
             "JOIN Productos pr ON cd.ID_Producto = pr.ID_Producto " +
-            "WHERE p.ID_Pedido = ?";
+            "WHERE cd.ID_Carrito = ? AND cd.Estado_Carrito != 2";
 
         Connection con = null;
         PreparedStatement ps = null;
@@ -128,31 +178,29 @@ public class PedidoDAO {
 
         try {
             con = cn.getConexion();
-
             ps = con.prepareStatement(sqlPedidos);
             ps.setInt(1, idUsuario);
             ps.setInt(2, estado);
             rs = ps.executeQuery();
 
             while (rs.next()) {
-                Map<String, Object> pedido = new java.util.LinkedHashMap<>();
-                int idPedido = rs.getInt("ID_Pedido");
-                pedido.put("idPedido",       idPedido);
-                pedido.put("fechaPedido",    rs.getString("Fecha_Pedido").substring(0, 10));
-                pedido.put("totalPago",      rs.getDouble("Total_Pago"));
-                pedido.put("totalProductos", rs.getInt("totalProductos"));
-                pedido.put("metodoPago",     rs.getString("metodoPago") != null ? rs.getString("metodoPago") : "No registrado");
-                pedido.put("imagenPrimera",  "inicioHelado.png");
+                int idPedido  = rs.getInt("ID_Pedido");
+                int idCarrito = rs.getInt("ID_Carrito");
 
                 List<Map<String, Object>> listaProds = new ArrayList<>();
+                int totalUnidades = 0;
+
                 PreparedStatement psP = con.prepareStatement(sqlProductos);
-                psP.setInt(1, idPedido);
+                psP.setInt(1, idCarrito);
                 ResultSet rsP = psP.executeQuery();
                 while (rsP.next()) {
+                    int cantidad = rsP.getInt("Cantidad_producto");
+                    totalUnidades += cantidad;
+
                     Map<String, Object> prod = new java.util.LinkedHashMap<>();
                     prod.put("idProducto",  rsP.getInt("ID_Producto"));
                     prod.put("nombre",      rsP.getString("Nombre_Producto"));
-                    prod.put("cantidad",    rsP.getInt("Cantidad_Producto"));
+                    prod.put("cantidad",    cantidad);
                     prod.put("precio",      rsP.getDouble("Precio_Unitario_Momento"));
                     prod.put("precioTotal", rsP.getDouble("SubTotal"));
                     prod.put("imagen",      "inicioHelado.png");
@@ -161,7 +209,16 @@ public class PedidoDAO {
                 rsP.close();
                 psP.close();
 
-                pedido.put("productos", listaProds);
+                Map<String, Object> pedido = new java.util.LinkedHashMap<>();
+                pedido.put("idPedido",       idPedido);
+                pedido.put("idCarrito",      idCarrito);
+                pedido.put("fechaPedido",    rs.getString("Fecha_Pedido").substring(0, 10));
+                pedido.put("totalPago",      rs.getDouble("Total_Pago"));
+                pedido.put("totalProductos", totalUnidades);
+                pedido.put("metodoPago",     rs.getString("metodoPago") != null
+                                             ? rs.getString("metodoPago") : "No registrado");
+                pedido.put("imagenPrimera",  "inicioHelado.png");
+                pedido.put("productos",      listaProds);
                 listaPedidos.add(pedido);
             }
 
@@ -179,10 +236,6 @@ public class PedidoDAO {
         return listaPedidos;
     }
 
-    /**
-     * Cambia el estado de un pedido (ej: Completado→Cancelado).
-     * Solo el cliente puede cancelar sus propios pedidos.
-     */
     public boolean cambiarEstadoPedido(int idPedido, int idUsuario, int nuevoEstado) {
         String sql =
             "UPDATE Pedidos_Cliente SET Estado_Pedido = ? " +
@@ -208,7 +261,7 @@ public class PedidoDAO {
             if (ps != null) ps.close();
             if (con != null) con.close();
         } catch (Exception e) {
-            System.err.println("Error al liberar recursos de BD: " + e.getMessage());
+            System.err.println("Error al liberar recursos: " + e.getMessage());
         }
     }
 }

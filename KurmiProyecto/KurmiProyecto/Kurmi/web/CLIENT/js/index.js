@@ -109,22 +109,21 @@ if (btnCarrito) {
     const btnFavoritos = tarjetaClonada.querySelector('.like');
     if (btnFavoritos) {
         btnFavoritos.onclick = async (e) => {
-            e.stopPropagation(); // Se previene el comportamiento propagado del clic
+            e.stopPropagation();
             try {
-                // Se ejecuta el llamado al servlet del módulo de favoritos
                 const response = await fetch(`/KurmiProyect/FavoritosServlet?idProducto=${idReal}`, { method: 'POST' });
-                
+
                 if (response.ok) {
-                    const mensaje = await response.text();
-                    
-                    // Se valida si el texto del servlet confirma explícitamente que fue una inserción nueva
-                    if (mensaje.trim().includes("Añadido correctamente")) {
-                        // Se levanta la notificación emergente de favoritos estándar
+                    const mensaje = (await response.text()).trim();
+
+                    if (mensaje.includes("Añadido correctamente")) {
                         mostrarNotificacionDinamica('favoritos');
-                    } else {
-                        // Se alerta que el elemento ya se encontraba guardado previamente en la base de datos
+                    } else if (mensaje.includes("Debes iniciar sesión")) {
+                        alert("Por favor, inicia sesión para añadir productos a favoritos.");
+                    } else if (mensaje.includes("ya fue añadido")) {
                         alert("El producto ya fue añadido a favoritos.");
-                        console.log("Aviso del servidor:", mensaje);
+                    } else {
+                        alert("No se pudo procesar la solicitud: " + mensaje);
                     }
                 }
             } catch (error) {
@@ -565,7 +564,7 @@ async function cargarCarrito() {
             cardImagen.classList.add("card__imagen");
             
             const img = document.createElement("img");
-            img.src = item.imagen || '../../RESOURCES/img/ejemplo-producto.jpg';
+            img.src = item.imagen || '../../RESOURCES/img/inicioHelado.png'; // Ruta de imagen por defecto si no se proporciona
             img.alt = item.nombre;
             cardImagen.appendChild(img);
 
@@ -589,34 +588,60 @@ async function cargarCarrito() {
             const accionesContador = document.createElement("div");
             accionesContador.classList.add("acciones__contador");
 
+            // ── cantidadValor DEBE declararse ANTES de los onclick que la usan ──
+            const cantidadValor = document.createElement("span");
+            cantidadValor.classList.add("cantidad-valor");
+            cantidadValor.textContent = item.cantidad;
+
             const btnMenos = document.createElement("button");
             btnMenos.className = "btn-cantidad btn-menos";
             btnMenos.type = "button";
             btnMenos.textContent = "-";
-            
+
             btnMenos.onclick = async () => {
                 let actual = parseInt(cantidadValor.textContent);
                 if (actual > 1) {
                     actual--;
                     cantidadValor.textContent = actual;
+                    try {
+                        const res = await fetch(`/KurmiProyect/CarritoServlet`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                            body: `accion=actualizarCantidad&idDetalle=${item.idDetalleCarrito}&cantidad=${actual}&idProducto=${item.idProducto}`
+                        });
+                        const msg = (await res.text()).trim();
+                        if (msg === 'STOCK_SUPERADO') {
+                            cantidadValor.textContent = actual + 1;
+                        }
+                    } catch (e) { console.error("Error actualizando cantidad:", e); }
                     actualizarTotal();
+                    actualizarResumenCarrito();
                 }
             };
-
-            const cantidadValor = document.createElement("span");
-            cantidadValor.classList.add("cantidad-valor");
-            cantidadValor.textContent = item.cantidad;
 
             const btnMas = document.createElement("button");
             btnMas.className = "btn-cantidad btn-mas";
             btnMas.type = "button";
             btnMas.textContent = "+";
-            
+
             btnMas.onclick = async () => {
                 let actual = parseInt(cantidadValor.textContent);
                 actual++;
                 cantidadValor.textContent = actual;
+                try {
+                    const res = await fetch(`/KurmiProyect/CarritoServlet`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: `accion=actualizarCantidad&idDetalle=${item.idDetalleCarrito}&cantidad=${actual}&idProducto=${item.idProducto}`
+                    });
+                    const msg = (await res.text()).trim();
+                    if (msg === 'STOCK_SUPERADO') {
+                        alert('⚠️ Has alcanzado el límite de stock disponible para este producto.');
+                        cantidadValor.textContent = actual - 1;
+                    }
+                } catch (e) { console.error("Error actualizando cantidad:", e); }
                 actualizarTotal();
+                actualizarResumenCarrito();
             };
 
             accionesContador.appendChild(btnMenos);
@@ -627,8 +652,8 @@ async function cargarCarrito() {
             btnEliminar.classList.add("btn-eliminar");
             btnEliminar.type = "button";
             btnEliminar.title = "Eliminar producto";
-            btnEliminar.textContent = "🗑️";
-            
+            btnEliminar.innerHTML = `<img src="../../RESOURCES/img/delete.png" alt="Eliminar">`; // Usar un ícono de basura o cruz para representar la acción de eliminación
+
             btnEliminar.onclick = async () => {
             if (confirm(`¿Deseas remover ${item.nombre} de tu carrito?`)) {
                 try {

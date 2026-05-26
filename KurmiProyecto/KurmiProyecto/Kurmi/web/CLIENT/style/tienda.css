@@ -26,6 +26,8 @@ main.tienda-main {
     align-items: center; /* Centra los bloques principales */
     width: 100%;
     height: auto;
+    min-height: 80vh;
+    gap: 40px;
 }
 
 /* Modificamos el comportamiento del main heredado por main.css */

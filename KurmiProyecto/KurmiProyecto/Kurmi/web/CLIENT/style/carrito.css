@@ -246,6 +246,14 @@ button {
 .btn-eliminar:hover {
     transform: scale(1.15);
 }
+.btn-eliminar img{
+    width: 18px;
+    height: 18px;
+}
+
+.btn-eliminar:hover{
+    background-color: white;
+}
 
 /* --- Checkbox Estilizado Redondo como el círculo de Figma --- */
 .checkbox-container {
