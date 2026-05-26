@@ -19,7 +19,7 @@ public class ProductoDAO {
     // ── helper: leer imagen con fallback ──────────────────────────────────────
     private String leerImagen(ResultSet rs) throws Exception {
         String img = rs.getString("Imagen_Producto");
-        return (img != null && !img.isBlank()) ? img : "default.png";
+        return (img != null && !img.isBlank()) ? img : "inicioHelado.png";
     }
 
     // ── helper: cerrar recursos ───────────────────────────────────────────────

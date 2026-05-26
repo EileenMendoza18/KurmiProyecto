@@ -564,7 +564,10 @@ async function cargarCarrito() {
             cardImagen.classList.add("card__imagen");
             
             const img = document.createElement("img");
-            img.src = item.imagen || '../../RESOURCES/img/inicioHelado.png'; // Ruta de imagen por defecto si no se proporciona
+            const BASE_CARRITO = '/KurmiProyect/RESOURCES/img/';
+            img.src = (item.imagen && item.imagen !== 'inicioHelado.png')
+                ? BASE_CARRITO + 'productos/' + item.imagen
+                : BASE_CARRITO + 'inicioHelado.png';
             img.alt = item.nombre;
             cardImagen.appendChild(img);
 
@@ -655,21 +658,27 @@ async function cargarCarrito() {
             btnEliminar.innerHTML = `<img src="../../RESOURCES/img/delete.png" alt="Eliminar">`; // Usar un ícono de basura o cruz para representar la acción de eliminación
 
             btnEliminar.onclick = async () => {
-            if (confirm(`¿Deseas remover ${item.nombre} de tu carrito?`)) {
-                try {
-                    await fetch(`/KurmiProyect/CarritoServlet`, {
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-                        body: `accion=eliminar&idDetalle=${item.idDetalleCarrito}`
-                    });
-                } catch(e) { console.error("Error eliminando:", e); }
-                
-                card.remove();
-                actualizarResumenCarrito();
-                if (gridProductos.children.length === 0) {
-                    contenedorVacio.classList.remove("hidden");
-                    contenedorContenido.classList.add("hidden");
+            if (!confirm(`¿Deseas remover ${item.nombre} de tu carrito?`)) return;
+            try {
+                const res = await fetch(`/KurmiProyect/CarritoServlet`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                    body: `accion=eliminar&idDetalle=${item.idDetalleCarrito}`
+                });
+                const msg = (await res.text()).trim();
+                if (msg === 'OK') {
+                    card.remove();
+                    actualizarResumenCarrito();
+                    if (gridProductos.children.length === 0) {
+                        contenedorVacio.classList.remove("hidden");
+                        contenedorContenido.classList.add("hidden");
+                    }
+                } else {
+                    alert('No se pudo eliminar el producto. Intenta de nuevo.');
                 }
+            } catch(e) {
+                console.error("Error eliminando:", e);
+                alert('Error de conexión al eliminar el producto.');
             }
         };
 

@@ -120,9 +120,12 @@ public class CarritoDAO {
 
             if (idCarrito == -1) throw new SQLException("No se pudo obtener o crear el encabezado del carrito.");
 
+            // BUG FIX: Solo buscar items ACTIVOS (4=agregado, 5=seleccionado).
+            // Estado 2 = eliminado/inactivo — nunca reutilizar un item que el usuario eliminó,
+            // eso causaba que un producto cancelado volviera al carrito con cantidad incorrecta.
             String sqlBuscarProducto = "SELECT ID_DetalleCarrito, Cantidad_Producto " +
                                         "FROM Carrito_Detalle WHERE ID_Carrito = ? AND ID_Producto = ? " +
-                                        "AND Estado_Carrito IN (2, 4, 5)";
+                                        "AND Estado_Carrito IN (4, 5)";
             ps = con.prepareStatement(sqlBuscarProducto);
             ps.setInt(1, idCarrito);
             ps.setInt(2, idProducto);
@@ -142,21 +145,8 @@ public class CarritoDAO {
             int resultadoOperacion = 0;
 
             if (idDetalle != -1) {
-                String sqlVerificarEstado = "SELECT Estado_Carrito FROM Carrito_Detalle WHERE ID_DetalleCarrito = ?";
-                PreparedStatement psEstado = con.prepareStatement(sqlVerificarEstado);
-                psEstado.setInt(1, idDetalle);
-                ResultSet rsEstado = psEstado.executeQuery();
-                int estadoActual = 4;
-                if (rsEstado.next()) estadoActual = rsEstado.getInt("Estado_Carrito");
-                rsEstado.close();
-                psEstado.close();
-
-                int nuevaCantidad;
-                if (estadoActual == 2) {
-                    nuevaCantidad = 1;
-                } else {
-                    nuevaCantidad = cantidadExistente + cantidad;
-                }
+                // El item ya existe en estado activo (4 o 5): sumar cantidad
+                int nuevaCantidad = cantidadExistente + cantidad;
                 double nuevoSubtotal = nuevaCantidad * precio;
 
                 String sqlActualizarDetalle = "UPDATE Carrito_Detalle SET Cantidad_Producto = ?, " +
@@ -167,7 +157,7 @@ public class CarritoDAO {
                 ps.setDouble(2, nuevoSubtotal);
                 ps.setInt(3, idDetalle);
                 ps.executeUpdate();
-                resultadoOperacion = estadoActual == 2 ? 1 : 2;
+                resultadoOperacion = 2; // CANTIDAD_INCREMENTADA
             } else {
                 double subtotal = cantidad * precio;
                 String sqlInsertarDetalle = "INSERT INTO Carrito_Detalle " +

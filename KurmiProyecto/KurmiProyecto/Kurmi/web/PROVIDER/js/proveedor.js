@@ -3,7 +3,7 @@
  * Coloca este archivo en: web/PROVIDER/js/index.js
  */
 
-const BASE_URL = '/Kurmi';
+const BASE_URL = '/KurmiProyecto';
 const BASE_IMG = `${BASE_URL}/RESOURCES/img/productos/`;
 const IMG_DEF  = `${BASE_URL}/RESOURCES/img/default.png`;
 
