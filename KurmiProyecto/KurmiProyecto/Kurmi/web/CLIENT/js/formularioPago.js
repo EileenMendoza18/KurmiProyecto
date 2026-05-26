@@ -32,6 +32,7 @@ document.addEventListener("DOMContentLoaded", () => {
         localStorage.removeItem("totalCarrito");
         localStorage.removeItem("productosCheckout");
         localStorage.removeItem("totalCheckout");
+        localStorage.removeItem("esRecompra");
 
         if (bloquePago) {
             bloquePago.innerHTML = `
@@ -78,10 +79,16 @@ document.addEventListener("DOMContentLoaded", () => {
         if (resumenCompra) {
             resumenCompra.innerText = `${decodeURIComponent(nombreProd)} - 1 Unidad: $${valorUnitario.toLocaleString('es-CO')}`;
         }
+
     } else {
         // -----------------------------------------------------------------
-        // FLUJO B: COMPRA DESDE CARRITO O RECOMPRA DESDE PEDIDO CANCELADO
+        // FLUJO B: COMPRA DESDE CARRITO  |  FLUJO C: RECOMPRA DESDE PEDIDO CANCELADO
+        // La diferencia entre B y C se determina por la bandera 'esRecompra'
+        // que se guarda en localStorage cuando el usuario hace "Comprar nuevamente"
+        // desde pedidos.js. Sin esa bandera, se trata como compra normal del carrito.
         // -----------------------------------------------------------------
+        const esRecompra = localStorage.getItem("esRecompra") === "true";
+
         const listaProductos =
             JSON.parse(localStorage.getItem("productosCheckout")) ||
             JSON.parse(localStorage.getItem("carrito")) ||
@@ -94,8 +101,6 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         let resumenTexto   = "";
-        // ► FIX: siempre recalcular el total desde los productos,
-        //   no confiar en un total previo que puede estar desactualizado.
         let totalCalculado = 0;
 
         listaProductos.forEach((item, index) => {
@@ -103,25 +108,71 @@ document.addEventListener("DOMContentLoaded", () => {
             const cantidadSegura = parseInt(item.cantidad || item.Cantidad_producto || 1);
             const precioSeguro   = parseFloat(item.precio || item.precioProducto || item.Valor_Producto || 0);
 
-            // Calcular siempre precio * cantidad para evitar desfases
             totalCalculado += precioSeguro * cantidadSegura;
             resumenTexto   += `${nombreSeguro} (x${cantidadSegura})`;
             if (index < listaProductos.length - 1) resumenTexto += " + ";
         });
 
-        // Setear el total definitivo en el input que viaja al Servlet
         if (inputTotalPago) inputTotalPago.value = totalCalculado;
 
+        // Setear idCarrito SOLO si es compra normal del carrito (no recompra)
         const inputIdCarrito = document.getElementById("idCarrito");
         if (inputIdCarrito) {
-            const carritoValido = listaProductos.find(p => p.idCarrito && p.idCarrito !== "");
-            inputIdCarrito.value = carritoValido ? carritoValido.idCarrito : 0;
-            console.log("idCarrito enviado al servlet:", inputIdCarrito.value);
+            if (!esRecompra) {
+                const carritoValido = listaProductos.find(p => p.idCarrito && p.idCarrito !== "");
+                inputIdCarrito.value = carritoValido ? carritoValido.idCarrito : 0;
+                console.log("idCarrito enviado al servlet:", inputIdCarrito.value);
+            } else {
+                inputIdCarrito.value = 0; // En recompra el DAO crea su propio carrito
+            }
         }
 
         if (resumenCompra) {
             resumenCompra.innerText =
                 `${resumenTexto} | Total: $${totalCalculado.toLocaleString('es-CO')}`;
+        }
+
+        // -----------------------------------------------------------------
+        // Inyectar productos como campos ocultos SOLO si es RECOMPRA.
+        // En compra normal del carrito los productos ya están en BD,
+        // el servlet los lee directamente por idCarrito — no necesita checkout_.
+        // -----------------------------------------------------------------
+        const formPago = document.querySelector('form');
+        if (formPago) {
+            // Limpiar campos anteriores por si acaso
+            formPago.querySelectorAll('[name^="checkout_"], [name="esRecompra"]').forEach(el => el.remove());
+
+            if (esRecompra) {
+                // Marcar como recompra para que el servlet cree carrito temporal
+                const flagInput    = document.createElement('input');
+                flagInput.type     = 'hidden';
+                flagInput.name     = 'esRecompra';
+                flagInput.value    = 'true';
+                formPago.appendChild(flagInput);
+
+                // Inyectar los productos del pedido cancelado
+                listaProductos.forEach(item => {
+                    const idInput    = document.createElement('input');
+                    idInput.type     = 'hidden';
+                    idInput.name     = 'checkout_idProducto';
+                    idInput.value    = item.idProducto || '';
+
+                    const prInput    = document.createElement('input');
+                    prInput.type     = 'hidden';
+                    prInput.name     = 'checkout_precio';
+                    prInput.value    = parseFloat(item.precio || item.precioProducto || 0);
+
+                    const canInput   = document.createElement('input');
+                    canInput.type    = 'hidden';
+                    canInput.name    = 'checkout_cantidad';
+                    canInput.value   = parseInt(item.cantidad || 1);
+
+                    formPago.appendChild(idInput);
+                    formPago.appendChild(prInput);
+                    formPago.appendChild(canInput);
+                });
+            }
+            // En compra normal no se inyectan checkout_ — el servlet usa idCarrito
         }
     }
 });

@@ -92,8 +92,23 @@ public class UsuarioDAO {
             int resultado = ps.executeUpdate();
             return resultado > 0;
 
+        } catch (SQLException e) {
+            // SQLState 23000 = violación de restricción de unicidad (UNIQUE KEY)
+            if ("23000".equals(e.getSQLState())) {
+                String msg = e.getMessage().toLowerCase();
+                if (msg.contains("correo_usu") || msg.contains("correo")) {
+                    System.err.println("[Kurmi - UsuarioDAO] ❌ Registro fallido: el correo '" + dto.getCorreo() + "' ya está registrado.");
+                } else if (msg.contains("telefono")) {
+                    System.err.println("[Kurmi - UsuarioDAO] ❌ Registro fallido: el teléfono '" + dto.getTelefono() + "' ya está registrado.");
+                } else {
+                    System.err.println("[Kurmi - UsuarioDAO] ❌ Registro fallido por dato duplicado: " + e.getMessage());
+                }
+            } else {
+                System.err.println("[Kurmi - UsuarioDAO] ❌ Error SQL inesperado al registrar usuario: " + e.getMessage());
+            }
+            return false;
         } catch (Exception e) {
-            System.err.println("Error al registrar usuario: " + e.getMessage());
+            System.err.println("[Kurmi - UsuarioDAO] ❌ Error general al registrar usuario: " + e.getMessage());
             return false;
         } finally {
             cerrarRecursos();

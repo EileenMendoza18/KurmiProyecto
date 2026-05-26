@@ -82,6 +82,21 @@ public class CarritoDAO {
             con = cn.getConexion();
             con.setAutoCommit(false); 
 
+            String sqlStock =
+                "SELECT COALESCE(SUM(StockInicial + CantidadAnadida), 0) AS stockTotal " +
+                "FROM Inventario WHERE ID_Producto = ?";
+            PreparedStatement psStock = con.prepareStatement(sqlStock);
+            psStock.setInt(1, idProducto);
+            ResultSet rsStock = psStock.executeQuery();
+            int stockDisponible = 0;
+            if (rsStock.next()) stockDisponible = rsStock.getInt("stockTotal");
+            rsStock.close();
+            psStock.close();
+
+            if (stockDisponible <= 0) {
+                con.setAutoCommit(true);
+                return -1; // Sin stock
+            }
             // 1. BUSCAR SI EL USUARIO YA TIENE UN CARRITO ACTIVO
             String sqlBuscarCarrito = "SELECT ID_Carrito FROM Carrito_Compras WHERE ID_Cliente = ? AND EstadoCarrito = 1";
             ps = con.prepareStatement(sqlBuscarCarrito);
@@ -236,6 +251,37 @@ public class CarritoDAO {
             return false;
         } finally {
             try { if (ps != null) ps.close(); if (con != null) con.close(); } catch (SQLException e) {}
+        }
+    }
+    public int actualizarCantidad(int idDetalle, int nuevaCantidad, int idProducto) {
+        // Verificar stock antes de actualizar
+        String sqlStock =
+            "SELECT COALESCE(SUM(StockInicial + CantidadAnadida), 0) AS stockTotal " +
+            "FROM Inventario WHERE ID_Producto = ?";
+        try (Connection con = cn.getConexion()) {
+            PreparedStatement psStock = con.prepareStatement(sqlStock);
+            psStock.setInt(1, idProducto);
+            ResultSet rsStock = psStock.executeQuery();
+            int stockDisponible = 0;
+            if (rsStock.next()) stockDisponible = rsStock.getInt("stockTotal");
+            rsStock.close();
+            psStock.close();
+
+            if (nuevaCantidad > stockDisponible) return -1; // Supera stock
+
+            String sql = "UPDATE Carrito_Detalle " +
+                         "SET Cantidad_producto = ?, SubTotal = Precio_Unitario_Momento * ? " +
+                         "WHERE ID_DetalleCarrito = ? AND Estado_Carrito IN (4, 5)";
+            PreparedStatement ps = con.prepareStatement(sql);
+            ps.setInt(1, nuevaCantidad);
+            ps.setInt(2, nuevaCantidad);
+            ps.setInt(3, idDetalle);
+            boolean ok = ps.executeUpdate() > 0;
+            ps.close();
+            return ok ? 1 : 0;
+        } catch (SQLException e) {
+            System.err.println("Error al actualizar cantidad: " + e.getMessage());
+            return 0;
         }
     }
 }

@@ -125,6 +125,8 @@
     color: #463877;
     border: none;
     border-radius: 10px;
+    width: auto;
+    height: auto;
     padding: 12px 32px;
     font-size: 0.85rem;
     font-weight: 600;
@@ -149,8 +151,9 @@
 
 .btn__nav {
     flex: 1;
-    min-width: 160px;
-    padding: 14px 20px;
+    width: auto;
+    height: auto;
+    padding: 12px 32px;
     border: none;
     border-radius: 12px;
     background-color: #DCD6F7;

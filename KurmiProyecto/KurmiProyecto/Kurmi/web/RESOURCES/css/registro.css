@@ -65,3 +65,11 @@ p a{
 .aceptar input{
     width: 20px;
 }
+
+.select-rol{
+    width: 100%;
+    padding: 12px;
+    border-radius: 10px;
+    border: none;
+    color: #000000af;
+}

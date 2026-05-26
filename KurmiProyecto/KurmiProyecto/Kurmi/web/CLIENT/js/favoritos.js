@@ -47,7 +47,7 @@ async function cargarFavoritos() {
         grid.innerHTML = '';
 
         if (!productos || productos.length === 0) {
-            grid.innerHTML = '<p class="favoritos__vacio">😕 Aún no tienes productos en favoritos.</p>';
+            grid.innerHTML = '<p class="favoritos__vacio"> :( Aún no tienes productos en favoritos.</p>';
             return;
         }
 

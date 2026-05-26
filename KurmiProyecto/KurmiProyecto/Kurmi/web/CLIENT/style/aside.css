@@ -1,14 +1,16 @@
 /* --- MENÚ LATERAL INTERACTIVO (ASIDE) --- */
-aside {
-    grid-column: 1;
-    margin-top: 14vh;
+
+#asideContainer{
     position: fixed;
+    z-index: 10;
+}
+aside {
+    margin-top: 14vh;
     display: grid;
     grid-template-columns: 50px 200px;
     grid-template-rows: repeat(2, auto);
     width: auto;
     height: auto;
-    z-index: 10;
     margin-left: 20px;
 }
 
@@ -75,18 +77,17 @@ aside label img {
     border-bottom-right-radius: 10px;
     border-top-right-radius: 10px;
     border: 1px solid rgb(186, 153, 233);
-    width: 180px;
+    width: auto;
     
     /* === CAMBIOS CRÍTICOS DE BLINDAJE === */
-    height: auto !important;       /* Permite que la caja crezca según los datos */
+    height: 29.7vh;     /* Permite que la caja crezca según los datos */
     max-height: 443px;             /* No deja que supere la altura del panel morado izquierdo */
     overflow-y: auto;              /* Si tienes más de 8 categorías, activa un scroll interno limpio */
     box-shadow: 4px 4px 12px rgba(70, 56, 119, 0.1);
 }
 
 .letras div {
-    min-height: 47px;              /* Cambiado de height a min-height para dar flexibilidad */
-    height: auto;
+    height: 6vh;
     display: flex;
     align-items: center;
     padding-left: 15px;
