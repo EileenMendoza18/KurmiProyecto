@@ -23,9 +23,12 @@ public class PedidoDAO {
             "VALUES (?, ?, ?, 1)";
         String sqlUpdateDetalle =
             "UPDATE Carrito_Detalle SET Estado_Carrito = 3 " +
-            "WHERE ID_Carrito = ? AND Estado_Carrito IN (4, 5)";
+            "WHERE ID_Carrito = ? AND Estado_Carrito = 5"; // Solo los seleccionados por el usuario
         String sqlCerrarCarrito =
-            "UPDATE Carrito_Compras SET EstadoCarrito = 3 WHERE ID_Carrito = ?";
+            "UPDATE Carrito_Compras SET EstadoCarrito = 3 " +
+            "WHERE ID_Carrito = ? AND NOT EXISTS (" +
+            "  SELECT 1 FROM Carrito_Detalle " +
+            "  WHERE ID_Carrito = ? AND Estado_Carrito = 4)";
         String sqlNuevoCarrito =
             "INSERT INTO Carrito_Compras (ID_Cliente, EstadoCarrito) VALUES (?, 1)";
 
@@ -37,8 +40,6 @@ public class PedidoDAO {
 
             if (pedido.tieneProductosCheckout()) {
                 // ── FLUJO RECOMPRA ──────────────────────────────────────────────
-                // Crear un carrito temporal nuevo SOLO para los productos del pedido cancelado.
-                // El carrito activo del usuario queda intacto.
                 PreparedStatement psCrear = con.prepareStatement(sqlNuevoCarrito, Statement.RETURN_GENERATED_KEYS);
                 psCrear.setInt(1, pedido.getIdUsuario());
                 psCrear.executeUpdate();
@@ -48,7 +49,6 @@ public class PedidoDAO {
                 rsCrear.close();
                 psCrear.close();
 
-                // Insertar ÚNICAMENTE los productos del pedido cancelado en el carrito temporal
                 String sqlInsert =
                     "INSERT INTO Carrito_Detalle " +
                     "(ID_Carrito, ID_Producto, Cantidad_Producto, Precio_Unitario_Momento, SubTotal, Estado_Carrito) " +
@@ -77,7 +77,6 @@ public class PedidoDAO {
                 // ── FLUJO COMPRA NORMAL DESDE CARRITO ──────────────────────────
                 idCarrito = pedido.getIdCarrito();
 
-                // Buscar carrito activo si no viene uno válido
                 if (idCarrito <= 0) {
                     PreparedStatement psBuscar = con.prepareStatement(
                         "SELECT ID_Carrito FROM Carrito_Compras WHERE ID_Cliente = ? AND EstadoCarrito = 1 LIMIT 1");
@@ -88,7 +87,6 @@ public class PedidoDAO {
                     psBuscar.close();
                 }
 
-                // Si sigue sin carrito, crear uno nuevo
                 if (idCarrito <= 0) {
                     PreparedStatement psCrear = con.prepareStatement(sqlNuevoCarrito, Statement.RETURN_GENERATED_KEYS);
                     psCrear.setInt(1, pedido.getIdUsuario());
@@ -123,18 +121,42 @@ public class PedidoDAO {
             ps.setDouble(3, pedido.getTotal());
             if (ps.executeUpdate() == 0) { con.rollback(); return false; }
 
-            // 3. Marcar ítems del carrito como Vendido
+            // 3. Marcar ítems del carrito como Vendido (estado 3)
             ps = con.prepareStatement(sqlUpdateDetalle);
             ps.setInt(1, idCarrito);
             ps.executeUpdate();
 
-            // 4. Cerrar el carrito usado
+            // 4. Cerrar el carrito solo si no quedan items pendientes (estado 4)
             ps = con.prepareStatement(sqlCerrarCarrito);
             ps.setInt(1, idCarrito);
+            ps.setInt(2, idCarrito);
             ps.executeUpdate();
 
-            // 5. Crear nuevo carrito vacío para la siguiente compra
-            //    Solo en compra normal; en recompra el carrito activo del usuario ya existe.
+            // ✅ FIX: Descontar el inventario por cada producto comprado
+            String sqlGetProductosComprados =
+                "SELECT ID_Producto, Cantidad_Producto FROM Carrito_Detalle " +
+                "WHERE ID_Carrito = ? AND Estado_Carrito = 3";
+            PreparedStatement psProds = con.prepareStatement(sqlGetProductosComprados);
+            psProds.setInt(1, idCarrito);
+            ResultSet rsProds = psProds.executeQuery();
+
+            // Descuenta del primer registro de inventario disponible para ese producto
+            String sqlDescontar =
+                "UPDATE Inventario SET StockInicial = GREATEST(0, StockInicial - ?) " +
+                "WHERE ID_Producto = ? LIMIT 1";
+            while (rsProds.next()) {
+                int idProd   = rsProds.getInt("ID_Producto");
+                int cantidad = rsProds.getInt("Cantidad_Producto");
+                PreparedStatement psDesc = con.prepareStatement(sqlDescontar);
+                psDesc.setInt(1, cantidad);
+                psDesc.setInt(2, idProd);
+                psDesc.executeUpdate();
+                psDesc.close();
+            }
+            rsProds.close();
+            psProds.close();
+
+            // 5. Crear nuevo carrito vacío para la siguiente compra (solo en compra normal)
             if (!pedido.tieneProductosCheckout()) {
                 ps = con.prepareStatement(sqlNuevoCarrito);
                 ps.setInt(1, pedido.getIdUsuario());
@@ -165,12 +187,14 @@ public class PedidoDAO {
             "WHERE p.ID_Cliente = ? AND p.Estado_Pedido = ? " +
             "ORDER BY p.Fecha_Pedido DESC";
 
+        // ✅ FIX: Filtrar solo Estado_Carrito = 3 (vendidos) para no contar filas de otros carritos
+        // También se agrega Imagen_Producto para mostrarla en el detalle del pedido
         String sqlProductos =
-            "SELECT pr.ID_Producto, pr.Nombre_Producto, " +
+            "SELECT pr.ID_Producto, pr.Nombre_Producto, pr.Imagen_Producto, " +
             "cd.Cantidad_producto, cd.Precio_Unitario_Momento, cd.SubTotal " +
             "FROM Carrito_Detalle cd " +
             "JOIN Productos pr ON cd.ID_Producto = pr.ID_Producto " +
-            "WHERE cd.ID_Carrito = ? AND cd.Estado_Carrito != 2";
+            "WHERE cd.ID_Carrito = ? AND cd.Estado_Carrito IN (3, 5)"; // 3=vendido, 5=seleccionado en pedidos históricos
 
         Connection con = null;
         PreparedStatement ps = null;
@@ -197,17 +221,25 @@ public class PedidoDAO {
                     int cantidad = rsP.getInt("Cantidad_producto");
                     totalUnidades += cantidad;
 
+                    // ✅ FIX: Leer imagen real del producto
+                    String imgProd = rsP.getString("Imagen_Producto");
+                    String imagenFinal = (imgProd != null && !imgProd.isBlank()) ? imgProd : "inicioHelado.png";
+
                     Map<String, Object> prod = new java.util.LinkedHashMap<>();
                     prod.put("idProducto",  rsP.getInt("ID_Producto"));
                     prod.put("nombre",      rsP.getString("Nombre_Producto"));
                     prod.put("cantidad",    cantidad);
                     prod.put("precio",      rsP.getDouble("Precio_Unitario_Momento"));
                     prod.put("precioTotal", rsP.getDouble("SubTotal"));
-                    prod.put("imagen",      "inicioHelado.png");
+                    prod.put("imagen",      imagenFinal);
                     listaProds.add(prod);
                 }
                 rsP.close();
                 psP.close();
+
+                // Imagen del primer producto para la tarjeta del pedido
+                String imagenPrimera = listaProds.isEmpty() ? "inicioHelado.png"
+                        : (String) listaProds.get(0).get("imagen");
 
                 Map<String, Object> pedido = new java.util.LinkedHashMap<>();
                 pedido.put("idPedido",       idPedido);
@@ -217,7 +249,7 @@ public class PedidoDAO {
                 pedido.put("totalProductos", totalUnidades);
                 pedido.put("metodoPago",     rs.getString("metodoPago") != null
                                              ? rs.getString("metodoPago") : "No registrado");
-                pedido.put("imagenPrimera",  "inicioHelado.png");
+                pedido.put("imagenPrimera",  imagenPrimera);
                 pedido.put("productos",      listaProds);
                 listaPedidos.add(pedido);
             }
@@ -226,8 +258,8 @@ public class PedidoDAO {
             System.err.println("Error en obtenerPedidosPorUsuario: " + e.getMessage());
         } finally {
             try {
-                if (rs != null) rs.close();
-                if (ps != null) ps.close();
+                if (rs  != null) rs.close();
+                if (ps  != null) ps.close();
                 if (con != null) con.close();
             } catch (SQLException e) {
                 System.err.println("Error cerrando recursos: " + e.getMessage());
@@ -257,8 +289,8 @@ public class PedidoDAO {
 
     private void cerrarConexiones() {
         try {
-            if (rs != null) rs.close();
-            if (ps != null) ps.close();
+            if (rs  != null) rs.close();
+            if (ps  != null) ps.close();
             if (con != null) con.close();
         } catch (Exception e) {
             System.err.println("Error al liberar recursos: " + e.getMessage());

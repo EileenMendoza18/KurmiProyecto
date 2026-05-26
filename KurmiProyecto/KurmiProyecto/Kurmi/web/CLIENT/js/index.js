@@ -783,28 +783,24 @@ if (btnComprar) {
 }
 
 function actualizarResumenCarrito() {
+    const totalBadge   = document.querySelector(".resumen__total-badge span");
+    const contadorEl   = document.getElementById("contador-productos");
     let totalAcumulado = 0;
-    let contadorSeleccionados = 0;
+    let totalSeleccionados = 0;
+
+    // Solo cuenta y suma los productos cuyo checkbox está marcado
     document.querySelectorAll(".producto__card").forEach(tarjeta => {
         const checkbox = tarjeta.querySelector(".chk-comprar");
-        
         if (checkbox && checkbox.checked) {
-            const cantidad = parseInt(tarjeta.querySelector(".cantidad-valor").textContent) || 0;
-            
-            // Extraemos el precio (limpiando caracteres de moneda de ser necesario)
-            const precioTexto = tarjeta.querySelector(".card__precio").textContent;
-            const precio = parseFloat(precioTexto.replace(/[^0-9]/g, '')) || 0;
-
-            totalAcumulado += (precio * cantidad);
-            contadorSeleccionados += 1; // Cuenta el producto como seleccionado
+            const cantidad = parseInt(tarjeta.querySelector(".cantidad-valor")?.textContent || "0");
+            const precio   = parseFloat(checkbox.getAttribute("data-precio") || "0");
+            totalSeleccionados += 1;
+            totalAcumulado     += precio * cantidad;
         }
     });
-    document.getElementById("contador-productos").textContent = contadorSeleccionados;
-    
-    const badgeTotal = document.querySelector(".resumen__total-badge span");
-    if (badgeTotal) {
-        badgeTotal.textContent = `Total: $${totalAcumulado.toLocaleString('es-CO')}`;
-    }
+
+    if (totalBadge) totalBadge.textContent = `Total: $${totalAcumulado.toLocaleString('es-CO')}`;
+    if (contadorEl) contadorEl.textContent  = totalSeleccionados;
 }
 
 // ─── BUSCADOR EN TIEMPO REAL ──────────────────────────────────────────────────

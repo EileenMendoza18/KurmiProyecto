@@ -10,8 +10,13 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.io.PrintWriter;
 
-@WebServlet(name = "ObtenerCategoriasServlet", urlPatterns = {"/ObtenerCategoriasServlet"})
-public class ObtenerCategoriasServlet extends HttpServlet {
+/**
+ * Servlet NUEVO exclusivo para el proveedor.
+ * Devuelve {idRelaCatSabor, nombreCategoria, nombreSabor} para el select del modal.
+ * URL: GET /ObtenerRelacionesCatSaborServlet
+ */
+@WebServlet(name = "ObtenerRelacionesCatSaborServlet", urlPatterns = {"/ObtenerRelacionesCatSaborServlet"})
+public class ObtenerRelacionesCatSaborServlet extends HttpServlet {
 
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
@@ -21,7 +26,7 @@ public class ObtenerCategoriasServlet extends HttpServlet {
 
         try (PrintWriter out = response.getWriter()) {
             CategoriaDAO dao = new CategoriaDAO();
-            out.print(new Gson().toJson(dao.obtenerCategorias())); // restaurado — devuelve List<String>
+            out.print(new Gson().toJson(dao.obtenerRelacionesCatSabor()));
         } catch (Exception e) {
             response.setStatus(500);
             response.getWriter().print("{\"error\":\"" + e.getMessage() + "\"}");
