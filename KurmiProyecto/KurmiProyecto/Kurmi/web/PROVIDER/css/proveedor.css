@@ -736,3 +736,351 @@ html, body {
     background-color: #fff;
     box-shadow: 0 0 0 3px rgba(156, 39, 176, 0.15);
 }
+
+/* ── Resumen ganancias ── */
+.resumen-ganancias {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #f0fdf4;
+    border: 1px solid #86efac;
+    border-radius: 12px;
+    padding: 16px 24px;
+    margin-bottom: 24px;
+}
+.resumen-ganancias__label { color: #166534; font-size: 0.95rem; }
+.resumen-ganancias__valor { font-size: 1.4rem; font-weight: 700; color: #15803d; }
+
+/* ── Tabs ── */
+.ventas-tabs {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+.ventas-tab {
+    padding: 8px 18px;
+    border-radius: 20px;
+    border: 1px solid #d1d5db;
+    background: #f9fafb;
+    cursor: pointer;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.ventas-tab--activo {
+    background: #7c3aed;
+    color: white;
+    border-color: #7c3aed;
+}
+.badge-count {
+    background: rgba(255,255,255,0.3);
+    border-radius: 10px;
+    padding: 1px 7px;
+    font-size: 0.8rem;
+}
+
+/* ── Tarjeta de pedido ── */
+.pedido-card {
+    background: white;
+    border-radius: 12px;
+    border-left: 4px solid #d1d5db;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+    padding: 16px 20px;
+    margin-bottom: 16px;
+}
+.pedido-card--pendientes { border-left-color: #f59e0b; }
+.pedido-card--entregados { border-left-color: #22c55e; }
+.pedido-card--cancelados { border-left-color: #ef4444; }
+
+.pedido-card__header {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+    margin-bottom: 8px;
+    flex-wrap: wrap;
+}
+.pedido-card__id   { font-weight: 700; color: #6d28d9; }
+.pedido-card__fecha, .pedido-card__metodo { color: #6b7280; font-size: 0.88rem; }
+
+.pedido-card__receptor { font-size: 0.9rem; color: #374151; margin-bottom: 12px; }
+
+.pedido-card__items { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+.pedido-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: #f9fafb;
+    border-radius: 8px;
+    padding: 6px 10px;
+}
+.pedido-item__img    { width: 40px; height: 40px; object-fit: cover; border-radius: 6px; }
+.pedido-item__nombre { flex: 1; font-size: 0.9rem; }
+.pedido-item__cant   { color: #6b7280; font-size: 0.85rem; }
+.pedido-item__precio { font-weight: 600; color: #111827; }
+
+.pedido-card__footer {
+    text-align: right;
+    font-size: 0.9rem;
+    color: #374151;
+    border-top: 1px solid #f3f4f6;
+    padding-top: 10px;
+}
+
+.btn-entregar {
+    background: #16a34a;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 8px 16px;
+    cursor: pointer;
+    font-size: 0.88rem;
+    font-weight: 600;
+}
+.btn-entregar:hover { background: #15803d; }
+.btn-entregar:disabled { background: #9ca3af; cursor: not-allowed; }
+
+.pedido-card__footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-top: 1px solid #f3f4f6;
+    padding-top: 10px;
+    margin-top: 8px;
+}
+
+.pedido-item__precio-unit {
+    color: #6b7280;
+    font-size: 0.82rem;
+    margin-left: auto;
+    margin-right: 8px;
+}
+
+/* ── Perfil ── */
+.perfil-card {
+    background: white;
+    border-radius: 16px;
+    padding: 32px;
+    box-shadow: 0 1px 6px rgba(0,0,0,0.08);
+    max-width: 800px;
+}
+.perfil-card__fila {
+    display: flex;
+    gap: 24px;
+    margin-bottom: 20px;
+}
+.perfil-campo {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+.perfil-campo label {
+    font-size: 0.85rem;
+    color: #6b7280;
+    font-weight: 500;
+}
+.perfil-campo input {
+    padding: 10px 14px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    background: #f9fafb;
+    color: #111827;
+}
+.perfil-campo input:not([readonly]) {
+    background: white;
+    border-color: #7c3aed;
+    outline: none;
+}
+.perfil-card__acciones {
+    display: flex;
+    gap: 12px;
+    margin-top: 28px;
+}
+.btn-cerrar-sesion {
+    padding: 10px 20px;
+    border-radius: 8px;
+    border: 1px solid #ef4444;
+    background: white;
+    color: #ef4444;
+    font-weight: 600;
+    cursor: pointer;
+    font-size: 0.9rem;
+}
+.btn-cerrar-sesion:hover { background: #fef2f2; }
+
+.error-msg {
+    color: #ef4444;
+    font-size: 0.78rem;
+    margin-top: 2px;
+    display: block;
+    min-height: 16px;
+}
+.perfil-campo input.input-error {
+    border-color: #ef4444;
+    background: #fff5f5;
+}
+
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   SECCIÓN NOSOTROS — Panel Proveedor
+   Espeja los estilos de CLIENT/style/nosotros.css adaptados al layout del panel
+   ───────────────────────────────────────────────────────────────────────────── */
+
+.prov-nosotros {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 35px;
+    padding: 30px 20px;
+    width: 100%;
+}
+
+.prov-nosotros__titulo {
+    color: #463877;
+    font-size: 2rem;
+    font-weight: bold;
+    margin-bottom: 10px;
+    text-align: center;
+}
+
+/* --- Tarjetas estructurales --- */
+.prov-tarjeta-nosotros {
+    background-color: white;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    width: 95%;
+    max-width: 1000px;
+    gap: 40px;
+    padding: 0;
+    align-items: center;
+    border-radius: 25px;
+    overflow: hidden;
+    box-shadow: 0 4px 20px rgba(70, 56, 119, 0.08);
+    justify-items: center;
+}
+
+.prov-contenido-nosotros {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    text-align: left;
+    padding: 24px;
+}
+
+.prov-tarjeta-nosotros h2 {
+    color: #463877;
+    font-size: 1.5rem;
+    font-weight: bold;
+    margin: 0;
+}
+
+.prov-tarjeta-nosotros p {
+    color: #756a9b;
+    font-size: 0.95rem;
+    line-height: 1.6;
+    margin: 0;
+}
+
+.prov-imagen-contenedor {
+    width: 100%;
+    height: 100%;
+}
+
+.prov-imagen {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+/* --- Sección Contáctanos --- */
+.prov-contacto-titulo {
+    color: #463877;
+    font-size: 1.7rem;
+    margin-top: 10px;
+    font-weight: bold;
+}
+
+.prov-contacto {
+    background-color: white;
+    width: 95%;
+    max-width: 1000px;
+    display: grid;
+    grid-template-columns: 20% 80%;
+    gap: 10px;
+    padding: 20px;
+    border-radius: 25px;
+    align-items: center;
+    justify-items: center;
+    box-shadow: 0 4px 20px rgba(70, 56, 119, 0.08);
+}
+
+.prov-contacto__logo-contenedor {
+    width: 100%;
+}
+
+.prov-contacto__logo {
+    width: 85%;
+    height: auto;
+    object-fit: contain;
+}
+
+.prov-contacto__lista-cards {
+    background-color: #DCD6F7;
+    width: 90%;
+    padding: 15px;
+    border-radius: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.prov-card {
+    display: flex;
+    align-items: center;
+    background-color: white;
+    padding: 12px 10px;
+    border-radius: 12px;
+    gap: 20px;
+    width: 100%;
+}
+
+.prov-card__img {
+    width: 35px;
+    height: 35px;
+    background-color: #F4EEFF;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.prov-card__img img {
+    width: 60%;
+    height: 60%;
+    object-fit: contain;
+}
+
+.prov-card__info {
+    display: flex;
+    flex-direction: column;
+    text-align: left;
+    gap: 3px;
+}
+
+.prov-card__nombre {
+    color: #463877;
+    font-weight: bold;
+    font-size: 0.95rem;
+    margin: 0;
+}
+
+.prov-card__correo {
+    color: #756a9b;
+    font-size: 0.85rem;
+    margin: 0;
+}

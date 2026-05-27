@@ -98,11 +98,14 @@ public class PedidoDAO {
                 int idProd   = rsSelec.getInt("ID_Producto");
                 int cantidad = rsSelec.getInt("Cantidad_Producto");
 
+                // REEMPLAZAR el bloque del psDesc por esto:
                 PreparedStatement psDesc = con.prepareStatement(
-                    "UPDATE Inventario SET StockInicial = GREATEST(0, StockInicial - ?) " +
-                    "WHERE ID_Producto = ? LIMIT 1");
-                psDesc.setInt(1, cantidad); psDesc.setInt(2, idProd);
-                psDesc.executeUpdate(); psDesc.close();
+                    "INSERT INTO Inventario (ID_Producto, StockInicial, CantidadAnadida) " +
+                    "VALUES (?, 0, ?)");
+                psDesc.setInt(1, idProd);
+                psDesc.setInt(2, -cantidad);  // negativo = descuento
+                psDesc.executeUpdate();
+                psDesc.close();
 
                 PreparedStatement psStock = con.prepareStatement(
                     "SELECT COALESCE(SUM(StockInicial + CantidadAnadida), 0) AS total " +
@@ -306,6 +309,146 @@ public class PedidoDAO {
             cerrarConexiones();
         }
     }
+    
+    // ─────────────────────────────────────────────────────────────────────────
+// VENTAS DEL PROVEEDOR
+// Estados: 1=Pendiente, 2=Completado, 3=Cancelado
+// ─────────────────────────────────────────────────────────────────────────
+public Map<String, Object> obtenerVentasProveedor(int idProveedor) {
+
+    List<Map<String, Object>> pendientes = new ArrayList<>();
+    List<Map<String, Object>> entregados = new ArrayList<>();
+    double totalGanado = 0;
+
+    // Trae todos los pedidos que contienen al menos un producto del proveedor
+    String sqlPedidos =
+        "SELECT DISTINCT p.ID_Pedido, p.ID_Carrito, p.Fecha_Pedido, " +
+        "p.Estado_Pedido, p.Total_Pago, p.Nombre_Receptor, " +
+        "p.Direccion_Envio, p.Telefono_Envio, " +
+        "mp.Nombre_Metodo AS metodoPago " +
+        "FROM Pedidos_Cliente p " +
+        "JOIN Carrito_Detalle cd ON cd.ID_Carrito = p.ID_Carrito " +
+        "   AND cd.Estado_Carrito IN (3, 6) " +
+        "JOIN Productos pr ON pr.ID_Producto = cd.ID_Producto " +
+        "JOIN RelaProductoVendedor rpv ON rpv.ID_Productos = pr.ID_Producto " +
+        "LEFT JOIN Pago_Pedido pp ON pp.ID_Pedido = p.ID_Pedido " +
+        "LEFT JOIN Metodo_Pago mp ON mp.ID_Metodo = pp.ID_Metodo " +
+        "WHERE rpv.ID_Usuario = ? " +
+        "ORDER BY p.Fecha_Pedido DESC";
+
+    // Solo los ítems del proveedor dentro de ese carrito y fecha
+    String sqlItems =
+        "SELECT pr.Nombre_Producto, pr.Imagen_Producto, " +
+        "cd.Cantidad_Producto, cd.Precio_Unitario_Momento, cd.SubTotal " +
+        "FROM Carrito_Detalle cd " +
+        "JOIN Productos pr ON pr.ID_Producto = cd.ID_Producto " +
+        "JOIN RelaProductoVendedor rpv ON rpv.ID_Productos = pr.ID_Producto " +
+        "WHERE rpv.ID_Usuario = ? " +
+        "AND cd.ID_Carrito = ? " +
+        "AND cd.Estado_Carrito IN (3, 6) " +
+        "AND cd.Fecha_Venta = ?";
+
+    Connection conLocal = null;
+    try {
+        conLocal = cn.getConexion();
+
+        PreparedStatement psPed = conLocal.prepareStatement(sqlPedidos);
+        psPed.setInt(1, idProveedor);
+        ResultSet rsPed = psPed.executeQuery();
+
+        while (rsPed.next()) {
+            int    idPedido     = rsPed.getInt("ID_Pedido");
+            int    idCarrito    = rsPed.getInt("ID_Carrito");
+            int    estadoPedido = rsPed.getInt("Estado_Pedido");
+            String fecha        = rsPed.getString("Fecha_Pedido");
+
+            // Ítems del proveedor en este pedido
+            PreparedStatement psIt = conLocal.prepareStatement(sqlItems);
+            psIt.setInt(1, idProveedor);
+            psIt.setInt(2, idCarrito);
+            psIt.setString(3, fecha);
+            ResultSet rsIt = psIt.executeQuery();
+
+            List<Map<String, Object>> items = new ArrayList<>();
+            double subtotalProveedor = 0;
+
+            while (rsIt.next()) {
+                double sub = rsIt.getDouble("SubTotal");
+                subtotalProveedor += sub;
+                Map<String, Object> item = new java.util.LinkedHashMap<>();
+                item.put("nombre",   rsIt.getString("Nombre_Producto"));
+                item.put("imagen",   rsIt.getString("Imagen_Producto") != null
+                                     ? rsIt.getString("Imagen_Producto") : "inicioHelado.png");
+                item.put("cantidad", rsIt.getInt("Cantidad_Producto"));
+                item.put("precio",   rsIt.getDouble("Precio_Unitario_Momento"));
+                item.put("subtotal", sub);
+                items.add(item);
+            }
+            rsIt.close(); psIt.close();
+
+            if (items.isEmpty()) continue; // pedido no tiene ítems de este proveedor
+
+            Map<String, Object> pedido = new java.util.LinkedHashMap<>();
+            pedido.put("idPedido",           idPedido);
+            pedido.put("fecha",              fecha != null ? fecha.substring(0, 10) : "");
+            pedido.put("receptor",           rsPed.getString("Nombre_Receptor"));
+            pedido.put("direccion",          rsPed.getString("Direccion_Envio"));
+            pedido.put("telefono",           rsPed.getString("Telefono_Envio"));
+            pedido.put("metodoPago",         rsPed.getString("metodoPago") != null
+                                             ? rsPed.getString("metodoPago") : "No registrado");
+            pedido.put("subtotalProveedor",  subtotalProveedor);
+            pedido.put("items",              items);
+
+            if (estadoPedido == 1) {
+                pendientes.add(pedido);
+            } else if (estadoPedido == 2) {
+                entregados.add(pedido);
+                totalGanado += subtotalProveedor;
+            }
+            // estado 3 (cancelado) se ignora
+        }
+        rsPed.close(); psPed.close();
+
+    } catch (Exception e) {
+        System.err.println("Error en obtenerVentasProveedor: " + e.getMessage());
+        e.printStackTrace();
+    } finally {
+        try { if (conLocal != null) conLocal.close(); } catch (Exception ignored) {}
+    }
+
+    Map<String, Object> resultado = new java.util.LinkedHashMap<>();
+    resultado.put("pendientes",  pendientes);
+    resultado.put("entregados",  entregados);
+    resultado.put("totalGanado", totalGanado);
+    return resultado;
+}
+
+// Proveedor marca pedido como Completado (estado 2)
+// Solo si el pedido contiene al menos un producto suyo
+public boolean marcarPedidoEntregado(int idPedido, int idProveedor) {
+    String sqlCheck =
+        "SELECT COUNT(*) FROM Pedidos_Cliente p " +
+        "JOIN Carrito_Detalle cd ON cd.ID_Carrito = p.ID_Carrito " +
+        "JOIN RelaProductoVendedor rpv ON rpv.ID_Productos = cd.ID_Producto " +
+        "WHERE p.ID_Pedido = ? AND rpv.ID_Usuario = ? AND p.Estado_Pedido = 1";
+    String sqlUpdate =
+        "UPDATE Pedidos_Cliente SET Estado_Pedido = 2 WHERE ID_Pedido = ?";
+    try {
+        con = cn.getConexion();
+        ps = con.prepareStatement(sqlCheck);
+        ps.setInt(1, idPedido);
+        ps.setInt(2, idProveedor);
+        rs = ps.executeQuery();
+        if (!rs.next() || rs.getInt(1) == 0) return false;
+
+        ps = con.prepareStatement(sqlUpdate);
+        ps.setInt(1, idPedido);
+        return ps.executeUpdate() > 0;
+    } catch (Exception e) {
+        System.err.println("Error en marcarPedidoEntregado: " + e.getMessage());
+        return false;
+    } finally { cerrarConexiones(); }
+}
 
     private void cerrarConexiones() {
         try {

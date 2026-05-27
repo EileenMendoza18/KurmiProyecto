@@ -1,3 +1,6 @@
+import { isValidInput, clearError } from '../../helpers/index.js';
+
+
 /**
  * proveedor.js — Panel del proveedor Kurmi
  */
@@ -23,6 +26,9 @@ function configurarNavegacion() {
             btn.classList.add('nav__btn--activo');
             const seccion = btn.dataset.seccion;
             if (seccion === 'productos') renderSeccionProductos();
+            else if (seccion === 'pagos') renderSeccionPagos(); 
+            else if (seccion === 'perfil') renderSeccionPerfil();
+            else if (seccion === 'contacto') renderSeccionNosotros();
             else document.getElementById('contenidoPrincipal').innerHTML =
                 `<p style="padding:40px;color:#999">Sección en construcción.</p>`;
         });
@@ -723,4 +729,390 @@ function mostrarFeedback(elId, tipo, texto) {
     el.className     = `feedback feedback--${tipo}`;
     el.textContent   = texto;
     el.style.display = 'block';
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SECCIÓN MIS PAGOS / VENTAS
+// ─────────────────────────────────────────────────────────────────────────────
+async function renderSeccionPagos() {
+    const main = document.getElementById('contenidoPrincipal');
+    main.innerHTML = `
+        <div class="seccion-header">
+            <h2>💰 Mis ventas</h2>
+        </div>
+        <p class="cargando">Cargando ventas…</p>
+    `;
+
+    try {
+        const res = await fetch(`${BASE_URL}/VentasProveedorServlet`);
+        if (!res.ok) throw new Error(`Error ${res.status}`);
+        const data = await res.json();
+        renderPagos(data);
+    } catch (e) {
+        main.innerHTML = `<p class="error-txt">No se pudo cargar: ${e.message}</p>`;
+    }
+}
+
+function renderPagos(data) {
+    const main = document.getElementById('contenidoPrincipal');
+    const { pendientes, entregados, cancelados, totalGanado } = data;
+
+    main.innerHTML = `
+        <div class="seccion-header">
+            <h2>💰 Mis ventas</h2>
+        </div>
+
+        <!-- Resumen total -->
+        <div class="resumen-ganancias">
+            <span class="resumen-ganancias__label">💵 Total ganado (pedidos completados)</span>
+            <span class="resumen-ganancias__valor">$${Number(totalGanado).toLocaleString('es-CO')}</span>
+        </div>
+
+        <!-- Tabs -->
+        <div class="ventas-tabs">
+            <button class="ventas-tab ventas-tab--activo" data-tab="pendientes">
+                🕐 Por entregar <span class="badge-count">${pendientes.length}</span>
+            </button>
+            <button class="ventas-tab" data-tab="entregados">
+                ✅ Completados <span class="badge-count">${entregados.length}</span>
+            </button>
+        </div>
+
+        <div id="ventas-contenido"></div>
+    `;
+
+    // Listeners tabs
+    document.querySelectorAll('.ventas-tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+            document.querySelectorAll('.ventas-tab').forEach(t => t.classList.remove('ventas-tab--activo'));
+            tab.classList.add('ventas-tab--activo');
+            const tipo = tab.dataset.tab;
+            const lista = tipo === 'pendientes' ? pendientes
+                        : tipo === 'entregados' ? entregados
+                        : cancelados;
+            renderListaPedidos(lista, tipo);
+        });
+    });
+
+    // Mostrar pendientes por defecto
+    renderListaPedidos(pendientes, 'pendientes');
+}
+
+function renderListaPedidos(lista, tipo) {
+    const contenedor = document.getElementById('ventas-contenido');
+
+    if (!lista.length) {
+        const mensajes = {
+            pendientes: 'No tienes pedidos por entregar.',
+            entregados: 'No tienes pedidos completados aún.'
+        };
+        contenedor.innerHTML = `<p class="vacio" style="padding:30px 0">${mensajes[tipo]}</p>`;
+        return;
+    }
+
+    contenedor.innerHTML = lista.map(p => `
+        <div class="pedido-card pedido-card--${tipo}" id="pedido-card-${p.idPedido}">
+            <div class="pedido-card__header">
+                <span class="pedido-card__fecha">📅 ${p.fecha}</span>
+                <span class="pedido-card__metodo">💳 ${p.metodoPago}</span>
+            </div>
+            <div class="pedido-card__receptor">
+                <strong>👤 ${p.receptor}</strong> — ${p.direccion} — 📞 ${p.telefono}
+            </div>
+            <div class="pedido-card__items">
+                ${p.items.map(i => `
+                    <div class="pedido-item">
+                        <img src="${BASE_IMG}${i.imagen}" onerror="this.src='${IMG_DEF}'"
+                             class="pedido-item__img" alt="${i.nombre}" />
+                        <span class="pedido-item__nombre">${i.nombre}</span>
+                        <span class="pedido-item__cant">x${i.cantidad}</span>
+                        <span class="pedido-item__precio-unit">$${Number(i.precio).toLocaleString('es-CO')} c/u</span>
+                        <span class="pedido-item__precio">$${Number(i.subtotal).toLocaleString('es-CO')}</span>
+                    </div>
+                `).join('')}
+            </div>
+            <div class="pedido-card__footer">
+                <span>Subtotal: <strong>$${Number(p.subtotalProveedor).toLocaleString('es-CO')}</strong></span>
+                ${tipo === 'pendientes' ? `
+                    <button class="btn-entregar" data-id="${p.idPedido}">
+                        ✅ Marcar como entregado
+                    </button>
+                ` : ''}
+            </div>
+        </div>
+    `).join('');
+
+    // Listeners botones entregar
+    if (tipo === 'pendientes') {
+        contenedor.querySelectorAll('.btn-entregar').forEach(btn => {
+            btn.addEventListener('click', () => marcarEntregado(Number(btn.dataset.id), btn));
+        });
+    }
+}
+
+async function marcarEntregado(idPedido, btn) {
+    if (!confirm(`¿Confirmas que entregaste el pedido #${idPedido}?`)) return;
+
+    btn.disabled = true;
+    btn.textContent = 'Guardando…';
+
+    try {
+        const res  = await fetch(`${BASE_URL}/MarcarEntregadoServlet`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: `idPedido=${idPedido}`
+        });
+        const data = await res.json();
+
+        if (data.ok) {
+            // Quitar la tarjeta con animación
+            const card = document.getElementById(`pedido-card-${idPedido}`);
+            if (card) {
+                card.style.opacity = '0';
+                card.style.transition = 'opacity 0.3s';
+                setTimeout(() => {
+                    card.remove();
+                    // Recargar para actualizar contadores y tab de completados
+                    renderSeccionPagos();
+                }, 300);
+            }
+        } else {
+            alert(`Error: ${data.msg}`);
+            btn.disabled = false;
+            btn.textContent = '✅ Marcar como entregado';
+        }
+    } catch (err) {
+        alert(`Error de conexión: ${err.message}`);
+        btn.disabled = false;
+        btn.textContent = '✅ Marcar como entregado';
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SECCIÓN MI PERFIL
+// ─────────────────────────────────────────────────────────────────────────────
+async function renderSeccionPerfil() {
+    const main = document.getElementById('contenidoPrincipal');
+    main.innerHTML = `<p class="cargando">Cargando perfil…</p>`;
+
+    try {
+        const res = await fetch(`${BASE_URL}/PerfilServlet`);
+        if (res.status === 401) { window.location.replace(`${BASE_URL}/inicioSesion.html`); return; }
+        const u = await res.json();
+
+        main.innerHTML = `
+            <div class="seccion-header">
+                <h2>👤 Mi perfil</h2>
+            </div>
+
+            <div class="perfil-card">
+                <div class="perfil-card__fila">
+                    <div class="perfil-campo">
+                        <label>Nombres</label>
+                        <input id="prov-nombres" type="text" value="${u.nombres || ''}" readonly />
+                    </div>
+                    <div class="perfil-campo">
+                        <label>Apellidos</label>
+                        <input id="prov-apellidos" type="text" value="${u.apellidos || ''}" readonly />
+                    </div>
+                </div>
+                <div class="perfil-card__fila">
+                    <div class="perfil-campo">
+                        <label>Teléfono</label>
+                        <input id="prov-telefono" type="text" value="${u.telefono || ''}" readonly />
+                    </div>
+                    <div class="perfil-campo">
+                        <label>Correo electrónico</label>
+                        <input id="prov-correo" type="text" value="${u.correo || ''}" readonly />
+                    </div>
+                </div>
+                <div class="perfil-card__fila">
+                    <div class="perfil-campo">
+                        <label>Fecha de nacimiento</label>
+                        <input id="prov-fecha" type="date" value="${u.fechaNacimiento || ''}" readonly />
+                    </div>
+                    <div class="perfil-campo">
+                        <label>Dirección</label>
+                        <input id="prov-direccion" type="text" value="${u.direccion || ''}" readonly />
+                    </div>
+                </div>
+
+                <div class="perfil-card__acciones">
+                    <button class="btn-primario" id="btnActualizarPerfil">Actualizar datos</button>
+                    <button class="btn-cerrar-sesion" id="btnCerrarSesionProv">🚪 Cerrar sesión</button>
+                </div>
+            </div>
+        `;
+
+        configurarPerfilProveedor();
+
+    } catch (e) {
+        main.innerHTML = `<p class="error-txt">Error cargando perfil: ${e.message}</p>`;
+    }
+}
+const REGLAS_PERFIL = {
+    'prov-nombres': {
+        required: true, requiredMessage: 'El nombre es obligatorio',
+        custom: (v) => /^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/.test(v.trim()),
+        message: 'Los nombres no pueden contener números ni caracteres especiales',
+        errorId: 'error-prov-nombres'
+    },
+    'prov-apellidos': {
+        required: true, requiredMessage: 'El apellido es obligatorio',
+        custom: (v) => /^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/.test(v.trim()),
+        message: 'Los apellidos no pueden contener números ni caracteres especiales',
+        errorId: 'error-prov-apellidos'
+    },
+    'prov-telefono': {
+        required: true, requiredMessage: 'El teléfono es obligatorio',
+        custom: (v) => /^\d{10}$/.test(v.trim()),
+        message: 'El teléfono debe tener exactamente 10 dígitos numéricos',
+        errorId: 'error-prov-telefono'
+    },
+    'prov-correo': {
+        required: true, requiredMessage: 'El correo es obligatorio',
+        custom: (v) => /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(v.trim()),
+        message: 'El correo debe tener un formato válido (ejemplo@dominio.com)',
+        errorId: 'error-prov-correo'
+    },
+    'prov-fecha': {
+        required: true, requiredMessage: 'La fecha de nacimiento es obligatoria',
+        custom: (v) => {
+            if (!v) return false;
+            const ingresada = new Date(v), hoy = new Date(), minima = new Date();
+            minima.setFullYear(hoy.getFullYear() - 90);
+            [ingresada, hoy, minima].forEach(d => d.setHours(0,0,0,0));
+            return ingresada <= hoy && ingresada >= minima;
+        },
+        message: 'La fecha no puede ser mayor a hoy ni más de 90 años atrás',
+        errorId: 'error-prov-fecha'
+    },
+    'prov-direccion': {
+        required: true, requiredMessage: 'La dirección es obligatoria',
+        custom: (v) => /^[a-zA-Z0-9\s.,#\-\/°]+$/.test(v.trim()) && v.trim().length >= 6,
+        message: 'Ingresa una dirección válida (Ejemplo: Calle 12 #34-56)',
+        errorId: 'error-prov-direccion'
+    }
+};
+
+function configurarPerfilProveedor() {
+    const IDS = Object.keys(REGLAS_PERFIL);
+    let modoEdicion = false;
+    const btn = document.getElementById('btnActualizarPerfil');
+
+    // Agregar spans de error al DOM bajo cada input
+    IDS.forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        const span = document.createElement('span');
+        span.id = REGLAS_PERFIL[id].errorId;
+        span.className = 'error-msg';
+        el.parentNode.appendChild(span);
+    });
+
+    function asignarLimpiezaEnVivo() {
+        IDS.forEach(id => {
+            const el      = document.getElementById(id);
+            const regla   = REGLAS_PERFIL[id];
+            const errorEl = document.getElementById(regla.errorId);
+            if (!el || !errorEl) return;
+            el.replaceWith(el.cloneNode(true)); // evitar duplicar listeners
+            const elFresh = document.getElementById(id);
+            elFresh.addEventListener('input', () => {
+                if (elFresh.value.trim().length > 0) clearError(errorEl, elFresh);
+            });
+        });
+    }
+
+    btn.addEventListener('click', async () => {
+        if (!modoEdicion) {
+            IDS.forEach(id => document.getElementById(id)?.removeAttribute('readonly'));
+            asignarLimpiezaEnVivo();
+            btn.textContent = 'Guardar cambios';
+            modoEdicion = true;
+            return;
+        }
+
+        // Validar todos con isValidInput
+        let valido = true;
+        IDS.forEach(id => {
+            const el      = document.getElementById(id);
+            const regla   = REGLAS_PERFIL[id];
+            const errorEl = document.getElementById(regla.errorId);
+            if (!isValidInput(el, regla, errorEl)) valido = false;
+        });
+        if (!valido) return;
+
+        const datos = {
+            nombres:         document.getElementById('prov-nombres').value.trim(),
+            apellidos:       document.getElementById('prov-apellidos').value.trim(),
+            telefono:        document.getElementById('prov-telefono').value.trim(),
+            correo:          document.getElementById('prov-correo').value.trim(),
+            fechaNacimiento: document.getElementById('prov-fecha').value.trim(),
+            direccion:       document.getElementById('prov-direccion').value.trim()
+        };
+
+        try {
+            const res = await fetch(`${BASE_URL}/PerfilServlet`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams(datos).toString()
+            });
+            const msg = await res.text();
+
+            if (msg === 'OK') {
+                IDS.forEach(id => {
+                    document.getElementById(id)?.setAttribute('readonly', true);
+                    clearError(document.getElementById(REGLAS_PERFIL[id].errorId),
+                               document.getElementById(id));
+                });
+                btn.textContent = 'Actualizar datos';
+                modoEdicion = false;
+                const elNombre = document.getElementById('nombreProveedor');
+                if (elNombre) elNombre.textContent = datos.nombres;
+                alert('Datos actualizados correctamente.');
+            } else {
+                alert('No se pudo guardar. Intenta de nuevo.');
+            }
+        } catch (e) {
+            alert(`Error de conexión: ${e.message}`);
+        }
+    });
+
+    document.getElementById('btnCerrarSesionProv')?.addEventListener('click', async () => {
+        try { await fetch(`${BASE_URL}/CerrarSesionServlet`, { method: 'POST' }); } catch (_) {}
+        window.location.replace(`${BASE_URL}/inicioSesion.html`);
+    });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SECCIÓN NOSOTROS / CONTÁCTANOS
+// ─────────────────────────────────────────────────────────────────────────────
+function renderSeccionNosotros() {
+    const contenedor = document.getElementById('contenidoPrincipal');
+    contenedor.innerHTML = `
+        <section class="prov-nosotros">
+
+            <h2 class="prov-contacto-titulo">Contáctanos</h2>
+
+            <div class="prov-contacto">
+                <div class="prov-contacto__logo-contenedor">
+                    <img src="${BASE_IMG}conejo.png" alt="Logo Kurmi" class="prov-contacto__logo">
+                </div>
+                <div class="prov-contacto__lista-cards">
+                    ${['Eileen Sofia','Eileen Sofia','Eileen Sofia','Eileen Sofia','Eileen Sofia'].map(nombre => `
+                    <div class="prov-card">
+                        <div class="prov-card__img">
+                            <img src="${BASE_IMG}twiter.png" alt="X">
+                        </div>
+                        <div class="prov-card__info">
+                            <p class="prov-card__nombre">${nombre}</p>
+                            <p class="prov-card__correo">EileenSofia.30@twiter.com</p>
+                        </div>
+                    </div>`).join('')}
+                </div>
+            </div>
+
+        </section>
+    `;
 }

@@ -102,13 +102,26 @@ public class EditarProductoServlet extends HttpServlet {
                 }
 
                 nombreImg = "producto_" + UUID.randomUUID().toString().substring(0, 8) + "." + ext;
-                String rutaFisica = getServletContext().getRealPath("")
-                        + File.separator + CARPETA_IMG.replace("/", File.separator);
-                File dir = new File(rutaFisica);
-                if (!dir.exists()) dir.mkdirs();
+
+                // Ruta 1: build/web — donde Tomcat sirve los archivos (inmediato)
+                String buildWeb   = getServletContext().getRealPath("");
+                String rutaBuild  = buildWeb + CARPETA_IMG.replace("/", File.separator);
+
+                // Ruta 2: web — carpeta fuente (persiste tras Clean and Build)
+                String rutaFuente = buildWeb
+                        .replace("build" + File.separator + "web" + File.separator, "")
+                        + "web" + File.separator
+                        + CARPETA_IMG.replace("/", File.separator);
+
+                File dirBuild  = new File(rutaBuild);
+                File dirFuente = new File(rutaFuente);
+                if (!dirBuild.exists())  dirBuild.mkdirs();
+                if (!dirFuente.exists()) dirFuente.mkdirs();
 
                 try (InputStream is = filePart.getInputStream()) {
-                    Files.copy(is, new File(dir, nombreImg).toPath(), StandardCopyOption.REPLACE_EXISTING);
+                    byte[] bytes = is.readAllBytes();
+                    Files.write(new File(dirBuild,  nombreImg).toPath(), bytes);
+                    Files.write(new File(dirFuente, nombreImg).toPath(), bytes);
                 }
             }
 
