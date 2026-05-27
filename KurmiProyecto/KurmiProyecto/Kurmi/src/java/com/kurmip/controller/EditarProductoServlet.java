@@ -21,18 +21,18 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
-@WebServlet(name = "CrearProductoServlet", urlPatterns = {"/CrearProductoServlet"})
+@WebServlet(name = "EditarProductoServlet", urlPatterns = {"/EditarProductoServlet"})
 @MultipartConfig(
     fileSizeThreshold = 1024 * 1024,
     maxFileSize       = 5  * 1024 * 1024,
     maxRequestSize    = 10 * 1024 * 1024
 )
-public class CrearProductoServlet extends HttpServlet {
+public class EditarProductoServlet extends HttpServlet {
 
     // ── BUG 3 FIX ── Línea 32: era "RESOURCES/img", ahora "RESOURCES/img/productos"
-    // El frontend en index.js línea 569 busca: BASE_CARRITO + 'productos/' + item.imagen
-    // y en pedidos.js línea 74 busca: '/KurmiProyect/RESOURCES/img/productos/' + imgNombre
-    // Por eso la carpeta de guardado debe ser RESOURCES/img/productos/
+    // Mismo fix que en CrearProductoServlet: el frontend busca las imágenes
+    // en /KurmiProyect/RESOURCES/img/productos/ pero el servlet las guardaba
+    // un nivel arriba en /KurmiProyect/RESOURCES/img/ → 404 en todas las imágenes.
     private static final String CARPETA_IMG = "RESOURCES/img/productos";        // LÍNEA 32 — cambiada
     private static final String[] EXTS_OK   = {"jpg", "jpeg", "png", "webp", "gif"};
 
@@ -54,20 +54,23 @@ public class CrearProductoServlet extends HttpServlet {
                 out.print(new Gson().toJson(resp));
                 return;
             }
+
             UsuarioDTO usuario = (UsuarioDTO) session.getAttribute("usuarioLogueado");
             int idProveedor    = usuario.getId();
 
             // Leer campos
+            String idStr          = param(request, "idProducto");
             String nombre         = param(request, "nombre");
             String precioStr      = param(request, "precio");
             String descripcion    = param(request, "descripcion");
             String unidadMedida   = param(request, "unidadMedida");
             String fechaVenc      = param(request, "fechaVenc");
             String idRelaCatStr   = param(request, "idRelaCatSabor");
-            String stockStr = param(request, "stockInicial");
-            int stockInicial = stockStr.isEmpty() ? 0 : Integer.parseInt(stockStr);
-            if (nombre.isEmpty() || precioStr.isEmpty() || descripcion.isEmpty()
-                    || unidadMedida.isEmpty() || fechaVenc.isEmpty() || idRelaCatStr.isEmpty()) {
+            String cantidadStr    = param(request, "cantidadAniadida");
+
+            if (idStr.isEmpty() || nombre.isEmpty() || precioStr.isEmpty()
+                    || descripcion.isEmpty() || unidadMedida.isEmpty()
+                    || fechaVenc.isEmpty() || idRelaCatStr.isEmpty()) {
                 response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
                 resp.put("ok", false);
                 resp.put("error", "Faltan campos obligatorios");
@@ -75,12 +78,14 @@ public class CrearProductoServlet extends HttpServlet {
                 return;
             }
 
-            double precio      = Double.parseDouble(precioStr);
-            int idRelaCatSabor = Integer.parseInt(idRelaCatStr);
+            int    idProducto      = Integer.parseInt(idStr);
+            double precio          = Double.parseDouble(precioStr);
+            int    idRelaCatSabor  = Integer.parseInt(idRelaCatStr);
+            int    cantidadAniadida = cantidadStr.isEmpty() ? 0 : Integer.parseInt(cantidadStr);
 
-            // Procesar imagen
-            Part filePart    = request.getPart("imagen");
-            String nombreImg = "default.png";
+            // Procesar imagen (opcional)
+            Part filePart   = request.getPart("imagen");
+            String nombreImg = null; // null = no cambiar imagen
 
             if (filePart != null && filePart.getSize() > 0) {
                 String original = new File(filePart.getSubmittedFileName()).getName();
@@ -105,28 +110,26 @@ public class CrearProductoServlet extends HttpServlet {
                 }
             }
 
-            // Insertar en BD
+            // Actualizar en BD
             ProductoDAO dao = new ProductoDAO();
-            int idNuevo = dao.crearProducto(nombre, precio, descripcion, unidadMedida,
-                                            fechaVenc, idRelaCatSabor, nombreImg, idProveedor, stockInicial);
+            boolean ok = dao.editarProducto(idProducto, idProveedor, nombre, precio,
+                                            descripcion, unidadMedida, fechaVenc,
+                                            idRelaCatSabor, cantidadAniadida, nombreImg);
 
-            if (idNuevo > 0) {
-                resp.put("ok",         true);
-                resp.put("mensaje",    "Producto creado correctamente");
-                resp.put("idProducto", idNuevo);
-                resp.put("imagen",     nombreImg);
-                response.setStatus(HttpServletResponse.SC_CREATED);
+            if (ok) {
+                resp.put("ok",      true);
+                resp.put("mensaje", "Producto actualizado correctamente");
             } else {
                 response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
                 resp.put("ok",    false);
-                resp.put("error", "No se pudo insertar el producto");
+                resp.put("error", "No se pudo actualizar el producto");
             }
 
             out.print(new Gson().toJson(resp));
 
         } catch (NumberFormatException e) {
             response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            response.getWriter().print("{\"ok\":false,\"error\":\"precio o idRelaCatSabor inválidos\"}");
+            response.getWriter().print("{\"ok\":false,\"error\":\"Campos numéricos inválidos\"}");
         } catch (Exception e) {
             response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
             response.getWriter().print("{\"ok\":false,\"error\":\"" + e.getMessage() + "\"}");

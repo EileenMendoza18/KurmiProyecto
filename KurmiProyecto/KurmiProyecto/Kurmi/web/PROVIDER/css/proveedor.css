@@ -654,3 +654,60 @@ html, body {
     display: flex; gap: 12px; justify-content: flex-end;
     padding: 16px 24px; border-top: 1px solid var(--color-divider);
 }
+
+/* ── Acciones en tarjeta ──────────────────────────────── */
+.tarjeta-prov__acciones {
+    display: flex;
+    gap: 8px;
+    padding: 10px 14px 14px;
+    border-top: 1px solid #f0eaf8;
+}
+
+.btn-editar,
+.btn-eliminar {
+    flex: 1;
+    padding: 7px 0;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.18s, transform 0.12s;
+}
+
+.btn-editar {
+    background: #ede7f6;
+    color: #6a1b9a;
+}
+.btn-editar:hover {
+    background: #d1c4e9;
+    transform: translateY(-1px);
+}
+
+.btn-eliminar {
+    background: #fce4ec;
+    color: #b71c1c;
+}
+.btn-eliminar:hover {
+    background: #f8bbd0;
+    transform: translateY(-1px);
+}
+
+/* ── Stock info en modal editar ───────────────────────── */
+.stock-info-box {
+    background: #f3e8ff;
+    border-left: 4px solid #9c27b0;
+    border-radius: 8px;
+    padding: 10px 14px;
+    margin: 4px 0 2px;
+    font-size: 0.92rem;
+    color: #4a148c;
+}
+.stock-info-box strong { font-size: 1.1rem; }
+
+.hint-text {
+    font-size: 0.78rem;
+    color: #888;
+    margin-top: -4px;
+    display: block;
+}

@@ -52,20 +52,19 @@ public class ProcesarCompraServlet extends HttpServlet {
             nuevoPedido.setTotal(totalPago);
 
             // ── Detectar si viene una RECOMPRA (bandera explícita desde formularioPago.js) ──
-            // En compra normal del carrito esta bandera no existe; el servlet usa idCarrito.
-            // En recompra desde pedido cancelado la bandera vale "true" y vienen checkout_.
             String flagRecompra   = request.getParameter("esRecompra");
             boolean esRecompra    = "true".equals(flagRecompra);
 
-            String[] idsProductos = request.getParameterValues("checkout_idProducto");
-            String[] precios      = request.getParameterValues("checkout_precio");
-            String[] cantidades   = request.getParameterValues("checkout_cantidad");
-
             if (esRecompra) {
-                // RECOMPRA: crear un carrito temporal NUEVO exclusivo para estos productos.
-                // No tocar el carrito activo del usuario (que puede tener sus propios ítems).
-                nuevoPedido.setIdCarrito(-1); // Indica al DAO que cree un carrito nuevo para la recompra
-                nuevoPedido.setProductosCheckout(idsProductos, precios, cantidades);
+                // RECOMPRA: usar el carrito original del pedido cancelado.
+                // El DAO NO insertará filas en Carrito_Detalle; solo crea el pedido+pago
+                // y cruza los productos por Fecha_Venta = fechaPedidoOriginal.
+                String idCarParam = request.getParameter("idCarrito");
+                if (idCarParam != null && !idCarParam.isEmpty()) {
+                    nuevoPedido.setIdCarrito(Integer.parseInt(idCarParam));
+                }
+                String fechaOriginal = request.getParameter("fechaPedidoOriginal");
+                nuevoPedido.setFechaPedidoOriginal(fechaOriginal != null ? fechaOriginal : "");
             } else {
                 // COMPRA NORMAL DESDE CARRITO: usar el carrito activo del usuario
                 String idCarParam = request.getParameter("idCarrito");

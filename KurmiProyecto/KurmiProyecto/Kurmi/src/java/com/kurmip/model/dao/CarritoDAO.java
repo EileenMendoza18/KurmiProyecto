@@ -18,7 +18,6 @@ public class CarritoDAO {
         PreparedStatement ps = null;
         ResultSet rs = null;
 
-        // ✅ FIX: Se agrega p.Imagen_Producto al SELECT para mostrar la imagen real
         String sql = "SELECT cd.ID_DetalleCarrito, cd.ID_Producto, p.Nombre_Producto, " +
              "p.Imagen_Producto, " +
              "cd.Cantidad_Producto, cd.Precio_Unitario_Momento, cd.SubTotal, cd.Estado_Carrito, cc.ID_Carrito " +
@@ -45,7 +44,6 @@ public class CarritoDAO {
                 dto.setEstadoDetalle(rs.getInt("Estado_Carrito"));
                 dto.setIdCarrito(rs.getInt("ID_Carrito"));
 
-                // ✅ FIX: Leer la imagen real del producto en vez de hardcodear
                 String img = rs.getString("Imagen_Producto");
                 dto.setImagen((img != null && !img.isBlank()) ? img : "inicioHelado.png");
 
@@ -75,6 +73,7 @@ public class CarritoDAO {
             con = cn.getConexion();
             con.setAutoCommit(false);
 
+            // Verificar stock disponible
             String sqlStock =
                 "SELECT COALESCE(SUM(StockInicial + CantidadAnadida), 0) AS stockTotal " +
                 "FROM Inventario WHERE ID_Producto = ?";
@@ -91,7 +90,16 @@ public class CarritoDAO {
                 return -1;
             }
 
-            String sqlBuscarCarrito = "SELECT ID_Carrito FROM Carrito_Compras WHERE ID_Cliente = ? AND EstadoCarrito = 1";
+            // ── BUG 2 FIX ── Línea 94: se añade ORDER BY ID_Carrito DESC LIMIT 1
+            // para garantizar que siempre se usa el carrito activo más reciente.
+            // Sin LIMIT, si por alguna inconsistencia hubiera más de uno activo,
+            // rs.next() tomaba el primero (el más viejo) y dejaba el nuevo vacío,
+            // lo que luego hacía que al no encontrar el ID del carrito correcto
+            // se creara un carrito adicional innecesario.
+            String sqlBuscarCarrito =
+                "SELECT ID_Carrito FROM Carrito_Compras " +               // LÍNEA 94 — cambiada
+                "WHERE ID_Cliente = ? AND EstadoCarrito = 1 " +           // LÍNEA 95 — cambiada
+                "ORDER BY ID_Carrito DESC LIMIT 1";                       // LÍNEA 96 — nueva
             ps = con.prepareStatement(sqlBuscarCarrito);
             ps.setInt(1, idUsuario);
             rs = ps.executeQuery();
@@ -104,6 +112,7 @@ public class CarritoDAO {
             if (ps  != null) ps.close();
 
             if (idCarrito == -1) {
+                // Solo se crea un carrito nuevo si el usuario realmente no tiene ninguno activo.
                 String sqlCrearCarrito = "INSERT INTO Carrito_Compras (ID_Cliente, EstadoCarrito) VALUES (?, 1)";
                 ps = con.prepareStatement(sqlCrearCarrito, PreparedStatement.RETURN_GENERATED_KEYS);
                 ps.setInt(1, idUsuario);
@@ -120,23 +129,28 @@ public class CarritoDAO {
 
             if (idCarrito == -1) throw new SQLException("No se pudo obtener o crear el encabezado del carrito.");
 
-            // BUG FIX: Solo buscar items ACTIVOS (4=agregado, 5=seleccionado).
-            // Estado 2 = eliminado/inactivo — nunca reutilizar un item que el usuario eliminó,
-            // eso causaba que un producto cancelado volviera al carrito con cantidad incorrecta.
-            String sqlBuscarProducto = "SELECT ID_DetalleCarrito, Cantidad_Producto " +
-                                        "FROM Carrito_Detalle WHERE ID_Carrito = ? AND ID_Producto = ? " +
-                                        "AND Estado_Carrito IN (4, 5)";
+            // ── BUG 1 FIX ── Líneas 126-128: se incluye estado 2 (eliminado) en la búsqueda.
+            // Antes solo buscaba estado IN (4,5), por lo que si el usuario eliminaba
+            // un producto (estado 2, cantidad 0) y lo volvía a agregar, no encontraba
+            // el registro existente y hacía un INSERT nuevo en lugar de reactivarlo.
+            // Ahora busca también estado 2 para poder reutilizar y reactivar esa fila.
+            String sqlBuscarProducto =
+                "SELECT ID_DetalleCarrito, Cantidad_Producto, Estado_Carrito " + // LÍNEA 126 — cambiada
+                "FROM Carrito_Detalle WHERE ID_Carrito = ? AND ID_Producto = ? " + // LÍNEA 127 — igual
+                "AND Estado_Carrito IN (2, 4, 5)";                               // LÍNEA 128 — cambiada: añadido estado 2
             ps = con.prepareStatement(sqlBuscarProducto);
             ps.setInt(1, idCarrito);
             ps.setInt(2, idProducto);
             rs = ps.executeQuery();
 
-            int idDetalle = -1;
+            int idDetalle       = -1;
             int cantidadExistente = 0;
+            int estadoActual    = -1;                                            // LÍNEA nueva
 
             if (rs.next()) {
-                idDetalle = rs.getInt("ID_DetalleCarrito");
+                idDetalle         = rs.getInt("ID_DetalleCarrito");
                 cantidadExistente = rs.getInt("Cantidad_Producto");
+                estadoActual      = rs.getInt("Estado_Carrito");                 // LÍNEA nueva
             }
 
             if (rs  != null) rs.close();
@@ -145,20 +159,32 @@ public class CarritoDAO {
             int resultadoOperacion = 0;
 
             if (idDetalle != -1) {
-                // El item ya existe en estado activo (4 o 5): sumar cantidad
-                int nuevaCantidad = cantidadExistente + cantidad;
+                // ── BUG 1 FIX ── Si el item estaba eliminado (estado 2, cantidad 0),
+                // se reactiva con la cantidad nueva en lugar de insertar una fila nueva.
+                // Si estaba activo (4 o 5), se suma la cantidad como antes.
+                int nuevaCantidad;
+                if (estadoActual == 2) {
+                    // Producto eliminado: reactivar con la cantidad pedida desde cero  — LÍNEAS nuevas
+                    nuevaCantidad = cantidad;
+                } else {
+                    // Producto activo: acumular cantidad
+                    nuevaCantidad = cantidadExistente + cantidad;
+                }
                 double nuevoSubtotal = nuevaCantidad * precio;
 
-                String sqlActualizarDetalle = "UPDATE Carrito_Detalle SET Cantidad_Producto = ?, " +
-                                            "SubTotal = ?, Estado_Carrito = 4 " +
-                                            "WHERE ID_DetalleCarrito = ?";
+                // Siempre poner en estado 4 (agregado) al reactivar o actualizar
+                String sqlActualizarDetalle =
+                    "UPDATE Carrito_Detalle SET Cantidad_Producto = ?, " +
+                    "SubTotal = ?, Estado_Carrito = 4 " +                        // estado 4 = activo/agregado
+                    "WHERE ID_DetalleCarrito = ?";
                 ps = con.prepareStatement(sqlActualizarDetalle);
                 ps.setInt(1, nuevaCantidad);
                 ps.setDouble(2, nuevoSubtotal);
                 ps.setInt(3, idDetalle);
                 ps.executeUpdate();
-                resultadoOperacion = 2; // CANTIDAD_INCREMENTADA
+                resultadoOperacion = (estadoActual == 2) ? 1 : 2; // 1=NUEVO_AGREGADO reactivado, 2=CANTIDAD_INCREMENTADA
             } else {
+                // El producto nunca ha estado en este carrito: insertar fila nueva
                 double subtotal = cantidad * precio;
                 String sqlInsertarDetalle = "INSERT INTO Carrito_Detalle " +
                     "(ID_Carrito, ID_Producto, Cantidad_Producto, Precio_Unitario_Momento, SubTotal) " +

@@ -266,4 +266,110 @@ public class ProductoDAO {
         } finally { cerrar(); }
         return lista;
     }
+    // =========================================================================
+    // SOFT DELETE — cambia el estado del producto a "Descontinuado" (ID_Estado = 3)
+    // Solo si el producto pertenece al proveedor indicado.
+    // =========================================================================
+    public boolean desactivarProducto(int idProducto, int idProveedor) {
+        String sql =
+            "UPDATE Productos p " +
+            "JOIN RelaProductoVendedor rpv ON rpv.ID_Productos = p.ID_Producto " +
+            "SET p.ID_Estado = 3 " +
+            "WHERE p.ID_Producto = ? AND rpv.ID_Usuario = ?";
+        try {
+            con = cn.getConexion();
+            ps  = con.prepareStatement(sql);
+            ps.setInt(1, idProducto);
+            ps.setInt(2, idProveedor);
+            int filas = ps.executeUpdate();
+            return filas > 0;
+        } catch (Exception e) {
+            System.err.println("Error en desactivarProducto: " + e.getMessage());
+            return false;
+        } finally { cerrar(); }
+    }
+
+    // =========================================================================
+    // EDITAR PRODUCTO
+    // Actualiza datos del producto y, si cantidadAniadida > 0, suma al inventario.
+    // Solo si el producto pertenece al proveedor indicado (validación via JOIN).
+    // =========================================================================
+    public boolean editarProducto(int idProducto, int idProveedor,
+                                  String nombre, double precio, String descripcion,
+                                  String unidadMedida, String fechaVencimiento,
+                                  int idRelaCatSabor, int cantidadAniadida,
+                                  String nuevaImagen) {
+        try {
+            con = cn.getConexion();
+            con.setAutoCommit(false);
+
+            // Verificar que el producto pertenece al proveedor
+            String sqlCheck =
+                "SELECT COUNT(*) FROM RelaProductoVendedor " +
+                "WHERE ID_Productos = ? AND ID_Usuario = ?";
+            ps = con.prepareStatement(sqlCheck);
+            ps.setInt(1, idProducto);
+            ps.setInt(2, idProveedor);
+            rs = ps.executeQuery();
+            rs.next();
+            if (rs.getInt(1) == 0) {
+                con.rollback();
+                return false;
+            }
+
+            // Actualizar producto
+            String sqlUpdate;
+            if (nuevaImagen != null) {
+                sqlUpdate =
+                    "UPDATE Productos SET Nombre_Producto=?, Valor_Producto=?, " +
+                    "Descripcion_Producto=?, Unidad_Medida=?, Fecha_vencimiento=?, " +
+                    "ID_RelaCategSabor=?, Imagen_Producto=? WHERE ID_Producto=?";
+                ps = con.prepareStatement(sqlUpdate);
+                ps.setString(1, nombre);
+                ps.setDouble(2, precio);
+                ps.setString(3, descripcion);
+                ps.setString(4, unidadMedida);
+                ps.setString(5, fechaVencimiento);
+                ps.setInt(6, idRelaCatSabor);
+                ps.setString(7, nuevaImagen);
+                ps.setInt(8, idProducto);
+            } else {
+                sqlUpdate =
+                    "UPDATE Productos SET Nombre_Producto=?, Valor_Producto=?, " +
+                    "Descripcion_Producto=?, Unidad_Medida=?, Fecha_vencimiento=?, " +
+                    "ID_RelaCategSabor=? WHERE ID_Producto=?";
+                ps = con.prepareStatement(sqlUpdate);
+                ps.setString(1, nombre);
+                ps.setDouble(2, precio);
+                ps.setString(3, descripcion);
+                ps.setString(4, unidadMedida);
+                ps.setString(5, fechaVencimiento);
+                ps.setInt(6, idRelaCatSabor);
+                ps.setInt(7, idProducto);
+            }
+            ps.executeUpdate();
+
+            // Si hay cantidad añadida, insertar nuevo registro en Inventario
+            if (cantidadAniadida > 0) {
+                String sqlInv =
+                    "INSERT INTO Inventario (ID_Producto, StockInicial, CantidadAnadida) " +
+                    "VALUES (?, 0, ?)";
+                ps = con.prepareStatement(sqlInv);
+                ps.setInt(1, idProducto);
+                ps.setInt(2, cantidadAniadida);
+                ps.executeUpdate();
+            }
+
+            con.commit();
+            return true;
+
+        } catch (Exception e) {
+            System.err.println("Error en editarProducto: " + e.getMessage());
+            try { if (con != null) con.rollback(); } catch (Exception ignored) {}
+            return false;
+        } finally {
+            try { if (con != null) con.setAutoCommit(true); } catch (Exception ignored) {}
+            cerrar();
+        }
+    }
 }
