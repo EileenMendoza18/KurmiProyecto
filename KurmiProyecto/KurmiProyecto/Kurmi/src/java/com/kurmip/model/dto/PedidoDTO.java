@@ -13,6 +13,8 @@ public class PedidoDTO {
     private String[] checkoutIds;
     private String[] checkoutPrecios;
     private String[] checkoutCantidades;
+    // Fecha del pedido cancelado original — para cruzar Carrito_Detalle sin insertar filas nuevas
+    private String fechaPedidoOriginal;
 
     public int    getIdUsuario()       { return idUsuario; }
     public void   setIdUsuario(int v)  { this.idUsuario = v; }
@@ -49,4 +51,12 @@ public class PedidoDTO {
     public boolean tieneProductosCheckout() {
         return checkoutIds != null && checkoutIds.length > 0;
     }
+
+    /** True cuando viene del flujo de recompra (no inserta en Carrito_Detalle). */
+    public boolean tieneRecompra() {
+        return fechaPedidoOriginal != null && !fechaPedidoOriginal.isEmpty();
+    }
+
+    public String getFechaPedidoOriginal()         { return fechaPedidoOriginal; }
+    public void   setFechaPedidoOriginal(String v) { this.fechaPedidoOriginal = v; }
 }

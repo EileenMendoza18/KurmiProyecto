@@ -200,30 +200,54 @@ function abrirModal(pedido, estado) {
 
     // Botón recomprar — solo en Cancelado (3)
     if (estado === 3) {
+        // Selector de método de pago
+        const selectMetodo = document.createElement('select');
+        selectMetodo.id = 'selectMetodoRecompra';
+        selectMetodo.style.cssText = 'padding:6px 10px;border-radius:8px;border:1px solid #c4b5e8;font-size:0.9rem;';
+        selectMetodo.innerHTML = `
+            <option value="" disabled selected>Método de pago</option>
+            <option value="1">Efectivo</option>
+            <option value="2">Nequi</option>
+        `;
+
         const btnRecomprar = document.createElement('button');
         btnRecomprar.className = 'btn__modal-comprar';
         btnRecomprar.textContent = 'Comprar nuevamente';
-        btnRecomprar.onclick = () => recomprarPedido(pedido);
+        btnRecomprar.onclick = () => {
+            const idMetodo = selectMetodo.value;
+            if (!idMetodo) { alert('Selecciona un método de pago.'); return; }
+            recomprarPedido(pedido.idPedido, parseInt(idMetodo));
+        };
+
+        footer.appendChild(selectMetodo);
         footer.appendChild(btnRecomprar);
     }
 
     overlay.classList.remove('hidden');
 }
 
-// ── Recomprar desde cancelado ─────────────────────────────────────────────────
-function recomprarPedido(pedido) {
-    const productos = (pedido.productos || []).map(prod => ({
-        idProducto: prod.idProducto,
-        nombre:     prod.nombre,
-        precio:     prod.precio,
-        cantidad:   prod.cantidad
-    }));
-    localStorage.setItem('productosCheckout', JSON.stringify(productos));
-    // Marcar explícitamente como recompra para que formularioPago.js
-    // inyecte los checkout_ y el servlet cree un carrito temporal separado.
-    localStorage.setItem('esRecompra', 'true');
-    document.getElementById('modalOverlay').classList.add('hidden');
-    window.location.href = '../html/formularioPago.html';
+// ── Recomprar: solo cambia estado del pedido cancelado → Pendiente ────────────
+async function recomprarPedido(idPedido, idMetodo) {
+    try {
+        const res = await fetch('/KurmiProyect/CambiarEstadoPedidoServlet', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: 'idPedido=' + encodeURIComponent(idPedido) +
+                  '&nuevoEstado=1' +
+                  '&idMetodo=' + encodeURIComponent(idMetodo)
+        });
+        const data = await res.json();
+        if (data.ok) {
+            alert('¡Pedido reactivado! Ya aparece en Pendientes.');
+            document.getElementById('modalOverlay').classList.add('hidden');
+            cargarPedidos(3); // Refrescar vista Cancelados
+        } else {
+            alert('No se pudo reactivar: ' + (data.msg || 'error desconocido'));
+        }
+    } catch (e) {
+        console.error('Error al reactivar pedido:', e);
+        alert('Error de red al reactivar el pedido.');
+    }
 }
 
 // ── Cerrar modal ──────────────────────────────────────────────────────────────

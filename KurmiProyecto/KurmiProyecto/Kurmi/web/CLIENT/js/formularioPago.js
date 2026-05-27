@@ -33,6 +33,8 @@ document.addEventListener("DOMContentLoaded", () => {
         localStorage.removeItem("productosCheckout");
         localStorage.removeItem("totalCheckout");
         localStorage.removeItem("esRecompra");
+        localStorage.removeItem("recompraIdCarrito");
+        localStorage.removeItem("recompraFechaPedido");
 
         if (bloquePago) {
             bloquePago.innerHTML = `
@@ -115,7 +117,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         if (inputTotalPago) inputTotalPago.value = totalCalculado;
 
-        // Setear idCarrito SOLO si es compra normal del carrito (no recompra)
+        // Setear idCarrito
         const inputIdCarrito = document.getElementById("idCarrito");
         if (inputIdCarrito) {
             if (!esRecompra) {
@@ -123,7 +125,9 @@ document.addEventListener("DOMContentLoaded", () => {
                 inputIdCarrito.value = carritoValido ? carritoValido.idCarrito : 0;
                 console.log("idCarrito enviado al servlet:", inputIdCarrito.value);
             } else {
-                inputIdCarrito.value = 0; // En recompra el DAO crea su propio carrito
+                // En recompra se usa el carrito original del pedido cancelado
+                inputIdCarrito.value = localStorage.getItem("recompraIdCarrito") || 0;
+                console.log("recompra idCarrito original:", inputIdCarrito.value);
             }
         }
 
@@ -133,46 +137,29 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         // -----------------------------------------------------------------
-        // Inyectar productos como campos ocultos SOLO si es RECOMPRA.
-        // En compra normal del carrito los productos ya están en BD,
-        // el servlet los lee directamente por idCarrito — no necesita checkout_.
+        // En recompra: solo enviar la bandera esRecompra y la fechaPedidoOriginal.
+        // El DAO usará el idCarrito del pedido cancelado para encontrar los
+        // productos ya existentes en Carrito_Detalle — NO se insertan filas nuevas.
+        // En compra normal: no se necesitan campos extra.
         // -----------------------------------------------------------------
         const formPago = document.querySelector('form');
         if (formPago) {
-            // Limpiar campos anteriores por si acaso
-            formPago.querySelectorAll('[name^="checkout_"], [name="esRecompra"]').forEach(el => el.remove());
+            formPago.querySelectorAll('[name^="checkout_"], [name="esRecompra"], [name="fechaPedidoOriginal"]').forEach(el => el.remove());
 
             if (esRecompra) {
-                // Marcar como recompra para que el servlet cree carrito temporal
                 const flagInput    = document.createElement('input');
                 flagInput.type     = 'hidden';
                 flagInput.name     = 'esRecompra';
                 flagInput.value    = 'true';
                 formPago.appendChild(flagInput);
 
-                // Inyectar los productos del pedido cancelado
-                listaProductos.forEach(item => {
-                    const idInput    = document.createElement('input');
-                    idInput.type     = 'hidden';
-                    idInput.name     = 'checkout_idProducto';
-                    idInput.value    = item.idProducto || '';
-
-                    const prInput    = document.createElement('input');
-                    prInput.type     = 'hidden';
-                    prInput.name     = 'checkout_precio';
-                    prInput.value    = parseFloat(item.precio || item.precioProducto || 0);
-
-                    const canInput   = document.createElement('input');
-                    canInput.type    = 'hidden';
-                    canInput.name    = 'checkout_cantidad';
-                    canInput.value   = parseInt(item.cantidad || 1);
-
-                    formPago.appendChild(idInput);
-                    formPago.appendChild(prInput);
-                    formPago.appendChild(canInput);
-                });
+                // Fecha del pedido cancelado original para que el DAO cruce Carrito_Detalle
+                const fechaInput   = document.createElement('input');
+                fechaInput.type    = 'hidden';
+                fechaInput.name    = 'fechaPedidoOriginal';
+                fechaInput.value   = localStorage.getItem("recompraFechaPedido") || '';
+                formPago.appendChild(fechaInput);
             }
-            // En compra normal no se inyectan checkout_ — el servlet usa idCarrito
         }
     }
 });
