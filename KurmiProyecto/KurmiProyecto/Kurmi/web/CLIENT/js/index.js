@@ -566,7 +566,7 @@ async function cargarCarrito() {
             const img = document.createElement("img");
             const BASE_CARRITO = '/KurmiProyect/RESOURCES/img/';
             img.src = (item.imagen && item.imagen !== 'inicioHelado.png')
-                ? BASE_CARRITO + 'productos/' + item.imagen
+                ? BASE_CARRITO + item.imagen
                 : BASE_CARRITO + 'inicioHelado.png';
             img.alt = item.nombre;
             cardImagen.appendChild(img);
