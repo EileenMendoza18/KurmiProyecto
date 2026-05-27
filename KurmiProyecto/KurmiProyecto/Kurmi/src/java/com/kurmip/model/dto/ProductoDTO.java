@@ -11,6 +11,8 @@ public class ProductoDTO {
     private String nombreSabor;
     private int    stock;
     private String estadoNombre;
+    private int idEstado;
+
 
     public ProductoDTO() {}
 
@@ -43,4 +45,7 @@ public class ProductoDTO {
 
     public String getEstadoNombre()                     { return estadoNombre; }
     public void   setEstadoNombre(String estadoNombre)  { this.estadoNombre = estadoNombre; }
+    
+    public int  getIdEstado()              { return idEstado; }
+    public void setIdEstado(int idEstado)  { this.idEstado = idEstado; }
 }

@@ -80,7 +80,7 @@ function crearTarjetaPedido(pedido, estado) {
 
     const img = document.createElement('img');
     img.className = 'pedido__img';
-    const BASE_IMG = '/KurmiProyect/RESOURCES/img/productos/';
+    const BASE_IMG = '/KurmiProyect/RESOURCES/img/';
     const imgNombre = pedido.imagenPrimera;
     img.src = (imgNombre && imgNombre !== 'inicioHelado.png')
         ? BASE_IMG + imgNombre
@@ -169,7 +169,7 @@ function abrirModal(pedido, estado) {
 
         const img = document.createElement('img');
         img.className = 'modal__prod-img';
-        const BASE_IMG_MOD = '/KurmiProyect/RESOURCES/img/productos/';
+        const BASE_IMG_MOD = '/KurmiProyect/RESOURCES/img/';
         img.src = (prod.imagen && prod.imagen !== 'inicioHelado.png')
             ? BASE_IMG_MOD + prod.imagen
             : '../../RESOURCES/img/inicioHelado.png';

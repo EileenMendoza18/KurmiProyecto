@@ -191,6 +191,7 @@ public class ProductoDAO {
                 dto.setPrecio(rs.getDouble("Valor_Producto"));
                 dto.setDescripcion(rs.getString("Descripcion_Producto"));
                 dto.setStock(rs.getInt("stockTotal"));
+                dto.setIdEstado(rs.getInt("ID_Estado"));
                 dto.setImagen(leerImagen(rs));
                 lista.add(dto);
             }
@@ -298,7 +299,7 @@ public class ProductoDAO {
                                   String nombre, double precio, String descripcion,
                                   String unidadMedida, String fechaVencimiento,
                                   int idRelaCatSabor, int cantidadAniadida,
-                                  String nuevaImagen) {
+                                  String nuevaImagen, int idEstado) {
         try {
             con = cn.getConexion();
             con.setAutoCommit(false);
@@ -323,7 +324,7 @@ public class ProductoDAO {
                 sqlUpdate =
                     "UPDATE Productos SET Nombre_Producto=?, Valor_Producto=?, " +
                     "Descripcion_Producto=?, Unidad_Medida=?, Fecha_vencimiento=?, " +
-                    "ID_RelaCategSabor=?, Imagen_Producto=? WHERE ID_Producto=?";
+                    "ID_RelaCategSabor=?, Imagen_Producto=?, ID_Estado=? WHERE ID_Producto=?";
                 ps = con.prepareStatement(sqlUpdate);
                 ps.setString(1, nombre);
                 ps.setDouble(2, precio);
@@ -332,12 +333,13 @@ public class ProductoDAO {
                 ps.setString(5, fechaVencimiento);
                 ps.setInt(6, idRelaCatSabor);
                 ps.setString(7, nuevaImagen);
-                ps.setInt(8, idProducto);
+                ps.setInt(8, idEstado); 
+                ps.setInt(9, idProducto);
             } else {
                 sqlUpdate =
                     "UPDATE Productos SET Nombre_Producto=?, Valor_Producto=?, " +
                     "Descripcion_Producto=?, Unidad_Medida=?, Fecha_vencimiento=?, " +
-                    "ID_RelaCategSabor=? WHERE ID_Producto=?";
+                    "ID_RelaCategSabor=?, ID_Estado=? WHERE ID_Producto=?";
                 ps = con.prepareStatement(sqlUpdate);
                 ps.setString(1, nombre);
                 ps.setDouble(2, precio);
@@ -345,7 +347,8 @@ public class ProductoDAO {
                 ps.setString(4, unidadMedida);
                 ps.setString(5, fechaVencimiento);
                 ps.setInt(6, idRelaCatSabor);
-                ps.setInt(7, idProducto);
+                ps.setInt(7, idEstado);  
+                ps.setInt(8, idProducto);
             }
             ps.executeUpdate();
 

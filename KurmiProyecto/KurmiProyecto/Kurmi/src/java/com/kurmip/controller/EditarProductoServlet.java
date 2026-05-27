@@ -33,7 +33,7 @@ public class EditarProductoServlet extends HttpServlet {
     // Mismo fix que en CrearProductoServlet: el frontend busca las imágenes
     // en /KurmiProyect/RESOURCES/img/productos/ pero el servlet las guardaba
     // un nivel arriba en /KurmiProyect/RESOURCES/img/ → 404 en todas las imágenes.
-    private static final String CARPETA_IMG = "RESOURCES/img/productos";        // LÍNEA 32 — cambiada
+    private static final String CARPETA_IMG = "RESOURCES/img";        // LÍNEA 32 — cambiada
     private static final String[] EXTS_OK   = {"jpg", "jpeg", "png", "webp", "gif"};
 
     @Override
@@ -67,6 +67,8 @@ public class EditarProductoServlet extends HttpServlet {
             String fechaVenc      = param(request, "fechaVenc");
             String idRelaCatStr   = param(request, "idRelaCatSabor");
             String cantidadStr    = param(request, "cantidadAniadida");
+            String estadoStr = param(request, "estado");
+            int idEstado = estadoStr.isEmpty() ? 1 : Integer.parseInt(estadoStr);
 
             if (idStr.isEmpty() || nombre.isEmpty() || precioStr.isEmpty()
                     || descripcion.isEmpty() || unidadMedida.isEmpty()
@@ -114,7 +116,7 @@ public class EditarProductoServlet extends HttpServlet {
             ProductoDAO dao = new ProductoDAO();
             boolean ok = dao.editarProducto(idProducto, idProveedor, nombre, precio,
                                             descripcion, unidadMedida, fechaVenc,
-                                            idRelaCatSabor, cantidadAniadida, nombreImg);
+                                            idRelaCatSabor, cantidadAniadida, nombreImg,idEstado);
 
             if (ok) {
                 resp.put("ok",      true);

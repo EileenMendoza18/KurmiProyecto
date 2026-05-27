@@ -711,3 +711,28 @@ html, body {
     margin-top: -4px;
     display: block;
 }
+
+/* ── Validación: campo con error ──────────────────────── */
+.modal__body input.input-error,
+.modal__body textarea.input-error,
+.modal__body select.input-error {
+    border-color: #e53935 !important;
+    background-color: #fff5f5;
+    box-shadow: 0 0 0 2px rgba(229, 57, 53, 0.18);
+    animation: shake 0.3s ease;
+}
+
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25%       { transform: translateX(-5px); }
+    75%       { transform: translateX(5px); }
+}
+
+/* Limpia el error al hacer focus */
+.modal__body input.input-error:focus,
+.modal__body textarea.input-error:focus,
+.modal__body select.input-error:focus {
+    border-color: #9c27b0 !important;
+    background-color: #fff;
+    box-shadow: 0 0 0 3px rgba(156, 39, 176, 0.15);
+}

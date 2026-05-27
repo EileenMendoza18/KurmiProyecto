@@ -33,7 +33,7 @@ public class CrearProductoServlet extends HttpServlet {
     // El frontend en index.js línea 569 busca: BASE_CARRITO + 'productos/' + item.imagen
     // y en pedidos.js línea 74 busca: '/KurmiProyect/RESOURCES/img/productos/' + imgNombre
     // Por eso la carpeta de guardado debe ser RESOURCES/img/productos/
-    private static final String CARPETA_IMG = "RESOURCES/img/productos";        // LÍNEA 32 — cambiada
+    private static final String CARPETA_IMG = "RESOURCES/img";        // LÍNEA 32 — cambiada
     private static final String[] EXTS_OK   = {"jpg", "jpeg", "png", "webp", "gif"};
 
     @Override
