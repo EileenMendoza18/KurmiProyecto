@@ -10,8 +10,7 @@ aside {
     grid-template-columns: 50px 200px;
     grid-template-rows: repeat(2, auto);
     width: auto;
-    height: auto;
-    margin-left: 20px;
+    height: auto;    
 }
 
 aside input {

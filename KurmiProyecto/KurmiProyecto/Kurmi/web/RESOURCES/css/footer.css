@@ -12,6 +12,10 @@ footer{
     z-index: 3;
 }
 
+.footer_img{
+    width:30px;
+}
+
 footer div{
     padding: 20px;
     display: flex;
