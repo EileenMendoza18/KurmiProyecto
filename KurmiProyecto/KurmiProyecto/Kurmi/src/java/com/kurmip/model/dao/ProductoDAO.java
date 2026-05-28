@@ -96,43 +96,49 @@ public class ProductoDAO {
     // NUEVO: productos del proveedor con estadoNombre para el filtro
     // =========================================================================
     public List<ProductoDTO> obtenerProductosDelProveedor(int idUsuario) {
-        List<ProductoDTO> lista = new ArrayList<>();
-        String sql =
-            "SELECT p.ID_Producto, p.Nombre_Producto, p.Valor_Producto, p.Descripcion_Producto, " +
-            "p.Imagen_Producto, c.Nombre_Categoria, s.Nombre_Sabor, ep.Nombre AS estadoNombre, " +
-            "COALESCE((SELECT SUM(i.StockInicial + i.CantidadAnadida) " +
-            "          FROM Inventario i WHERE i.ID_Producto = p.ID_Producto), 0) AS stockTotal " +
-            "FROM Productos p " +
-            "JOIN RelaProductoVendedor rpv ON rpv.ID_Productos = p.ID_Producto " +
-            "JOIN RelaCatSabor r   ON p.ID_RelaCategSabor = r.ID_RelaCatSabor " +
-            "JOIN Categorias c     ON r.ID_Categoria = c.ID_Categoria " +
-            "JOIN Sabores s        ON r.ID_Sabor = s.ID_Sabor " +
-            "JOIN EstadoProducto ep ON ep.ID_EstadoProducto = p.ID_Estado " +
-            "WHERE rpv.ID_Usuario = ? " +
-            "ORDER BY p.ID_Producto DESC";
-        try {
-            con = cn.getConexion();
-            ps  = con.prepareStatement(sql);
-            ps.setInt(1, idUsuario);
-            rs  = ps.executeQuery();
-            while (rs.next()) {
-                ProductoDTO dto = new ProductoDTO();
-                dto.setIdProducto(rs.getInt("ID_Producto"));
-                dto.setNombre(rs.getString("Nombre_Producto"));
-                dto.setPrecio(rs.getDouble("Valor_Producto"));
-                dto.setDescripcion(rs.getString("Descripcion_Producto"));
-                dto.setCategoria(rs.getString("Nombre_Categoria"));
-                dto.setNombreSabor(rs.getString("Nombre_Sabor"));
-                dto.setStock(rs.getInt("stockTotal"));
-                dto.setImagen(leerImagen(rs));
-                dto.setEstadoNombre(rs.getString("estadoNombre"));
-                lista.add(dto);
-            }
-        } catch (Exception e) {
-            System.err.println("Error en obtenerProductosDelProveedor: " + e.getMessage());
-        } finally { cerrar(); }
-        return lista;
-    }
+    List<ProductoDTO> lista = new ArrayList<>();
+    String sql =
+        "SELECT p.ID_Producto, p.Nombre_Producto, p.Valor_Producto, p.Descripcion_Producto, " +
+        "p.Imagen_Producto, p.Unidad_Medida, p.Fecha_vencimiento, " +        // ← agregar
+        "p.ID_RelaCategSabor, p.ID_Estado, " +                               // ← agregar
+        "c.Nombre_Categoria, s.Nombre_Sabor, ep.Nombre AS estadoNombre, " +
+        "COALESCE((SELECT SUM(i.StockInicial + i.CantidadAnadida) " +
+        "          FROM Inventario i WHERE i.ID_Producto = p.ID_Producto), 0) AS stockTotal " +
+        "FROM Productos p " +
+        "JOIN RelaProductoVendedor rpv ON rpv.ID_Productos = p.ID_Producto " +
+        "JOIN RelaCatSabor r   ON p.ID_RelaCategSabor = r.ID_RelaCatSabor " +
+        "JOIN Categorias c     ON r.ID_Categoria = c.ID_Categoria " +
+        "JOIN Sabores s        ON r.ID_Sabor = s.ID_Sabor " +
+        "JOIN EstadoProducto ep ON ep.ID_EstadoProducto = p.ID_Estado " +
+        "WHERE rpv.ID_Usuario = ? " +
+        "ORDER BY p.ID_Producto DESC";
+    try {
+        con = cn.getConexion();
+        ps  = con.prepareStatement(sql);
+        ps.setInt(1, idUsuario);
+        rs  = ps.executeQuery();
+        while (rs.next()) {
+            ProductoDTO dto = new ProductoDTO();
+            dto.setIdProducto(rs.getInt("ID_Producto"));
+            dto.setNombre(rs.getString("Nombre_Producto"));
+            dto.setPrecio(rs.getDouble("Valor_Producto"));
+            dto.setDescripcion(rs.getString("Descripcion_Producto"));
+            dto.setMedida(rs.getString("Unidad_Medida"));
+            dto.setFechaVencimiento(rs.getString("Fecha_vencimiento"));      // ← agregar
+            dto.setIdRelaCatSabor(rs.getInt("ID_RelaCategSabor"));           // ← agregar
+            dto.setIdEstado(rs.getInt("ID_Estado"));                         // ← agregar
+            dto.setCategoria(rs.getString("Nombre_Categoria"));
+            dto.setNombreSabor(rs.getString("Nombre_Sabor"));
+            dto.setStock(rs.getInt("stockTotal"));
+            dto.setImagen(leerImagen(rs));
+            dto.setEstadoNombre(rs.getString("estadoNombre"));
+            lista.add(dto);
+        }
+    } catch (Exception e) {
+        System.err.println("Error en obtenerProductosDelProveedor: " + e.getMessage());
+    } finally { cerrar(); }
+    return lista;
+}
 
     // =========================================================================
     // Métodos existentes — solo se agrega lectura de Imagen_Producto
@@ -148,7 +154,7 @@ public class ProductoDAO {
             "LEFT JOIN Carrito_Detalle cd ON p.ID_Producto = cd.ID_Producto AND cd.Estado_Carrito = 3 " +
             "WHERE p.ID_Estado = 1 " +
             "GROUP BY p.ID_Producto, p.Nombre_Producto, p.Valor_Producto, p.Descripcion_Producto, p.Imagen_Producto " +
-            "HAVING stockTotal > 0 " +
+            "HAVING (SELECT COALESCE(SUM(i.StockInicial + i.CantidadAnadida),0) FROM Inventario i WHERE i.ID_Producto = p.ID_Producto) > 0 " +
             "ORDER BY totalVendido DESC, p.ID_Producto DESC " +
             "LIMIT ?";
         try {
@@ -176,10 +182,12 @@ public class ProductoDAO {
         List<ProductoDTO> lista = new ArrayList<>();
         String sql =
             "SELECT p.ID_Producto, p.Nombre_Producto, p.Valor_Producto, p.Descripcion_Producto, " +
-            "p.Imagen_Producto, " +
+            "p.Imagen_Producto, p.ID_Estado, " + 
             "COALESCE((SELECT SUM(i.StockInicial + i.CantidadAnadida) FROM Inventario i WHERE i.ID_Producto = p.ID_Producto), 0) AS stockTotal " +
-            "FROM Productos p WHERE p.ID_Estado = 1 " +
-            "HAVING stockTotal > 0 ORDER BY p.ID_Producto DESC LIMIT ?";
+            "FROM Productos p " +
+            "WHERE p.ID_Estado = 1 " +
+            "AND (SELECT COALESCE(SUM(i.StockInicial + i.CantidadAnadida),0) FROM Inventario i WHERE i.ID_Producto = p.ID_Producto) > 0 " +
+            "ORDER BY p.ID_Producto DESC LIMIT ?";
         try (Connection con = cn.getConexion();
              PreparedStatement ps = con.prepareStatement(sql)) {
             ps.setInt(1, limite);
@@ -374,5 +382,68 @@ public class ProductoDAO {
             try { if (con != null) con.setAutoCommit(true); } catch (Exception ignored) {}
             cerrar();
         }
+    }
+    // =========================================================================
+    // ADMIN — Obtener TODOS los productos (sin filtro de proveedor ni estado)
+    // Incluye: nombre, precio, descripción, medida, imagen, categoría, sabor,
+    //          estadoNombre, idEstado y stock total del inventario.
+    // =========================================================================
+    public List<ProductoDTO> obtenerTodosLosProductos() {
+        List<ProductoDTO> lista = new ArrayList<>();
+        String sql =
+            "SELECT p.ID_Producto, p.Nombre_Producto, p.Valor_Producto, " +
+            "p.Descripcion_Producto, p.Unidad_Medida, p.Imagen_Producto, " +
+            "c.Nombre_Categoria, s.Nombre_Sabor, " +
+            "ep.Nombre AS estadoNombre, ep.ID_EstadoProducto AS idEstado, " +
+            "COALESCE((SELECT SUM(i.StockInicial + i.CantidadAnadida) " +
+            "          FROM Inventario i WHERE i.ID_Producto = p.ID_Producto), 0) AS stockTotal " +
+            "FROM Productos p " +
+            "JOIN RelaCatSabor r    ON p.ID_RelaCategSabor = r.ID_RelaCatSabor " +
+            "JOIN Categorias c      ON r.ID_Categoria = c.ID_Categoria " +
+            "JOIN Sabores s         ON r.ID_Sabor = s.ID_Sabor " +
+            "JOIN EstadoProducto ep ON ep.ID_EstadoProducto = p.ID_Estado " +
+            "ORDER BY p.ID_Producto DESC";
+        try {
+            con = cn.getConexion();
+            ps  = con.prepareStatement(sql);
+            rs  = ps.executeQuery();
+            while (rs.next()) {
+                ProductoDTO dto = new ProductoDTO();
+                dto.setIdProducto(rs.getInt("ID_Producto"));
+                dto.setNombre(rs.getString("Nombre_Producto"));
+                dto.setPrecio(rs.getDouble("Valor_Producto"));
+                dto.setDescripcion(rs.getString("Descripcion_Producto"));
+                dto.setMedida(rs.getString("Unidad_Medida"));
+                dto.setCategoria(rs.getString("Nombre_Categoria"));
+                dto.setNombreSabor(rs.getString("Nombre_Sabor"));
+                dto.setStock(rs.getInt("stockTotal"));
+                dto.setImagen(leerImagen(rs));
+                dto.setEstadoNombre(rs.getString("estadoNombre"));
+                dto.setIdEstado(rs.getInt("idEstado"));
+                lista.add(dto);
+            }
+        } catch (Exception e) {
+            System.err.println("Error en obtenerTodosLosProductos: " + e.getMessage());
+        } finally { cerrar(); }
+        return lista;
+    }
+
+    // =========================================================================
+    // ADMIN — Cambiar estado de cualquier producto sin restricción de proveedor
+    // idEstado: 1=Disponible, 2=Agotado, 3=Descontinuado
+    // =========================================================================
+    public boolean cambiarEstadoProducto(int idProducto, int idEstado) {
+        String sql = "UPDATE Productos SET ID_Estado = ? WHERE ID_Producto = ?";
+        try {
+            con = cn.getConexion();
+            ps  = con.prepareStatement(sql);
+            ps.setInt(1, idEstado);
+            ps.setInt(2, idProducto);
+            int filas = ps.executeUpdate();
+            return filas > 0;
+        } catch (Exception e) {
+            System.err.println("Error en cambiarEstadoProducto: " + e.getMessage());
+            return false;
+        } finally { cerrar(); }
     }
 }

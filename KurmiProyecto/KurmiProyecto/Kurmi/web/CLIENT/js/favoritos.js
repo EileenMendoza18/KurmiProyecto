@@ -67,7 +67,7 @@ function crearTarjetaFavorito(prod) {
     const idReal     = prod.idProducto || prod.id || '';
     const nombreReal = prod.nombre || '';
     const precioReal = prod.precio || 0;
-    const imagenSrc  = `../../RESOURCES/img/${prod.imagen || 'inicioHelado.png'}`;
+    const imagenSrc  = `/KurmiProyect/RESOURCES/img/${prod.imagen || 'inicioHelado.png'}`;
 
     const card = document.createElement('div');
     card.className = 'tarjeta__fav';

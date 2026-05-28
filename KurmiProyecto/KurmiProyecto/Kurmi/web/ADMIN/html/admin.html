@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel Administrador - Kurmi</title>
+    <link rel="stylesheet" href="../css/admin.css">
+</head>
+<body>
+
+    <div class="layout">
+
+        <!-- ── SIDEBAR ─────────────────────────────────────── -->
+        <aside class="sidebar">
+
+            <!-- Perfil -->
+            <div class="sidebar__perfil">
+                <img src="../../RESOURCES/img/perfil.png" alt="Foto de perfil" class="sidebar__avatar">
+                <p class="sidebar__bienvenida">Bienvenido(a), <span id="nombreAdmin">...</span></p>
+            </div>
+
+            <hr class="sidebar__divider">
+
+            <!-- Logo Kurmi -->
+            <div class="sidebar__logo">
+                <img src="../../RESOURCES/img/logo.png" alt="Logo Kurmi" class="sidebar__logo-img">
+            </div>
+
+            <hr class="sidebar__divider">
+
+            <!-- Navegación -->
+            <nav class="sidebar__nav">
+                <button class="nav__btn nav__btn--activo" data-seccion="productos">
+                    <span class="nav__icon">📦</span>
+                    Ver productos
+                </button>
+                <button class="nav__btn" data-seccion="clientes">
+                    <span class="nav__icon">👥</span>
+                    Ver clientes
+                </button>
+                <button class="nav__btn" data-seccion="perfil">
+                    <span class="nav__icon">👤</span>
+                    Mi perfil
+                </button>
+            </nav>
+
+        </aside>
+
+        <!-- ── CONTENIDO PRINCIPAL ─────────────────────────── -->
+        <main class="contenido" id="contenidoPrincipal">
+            <div class="contenido__placeholder">
+                <p>Cargando...</p>
+            </div>
+        </main>
+
+    </div>
+
+    <script type="module" src="../js/admin.js"></script>
+</body>
+</html>

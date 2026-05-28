@@ -46,7 +46,7 @@ public class LoginServlet extends HttpServlet {
             String rol = user.getRolNombre(); // Ahora es un String ("Administrador", etc.)
 
             if ("Administrador".equals(rol)) {
-                response.sendRedirect("ADMIN/html/dashboard.html");
+                response.sendRedirect("ADMIN/html/admin.html");
             } else if ("Proveedor".equals(rol)) {
                 response.sendRedirect("PROVIDER/html/proveedor.html");
             } else {

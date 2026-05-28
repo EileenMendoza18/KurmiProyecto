@@ -433,20 +433,104 @@ public boolean marcarPedidoEntregado(int idPedido, int idProveedor) {
         "WHERE p.ID_Pedido = ? AND rpv.ID_Usuario = ? AND p.Estado_Pedido = 1";
     String sqlUpdate =
         "UPDATE Pedidos_Cliente SET Estado_Pedido = 2 WHERE ID_Pedido = ?";
+    String sqlPago =
+        "UPDATE Pago_Pedido SET Estado_Pago = 2 WHERE ID_Pedido = ?";
     try {
         con = cn.getConexion();
+        con.setAutoCommit(false);  // ← transacción
+
         ps = con.prepareStatement(sqlCheck);
         ps.setInt(1, idPedido);
         ps.setInt(2, idProveedor);
         rs = ps.executeQuery();
-        if (!rs.next() || rs.getInt(1) == 0) return false;
+        if (!rs.next() || rs.getInt(1) == 0) {
+            con.rollback();
+            return false;
+        }
 
         ps = con.prepareStatement(sqlUpdate);
         ps.setInt(1, idPedido);
-        return ps.executeUpdate() > 0;
+        ps.executeUpdate();
+
+        ps = con.prepareStatement(sqlPago);  // ← línea nueva
+        ps.setInt(1, idPedido);              // ← línea nueva
+        ps.executeUpdate();                  // ← línea nueva
+
+        con.commit();
+        return true;
     } catch (Exception e) {
         System.err.println("Error en marcarPedidoEntregado: " + e.getMessage());
         return false;
+    } finally {
+        try { if (con != null) con.setAutoCommit(true); } catch (Exception ignored) {}
+        cerrarConexiones();
+    }
+}
+
+    // =========================================================================
+    // ADMIN — Ventas totales de TODA la plataforma (todos los proveedores)
+    // =========================================================================
+    public Map<String, Object> obtenerVentasTotalesAdmin() {
+        double totalVentas       = 0;
+        int    totalPedidos      = 0;
+        int    pedidosEntregados = 0;
+        int    pedidosPendientes = 0;
+
+        String sql =
+            "SELECT p.Estado_Pedido, p.Total_Pago " +
+            "FROM Pedidos_Cliente p " +
+            "WHERE p.Estado_Pedido IN (1, 2)"; // 1=Pendiente, 2=Entregado
+
+        Connection conLocal = null;
+        try {
+            conLocal = cn.getConexion();
+            PreparedStatement ps = conLocal.prepareStatement(sql);
+            ResultSet rs = ps.executeQuery();
+
+            while (rs.next()) {
+                int    estado     = rs.getInt("Estado_Pedido");
+                double totalPago  = rs.getDouble("Total_Pago");
+                totalPedidos++;
+
+                if (estado == 2) {
+                    pedidosEntregados++;
+                    totalVentas += totalPago;
+                } else if (estado == 1) {
+                    pedidosPendientes++;
+                }
+            }
+            rs.close(); ps.close();
+
+        } catch (Exception e) {
+            System.err.println("Error en obtenerVentasTotalesAdmin: " + e.getMessage());
+            e.printStackTrace();
+        } finally {
+            try { if (conLocal != null) conLocal.close(); } catch (Exception ignored) {}
+        }
+
+        Map<String, Object> resultado = new java.util.LinkedHashMap<>();
+        resultado.put("totalVentas",       totalVentas);
+        resultado.put("totalPedidos",      totalPedidos);
+        resultado.put("pedidosEntregados", pedidosEntregados);
+        resultado.put("pedidosPendientes", pedidosPendientes);
+        return resultado;
+    }
+    public void marcarItemComoSeleccionado(int idProducto, int idUsuario) {
+    String sql =
+        "UPDATE Carrito_Detalle cd " +
+        "JOIN Carrito_Compras cc ON cd.ID_Carrito = cc.ID_Carrito " +
+        "SET cd.Estado_Carrito = 5 " +
+        "WHERE cc.ID_Cliente = ? " +
+        "AND cd.ID_Producto = ? " +
+        "AND cd.Estado_Carrito = 4";
+    try {
+        con = cn.getConexion();
+        ps = con.prepareStatement(sql);
+        ps.setInt(1, idUsuario);
+        ps.setInt(2, idProducto);
+        ps.executeUpdate();
+    } catch (Exception e) {
+        System.err.println("Error en marcarItemComoSeleccionado: " + e.getMessage());
     } finally { cerrarConexiones(); }
 }
 
