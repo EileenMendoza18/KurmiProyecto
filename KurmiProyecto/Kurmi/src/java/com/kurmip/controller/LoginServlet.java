@@ -16,7 +16,7 @@ import java.io.IOException;
 
 /**
  *
- * @author USER
+ * @author EileenMendoza
  */
 @WebServlet(name = "LoginServlet", urlPatterns = {"/LoginServlet"})
 public class LoginServlet extends HttpServlet {
@@ -40,13 +40,13 @@ public class LoginServlet extends HttpServlet {
             }
             
             HttpSession session = request.getSession(); 
-            // ¡ESTO ES LO MÁS IMPORTANTE!: Guarda el objeto 'user', no el correo
+            // Guarda el objeto 'user', no el correo
             session.setAttribute("usuarioLogueado", user); 
 
             String rol = user.getRolNombre(); // Ahora es un String ("Administrador", etc.)
 
             if ("Administrador".equals(rol)) {
-                response.sendRedirect("ADMIN/html/dashboard.html");
+                response.sendRedirect("ADMIN/html/admin.html");
             } else if ("Proveedor".equals(rol)) {
                 response.sendRedirect("PROVIDER/html/proveedor.html");
             } else {

@@ -8,14 +8,13 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class UsuarioDAO {
-    Conexion cn = new Conexion(); // Instancia de tu conexión
+    Conexion cn = new Conexion(); // Instancia de conexión
     Connection con;
     PreparedStatement ps;
     ResultSet rs;
 
-    // ESTE ES EL MÉTODO QUE TE FALTA:
     public UsuarioDTO validar(String correo, String contrasena) {
-        // Usamos LEFT JOIN para que si falla la tabla de estados o roles, igual te deje iniciar sesión y no se rompa
+        // Usamos LEFT JOIN para que si falla la tabla de estados o roles
         String sql = "SELECT u.*, r.NombreRol, e.NombreEstado " +
                      "FROM Usuario u " +
                      "LEFT JOIN Roles r ON u.Rol_Usuario = r.Roles_ID " +
@@ -37,10 +36,7 @@ public class UsuarioDAO {
 
             if (rs.next()) {
                 usuario = new UsuarioDTO();
-                
-                // REVISIÓN CRÍTICA DE LLAVE PRIMARIA:
-                // Si en tu tabla la columna ID se llama 'idUsuario', déjala así. 
-                // Si se llama 'UsuarioID', cambia el texto de abajo por "UsuarioID".
+
                 usuario.setId(rs.getInt("UsuarioID")); 
                 
                 usuario.setNombres(rs.getString("Nombres"));
@@ -92,8 +88,23 @@ public class UsuarioDAO {
             int resultado = ps.executeUpdate();
             return resultado > 0;
 
+        } catch (SQLException e) {
+            // SQLState 23000 = violación de restricción de unicidad (UNIQUE KEY)
+            if ("23000".equals(e.getSQLState())) {
+                String msg = e.getMessage().toLowerCase();
+                if (msg.contains("correo_usu") || msg.contains("correo")) {
+                    System.err.println("[Kurmi - UsuarioDAO] ❌ Registro fallido: el correo '" + dto.getCorreo() + "' ya está registrado.");
+                } else if (msg.contains("telefono")) {
+                    System.err.println("[Kurmi - UsuarioDAO] ❌ Registro fallido: el teléfono '" + dto.getTelefono() + "' ya está registrado.");
+                } else {
+                    System.err.println("[Kurmi - UsuarioDAO] ❌ Registro fallido por dato duplicado: " + e.getMessage());
+                }
+            } else {
+                System.err.println("[Kurmi - UsuarioDAO] ❌ Error SQL inesperado al registrar usuario: " + e.getMessage());
+            }
+            return false;
         } catch (Exception e) {
-            System.err.println("Error al registrar usuario: " + e.getMessage());
+            System.err.println("[Kurmi - UsuarioDAO] ❌ Error general al registrar usuario: " + e.getMessage());
             return false;
         } finally {
             cerrarRecursos();
@@ -133,10 +144,7 @@ public class UsuarioDAO {
             System.err.println("Error al cerrar recursos en UsuarioDAO: " + e.getMessage());
         }
     }
-    // =====================================================================
-    // REEMPLAZAR los dos métodos en UsuarioDAO.java
-    // (antes del método privado cerrarRecursos())
-    // =====================================================================
+
 
         public UsuarioDTO obtenerPorId(int idUsuario) {
             String sql = "SELECT u.UsuarioID, u.Nombres, u.Apellidos, u.Fecha_Nacimiento, " +
@@ -199,4 +207,58 @@ public class UsuarioDAO {
                 cerrarRecursos();
             }
         }
+        // =====================================================================
+// ADMIN — Obtener todos los usuarios (clientes y proveedores)
+// =====================================================================
+public List<UsuarioDTO> obtenerTodosLosUsuarios() {
+    List<UsuarioDTO> lista = new ArrayList<>();
+    String sql = "SELECT u.UsuarioID, u.Nombres, u.Apellidos, u.Correo_Usu, " +
+                 "u.Telefono, u.Direc_Usuario, " +
+                 "r.NombreRol, r.Roles_ID, " +
+                 "e.NombreEstado, e.EstadoID " +
+                 "FROM Usuario u " +
+                 "LEFT JOIN Roles r ON u.Rol_Usuario = r.Roles_ID " +
+                 "LEFT JOIN EstadoCliente e ON u.Est_Vinculacion = e.EstadoID " +
+                 "WHERE u.Rol_Usuario != 2 " +  // excluir admins
+                 "ORDER BY u.UsuarioID DESC";
+    try {
+        con = cn.getConexion();
+        ps  = con.prepareStatement(sql);
+        rs  = ps.executeQuery();
+        while (rs.next()) {
+            UsuarioDTO dto = new UsuarioDTO();
+            dto.setId(rs.getInt("UsuarioID"));
+            dto.setNombres(rs.getString("Nombres"));
+            dto.setApellidos(rs.getString("Apellidos"));
+            dto.setCorreo(rs.getString("Correo_Usu"));
+            dto.setTelefono(rs.getString("Telefono"));
+            dto.setDireccion(rs.getString("Direc_Usuario"));
+            dto.setIdRol(rs.getInt("Roles_ID"));
+            dto.setRolNombre(rs.getString("NombreRol"));
+            dto.setEstadoNombre(rs.getString("NombreEstado"));
+            lista.add(dto);
+        }
+    } catch (Exception e) {
+        System.err.println("Error en obtenerTodosLosUsuarios: " + e.getMessage());
+    } finally { cerrarRecursos(); }
+    return lista;
+}
+
+// =====================================================================
+// ADMIN — Cambiar estado de un usuario
+// idEstado: 1=Activo, 2=Inactivo, 3=Pendiente
+// =====================================================================
+public boolean cambiarEstadoUsuario(int idUsuario, int idEstado) {
+    String sql = "UPDATE Usuario SET Est_Vinculacion = ? WHERE UsuarioID = ?";
+    try {
+        con = cn.getConexion();
+        ps  = con.prepareStatement(sql);
+        ps.setInt(1, idEstado);
+        ps.setInt(2, idUsuario);
+        return ps.executeUpdate() > 0;
+    } catch (Exception e) {
+        System.err.println("Error en cambiarEstadoUsuario: " + e.getMessage());
+        return false;
+    } finally { cerrarRecursos(); }
+}
 }

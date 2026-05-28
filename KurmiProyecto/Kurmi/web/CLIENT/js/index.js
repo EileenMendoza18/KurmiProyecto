@@ -109,22 +109,21 @@ if (btnCarrito) {
     const btnFavoritos = tarjetaClonada.querySelector('.like');
     if (btnFavoritos) {
         btnFavoritos.onclick = async (e) => {
-            e.stopPropagation(); // Se previene el comportamiento propagado del clic
+            e.stopPropagation();
             try {
-                // Se ejecuta el llamado al servlet del módulo de favoritos
                 const response = await fetch(`/KurmiProyect/FavoritosServlet?idProducto=${idReal}`, { method: 'POST' });
-                
+
                 if (response.ok) {
-                    const mensaje = await response.text();
-                    
-                    // Se valida si el texto del servlet confirma explícitamente que fue una inserción nueva
-                    if (mensaje.trim().includes("Añadido correctamente")) {
-                        // Se levanta la notificación emergente de favoritos estándar
+                    const mensaje = (await response.text()).trim();
+
+                    if (mensaje.includes("Añadido correctamente")) {
                         mostrarNotificacionDinamica('favoritos');
-                    } else {
-                        // Se alerta que el elemento ya se encontraba guardado previamente en la base de datos
+                    } else if (mensaje.includes("Debes iniciar sesión")) {
+                        alert("Por favor, inicia sesión para añadir productos a favoritos.");
+                    } else if (mensaje.includes("ya fue añadido")) {
                         alert("El producto ya fue añadido a favoritos.");
-                        console.log("Aviso del servidor:", mensaje);
+                    } else {
+                        alert("No se pudo procesar la solicitud: " + mensaje);
                     }
                 }
             } catch (error) {
@@ -409,9 +408,7 @@ async function cargarSeccionesTienda(contenedorId) {
             // Crear la rejilla (Grid) donde se alinearán las tarjetas de esta categoría
             const gridTarjetas = document.createElement('div');
             gridTarjetas.className = 'tienda-productos-grid';
-            gridTarjetas.style.display = 'grid';
-            gridTarjetas.style.gridTemplateColumns = 'repeat(auto-fill, minmax(240px, 1fr))';
-            gridTarjetas.style.gap = '25px';
+            
 
             // Inyectar cada producto correspondiente a esta sección
             for (const prod of listaProductos) {
@@ -565,7 +562,10 @@ async function cargarCarrito() {
             cardImagen.classList.add("card__imagen");
             
             const img = document.createElement("img");
-            img.src = item.imagen || '../../RESOURCES/img/inicioHelado.png'; // Ruta de imagen por defecto si no se proporciona
+            const BASE_CARRITO = '/KurmiProyect/RESOURCES/img/';
+            img.src = (item.imagen && item.imagen !== 'inicioHelado.png')
+                ? BASE_CARRITO + item.imagen
+                : BASE_CARRITO + 'inicioHelado.png';
             img.alt = item.nombre;
             cardImagen.appendChild(img);
 
@@ -589,34 +589,60 @@ async function cargarCarrito() {
             const accionesContador = document.createElement("div");
             accionesContador.classList.add("acciones__contador");
 
+            // ── cantidadValor DEBE declararse ANTES de los onclick que la usan ──
+            const cantidadValor = document.createElement("span");
+            cantidadValor.classList.add("cantidad-valor");
+            cantidadValor.textContent = item.cantidad;
+
             const btnMenos = document.createElement("button");
             btnMenos.className = "btn-cantidad btn-menos";
             btnMenos.type = "button";
             btnMenos.textContent = "-";
-            
+
             btnMenos.onclick = async () => {
                 let actual = parseInt(cantidadValor.textContent);
                 if (actual > 1) {
                     actual--;
                     cantidadValor.textContent = actual;
+                    try {
+                        const res = await fetch(`/KurmiProyect/CarritoServlet`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                            body: `accion=actualizarCantidad&idDetalle=${item.idDetalleCarrito}&cantidad=${actual}&idProducto=${item.idProducto}`
+                        });
+                        const msg = (await res.text()).trim();
+                        if (msg === 'STOCK_SUPERADO') {
+                            cantidadValor.textContent = actual + 1;
+                        }
+                    } catch (e) { console.error("Error actualizando cantidad:", e); }
                     actualizarTotal();
+                    actualizarResumenCarrito();
                 }
             };
-
-            const cantidadValor = document.createElement("span");
-            cantidadValor.classList.add("cantidad-valor");
-            cantidadValor.textContent = item.cantidad;
 
             const btnMas = document.createElement("button");
             btnMas.className = "btn-cantidad btn-mas";
             btnMas.type = "button";
             btnMas.textContent = "+";
-            
+
             btnMas.onclick = async () => {
                 let actual = parseInt(cantidadValor.textContent);
                 actual++;
                 cantidadValor.textContent = actual;
+                try {
+                    const res = await fetch(`/KurmiProyect/CarritoServlet`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: `accion=actualizarCantidad&idDetalle=${item.idDetalleCarrito}&cantidad=${actual}&idProducto=${item.idProducto}`
+                    });
+                    const msg = (await res.text()).trim();
+                    if (msg === 'STOCK_SUPERADO') {
+                        alert('⚠️ Has alcanzado el límite de stock disponible para este producto.');
+                        cantidadValor.textContent = actual - 1;
+                    }
+                } catch (e) { console.error("Error actualizando cantidad:", e); }
                 actualizarTotal();
+                actualizarResumenCarrito();
             };
 
             accionesContador.appendChild(btnMenos);
@@ -630,21 +656,27 @@ async function cargarCarrito() {
             btnEliminar.innerHTML = `<img src="../../RESOURCES/img/delete.png" alt="Eliminar">`; // Usar un ícono de basura o cruz para representar la acción de eliminación
 
             btnEliminar.onclick = async () => {
-            if (confirm(`¿Deseas remover ${item.nombre} de tu carrito?`)) {
-                try {
-                    await fetch(`/KurmiProyect/CarritoServlet`, {
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-                        body: `accion=eliminar&idDetalle=${item.idDetalleCarrito}`
-                    });
-                } catch(e) { console.error("Error eliminando:", e); }
-                
-                card.remove();
-                actualizarResumenCarrito();
-                if (gridProductos.children.length === 0) {
-                    contenedorVacio.classList.remove("hidden");
-                    contenedorContenido.classList.add("hidden");
+            if (!confirm(`¿Deseas remover ${item.nombre} de tu carrito?`)) return;
+            try {
+                const res = await fetch(`/KurmiProyect/CarritoServlet`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                    body: `accion=eliminar&idDetalle=${item.idDetalleCarrito}`
+                });
+                const msg = (await res.text()).trim();
+                if (msg === 'OK') {
+                    card.remove();
+                    actualizarResumenCarrito();
+                    if (gridProductos.children.length === 0) {
+                        contenedorVacio.classList.remove("hidden");
+                        contenedorContenido.classList.add("hidden");
+                    }
+                } else {
+                    alert('No se pudo eliminar el producto. Intenta de nuevo.');
                 }
+            } catch(e) {
+                console.error("Error eliminando:", e);
+                alert('Error de conexión al eliminar el producto.');
             }
         };
 
@@ -758,28 +790,24 @@ if (btnComprar) {
 }
 
 function actualizarResumenCarrito() {
+    const totalBadge   = document.querySelector(".resumen__total-badge span");
+    const contadorEl   = document.getElementById("contador-productos");
     let totalAcumulado = 0;
-    let contadorSeleccionados = 0;
+    let totalSeleccionados = 0;
+
+    // Solo cuenta y suma los productos cuyo checkbox está marcado
     document.querySelectorAll(".producto__card").forEach(tarjeta => {
         const checkbox = tarjeta.querySelector(".chk-comprar");
-        
         if (checkbox && checkbox.checked) {
-            const cantidad = parseInt(tarjeta.querySelector(".cantidad-valor").textContent) || 0;
-            
-            // Extraemos el precio (limpiando caracteres de moneda de ser necesario)
-            const precioTexto = tarjeta.querySelector(".card__precio").textContent;
-            const precio = parseFloat(precioTexto.replace(/[^0-9]/g, '')) || 0;
-
-            totalAcumulado += (precio * cantidad);
-            contadorSeleccionados += 1; // Cuenta el producto como seleccionado
+            const cantidad = parseInt(tarjeta.querySelector(".cantidad-valor")?.textContent || "0");
+            const precio   = parseFloat(checkbox.getAttribute("data-precio") || "0");
+            totalSeleccionados += 1;
+            totalAcumulado     += precio * cantidad;
         }
     });
-    document.getElementById("contador-productos").textContent = contadorSeleccionados;
-    
-    const badgeTotal = document.querySelector(".resumen__total-badge span");
-    if (badgeTotal) {
-        badgeTotal.textContent = `Total: $${totalAcumulado.toLocaleString('es-CO')}`;
-    }
+
+    if (totalBadge) totalBadge.textContent = `Total: $${totalAcumulado.toLocaleString('es-CO')}`;
+    if (contadorEl) contadorEl.textContent  = totalSeleccionados;
 }
 
 // ─── BUSCADOR EN TIEMPO REAL ──────────────────────────────────────────────────
@@ -828,7 +856,7 @@ function inicializarBuscador() {
 
         const grid = document.createElement('div');
         grid.className = 'tienda-productos-grid';
-        grid.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:25px;';
+        
 
         for (const prod of filtrados) {
             const tarjeta = plantillaTarjetaTienda.cloneNode(true);
@@ -863,7 +891,7 @@ function renderizarPorCategorias(productos, contenedor) {
 
         const grid = document.createElement('div');
         grid.className = 'tienda-productos-grid';
-        grid.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:25px;';
+        
 
         for (const prod of lista) {
             const tarjeta = plantillaTarjetaTienda.cloneNode(true);

@@ -32,6 +32,9 @@ document.addEventListener("DOMContentLoaded", () => {
         localStorage.removeItem("totalCarrito");
         localStorage.removeItem("productosCheckout");
         localStorage.removeItem("totalCheckout");
+        localStorage.removeItem("esRecompra");
+        localStorage.removeItem("recompraIdCarrito");
+        localStorage.removeItem("recompraFechaPedido");
 
         if (bloquePago) {
             bloquePago.innerHTML = `
@@ -78,10 +81,16 @@ document.addEventListener("DOMContentLoaded", () => {
         if (resumenCompra) {
             resumenCompra.innerText = `${decodeURIComponent(nombreProd)} - 1 Unidad: $${valorUnitario.toLocaleString('es-CO')}`;
         }
+
     } else {
         // -----------------------------------------------------------------
-        // FLUJO B: COMPRA DESDE CARRITO O RECOMPRA DESDE PEDIDO CANCELADO
+        // FLUJO B: COMPRA DESDE CARRITO  |  FLUJO C: RECOMPRA DESDE PEDIDO CANCELADO
+        // La diferencia entre B y C se determina por la bandera 'esRecompra'
+        // que se guarda en localStorage cuando el usuario hace "Comprar nuevamente"
+        // desde pedidos.js. Sin esa bandera, se trata como compra normal del carrito.
         // -----------------------------------------------------------------
+        const esRecompra = localStorage.getItem("esRecompra") === "true";
+
         const listaProductos =
             JSON.parse(localStorage.getItem("productosCheckout")) ||
             JSON.parse(localStorage.getItem("carrito")) ||
@@ -94,8 +103,6 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         let resumenTexto   = "";
-        // ► FIX: siempre recalcular el total desde los productos,
-        //   no confiar en un total previo que puede estar desactualizado.
         let totalCalculado = 0;
 
         listaProductos.forEach((item, index) => {
@@ -103,25 +110,56 @@ document.addEventListener("DOMContentLoaded", () => {
             const cantidadSegura = parseInt(item.cantidad || item.Cantidad_producto || 1);
             const precioSeguro   = parseFloat(item.precio || item.precioProducto || item.Valor_Producto || 0);
 
-            // Calcular siempre precio * cantidad para evitar desfases
             totalCalculado += precioSeguro * cantidadSegura;
             resumenTexto   += `${nombreSeguro} (x${cantidadSegura})`;
             if (index < listaProductos.length - 1) resumenTexto += " + ";
         });
 
-        // Setear el total definitivo en el input que viaja al Servlet
         if (inputTotalPago) inputTotalPago.value = totalCalculado;
 
+        // Setear idCarrito
         const inputIdCarrito = document.getElementById("idCarrito");
         if (inputIdCarrito) {
-            const carritoValido = listaProductos.find(p => p.idCarrito && p.idCarrito !== "");
-            inputIdCarrito.value = carritoValido ? carritoValido.idCarrito : 0;
-            console.log("idCarrito enviado al servlet:", inputIdCarrito.value);
+            if (!esRecompra) {
+                const carritoValido = listaProductos.find(p => p.idCarrito && p.idCarrito !== "");
+                inputIdCarrito.value = carritoValido ? carritoValido.idCarrito : 0;
+                console.log("idCarrito enviado al servlet:", inputIdCarrito.value);
+            } else {
+                // En recompra se usa el carrito original del pedido cancelado
+                inputIdCarrito.value = localStorage.getItem("recompraIdCarrito") || 0;
+                console.log("recompra idCarrito original:", inputIdCarrito.value);
+            }
         }
 
         if (resumenCompra) {
             resumenCompra.innerText =
                 `${resumenTexto} | Total: $${totalCalculado.toLocaleString('es-CO')}`;
+        }
+
+        // -----------------------------------------------------------------
+        // En recompra: solo enviar la bandera esRecompra y la fechaPedidoOriginal.
+        // El DAO usará el idCarrito del pedido cancelado para encontrar los
+        // productos ya existentes en Carrito_Detalle — NO se insertan filas nuevas.
+        // En compra normal: no se necesitan campos extra.
+        // -----------------------------------------------------------------
+        const formPago = document.querySelector('form');
+        if (formPago) {
+            formPago.querySelectorAll('[name^="checkout_"], [name="esRecompra"], [name="fechaPedidoOriginal"]').forEach(el => el.remove());
+
+            if (esRecompra) {
+                const flagInput    = document.createElement('input');
+                flagInput.type     = 'hidden';
+                flagInput.name     = 'esRecompra';
+                flagInput.value    = 'true';
+                formPago.appendChild(flagInput);
+
+                // Fecha del pedido cancelado original para que el DAO cruce Carrito_Detalle
+                const fechaInput   = document.createElement('input');
+                fechaInput.type    = 'hidden';
+                fechaInput.name    = 'fechaPedidoOriginal';
+                fechaInput.value   = localStorage.getItem("recompraFechaPedido") || '';
+                formPago.appendChild(fechaInput);
+            }
         }
     }
 });

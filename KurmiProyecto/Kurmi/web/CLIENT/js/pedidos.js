@@ -10,8 +10,7 @@ async function cargarModulos() {
     if (!tieneSesion) return;
 
     inicializarFiltros();
-    // Cargar siempre "Comprado" (2) al inicio
-    cargarPedidos(2);
+    cargarPedidos(1); // Inicia en Pendiente
 }
 cargarModulos();
 
@@ -19,10 +18,7 @@ cargarModulos();
 async function verificarSesion() {
     try {
         const res = await fetch('/KurmiProyect/PerfilServlet');
-        if (res.status === 401) {
-            window.location.replace('/KurmiProyect/inicioSesion.html');
-            return false;
-        }
+        if (res.status === 401) { window.location.replace('/KurmiProyect/inicioSesion.html'); return false; }
         const usuario = await res.json();
         const span = document.getElementById('nombreUsuario');
         if (span) span.textContent = usuario.nombres || '';
@@ -42,6 +38,10 @@ function inicializarFiltros() {
             cargarPedidos(parseInt(btn.dataset.estado));
         });
     });
+
+    // Activar botón Pendiente por defecto
+    const btnPendiente = document.querySelector('.filtro__btn[data-estado="1"]');
+    if (btnPendiente) btnPendiente.classList.add('filtro__btn--activo');
 }
 
 // ── Cargar pedidos del servidor ───────────────────────────────────────────────
@@ -51,21 +51,18 @@ async function cargarPedidos(estado) {
 
     try {
         const res = await fetch('/KurmiProyect/PedidosServlet?estado=' + estado);
-        if (res.status === 401) {
-            window.location.replace('/KurmiProyect/inicioSesion.html');
-            return;
-        }
+        if (res.status === 401) { window.location.replace('/KurmiProyect/inicioSesion.html'); return; }
 
         const pedidos = await res.json();
         grid.innerHTML = '';
 
         if (!pedidos || pedidos.length === 0) {
             const etiquetas = { 1: 'pedidos pendientes', 2: 'pedidos completados', 3: 'pedidos cancelados' };
-            grid.innerHTML = '<p class="pedidos__vacio"> :( No tienes ' + (etiquetas[estado] || 'pedidos') + ' aún.</p>';
+            grid.innerHTML = '<p class="pedidos__vacio">😕 No tienes ' + (etiquetas[estado] || 'pedidos') + ' aún.</p>';
             return;
         }
 
-        pedidos.forEach(function(pedido) {
+        pedidos.forEach(pedido => {
             const card = crearTarjetaPedido(pedido, estado);
             grid.appendChild(card);
         });
@@ -83,7 +80,11 @@ function crearTarjetaPedido(pedido, estado) {
 
     const img = document.createElement('img');
     img.className = 'pedido__img';
-    img.src = pedido.imagenPrimera || '../../RESOURCES/img/inicioHelado.png';
+    const BASE_IMG = '/KurmiProyect/RESOURCES/img/';
+    const imgNombre = pedido.imagenPrimera;
+    img.src = (imgNombre && imgNombre !== 'inicioHelado.png')
+        ? BASE_IMG + imgNombre
+        : '../../RESOURCES/img/inicioHelado.png';
     img.alt = 'Pedido';
 
     const info = document.createElement('div');
@@ -107,22 +108,19 @@ function crearTarjetaPedido(pedido, estado) {
     card.appendChild(img);
     card.appendChild(info);
 
-    // Botón cancelar — solo en estado Completado (2)
-    if (estado === 2) {
+    // ── Botón cancelar — SOLO en Pendiente (1) ──
+    if (estado === 1) {
         const btnCancelar = document.createElement('button');
         btnCancelar.className = 'btn__pedido-cancelar';
         btnCancelar.textContent = 'Cancelar pedido';
-        btnCancelar.addEventListener('click', function(e) {
+        btnCancelar.addEventListener('click', e => {
             e.stopPropagation();
             confirmarCancelacion(pedido.idPedido);
         });
         card.appendChild(btnCancelar);
     }
 
-    card.addEventListener('click', function() {
-        abrirModal(pedido, estado);
-    });
-
+    card.addEventListener('click', () => abrirModal(pedido, estado));
     return card;
 }
 
@@ -131,19 +129,16 @@ async function confirmarCancelacion(idPedido) {
     if (!confirm('¿Estás seguro de que deseas cancelar este pedido?')) return;
 
     try {
-        const body = 'idPedido=' + encodeURIComponent(idPedido) + '&nuevoEstado=3';
-
         const res = await fetch('/KurmiProyect/CambiarEstadoPedidoServlet', {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: body
+            body: 'idPedido=' + encodeURIComponent(idPedido) + '&nuevoEstado=3'
         });
 
         const data = await res.json();
-
         if (data.ok) {
             alert('Pedido cancelado correctamente.');
-            cargarPedidos(2);
+            cargarPedidos(1); // Refresca la vista de Pendientes
         } else {
             alert('No se pudo cancelar: ' + (data.msg || 'error desconocido'));
         }
@@ -168,13 +163,16 @@ function abrirModal(pedido, estado) {
     productos.innerHTML = '';
     footer.innerHTML    = '';
 
-    (pedido.productos || []).forEach(function(prod) {
+    (pedido.productos || []).forEach(prod => {
         const card = document.createElement('div');
         card.className = 'modal__prod-card';
 
         const img = document.createElement('img');
         img.className = 'modal__prod-img';
-        img.src = prod.imagen || '../../RESOURCES/img/inicioHelado.png';
+        const BASE_IMG_MOD = '/KurmiProyect/RESOURCES/img/';
+        img.src = (prod.imagen && prod.imagen !== 'inicioHelado.png')
+            ? BASE_IMG_MOD + prod.imagen
+            : '../../RESOURCES/img/inicioHelado.png';
         img.alt = prod.nombre;
 
         const info = document.createElement('div');
@@ -184,18 +182,17 @@ function abrirModal(pedido, estado) {
         nombre.className = 'modal__prod-nombre';
         nombre.textContent = prod.nombre;
 
-        const detalle = document.createElement('p');
-        detalle.className = 'modal__prod-detalle';
-        detalle.textContent = 'Cantidad: ' + prod.cantidad + '  ·  $' + Number(prod.precioTotal).toLocaleString('es-CO');
+        const det = document.createElement('p');
+        det.className = 'modal__prod-detalle';
+        det.textContent = 'Cantidad: ' + prod.cantidad + '  ·  $' + Number(prod.precioTotal).toLocaleString('es-CO');
 
         info.appendChild(nombre);
-        info.appendChild(detalle);
+        info.appendChild(det);
         card.appendChild(img);
         card.appendChild(info);
         productos.appendChild(card);
     });
 
-    // Total
     const spanTotal = document.createElement('p');
     spanTotal.style.cssText = 'font-weight:700;color:#463877;margin-right:auto;font-size:1rem;';
     spanTotal.textContent = 'Total: $' + Number(pedido.totalPago).toLocaleString('es-CO');
@@ -203,35 +200,60 @@ function abrirModal(pedido, estado) {
 
     // Botón recomprar — solo en Cancelado (3)
     if (estado === 3) {
+        // Selector de método de pago
+        const selectMetodo = document.createElement('select');
+        selectMetodo.id = 'selectMetodoRecompra';
+        selectMetodo.style.cssText = 'padding:6px 10px;border-radius:8px;border:1px solid #c4b5e8;font-size:0.9rem;';
+        selectMetodo.innerHTML = `
+            <option value="" disabled selected>Método de pago</option>
+            <option value="1">Efectivo</option>
+            <option value="2">Nequi</option>
+        `;
+
         const btnRecomprar = document.createElement('button');
         btnRecomprar.className = 'btn__modal-comprar';
         btnRecomprar.textContent = 'Comprar nuevamente';
-        btnRecomprar.onclick = function() { recomprarPedido(pedido); };
+        btnRecomprar.onclick = () => {
+            const idMetodo = selectMetodo.value;
+            if (!idMetodo) { alert('Selecciona un método de pago.'); return; }
+            recomprarPedido(pedido.idPedido, parseInt(idMetodo));
+        };
+
+        footer.appendChild(selectMetodo);
         footer.appendChild(btnRecomprar);
     }
 
     overlay.classList.remove('hidden');
 }
 
-// ── Recomprar desde cancelado ─────────────────────────────────────────────────
-function recomprarPedido(pedido) {
-    const productos = (pedido.productos || []).map(function(prod) {
-        return {
-            idProducto: prod.idProducto,
-            nombre:     prod.nombre,
-            precio:     prod.precio,
-            cantidad:   prod.cantidad
-        };
-    });
-    localStorage.setItem('productosCheckout', JSON.stringify(productos));
-    document.getElementById('modalOverlay').classList.add('hidden');
-    window.location.href = '../html/formularioPago.html';
+// ── Recomprar: solo cambia estado del pedido cancelado → Pendiente ────────────
+async function recomprarPedido(idPedido, idMetodo) {
+    try {
+        const res = await fetch('/KurmiProyect/CambiarEstadoPedidoServlet', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: 'idPedido=' + encodeURIComponent(idPedido) +
+                  '&nuevoEstado=1' +
+                  '&idMetodo=' + encodeURIComponent(idMetodo)
+        });
+        const data = await res.json();
+        if (data.ok) {
+            alert('¡Pedido reactivado! Ya aparece en Pendientes.');
+            document.getElementById('modalOverlay').classList.add('hidden');
+            cargarPedidos(3); // Refrescar vista Cancelados
+        } else {
+            alert('No se pudo reactivar: ' + (data.msg || 'error desconocido'));
+        }
+    } catch (e) {
+        console.error('Error al reactivar pedido:', e);
+        alert('Error de red al reactivar el pedido.');
+    }
 }
 
 // ── Cerrar modal ──────────────────────────────────────────────────────────────
-document.getElementById('modalCerrar').addEventListener('click', function() {
+document.getElementById('modalCerrar').addEventListener('click', () => {
     document.getElementById('modalOverlay').classList.add('hidden');
 });
-document.getElementById('modalOverlay').addEventListener('click', function(e) {
+document.getElementById('modalOverlay').addEventListener('click', e => {
     if (e.target === e.currentTarget) e.currentTarget.classList.add('hidden');
 });

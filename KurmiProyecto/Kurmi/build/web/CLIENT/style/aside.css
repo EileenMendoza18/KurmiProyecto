@@ -1,0 +1,115 @@
+/* --- MENÚ LATERAL INTERACTIVO (ASIDE) --- */
+
+#asideContainer{
+    position: fixed;
+    z-index: 10;
+}
+aside {
+    margin-top: 14vh;
+    display: grid;
+    grid-template-columns: 50px 200px;
+    grid-template-rows: repeat(2, auto);
+    width: auto;
+    height: auto;    
+}
+
+aside input {
+    display: none;
+}
+
+aside label {
+    grid-area: 1/1;
+    width: 100%;
+}
+
+aside label div {
+    background-color: #DCD6F7;
+    width: 100%;
+    padding: 12px;
+    border-top-right-radius: 10px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+aside label img {
+    width: 100%;
+    height: auto;
+    cursor: pointer;
+}
+
+.menudos {
+    grid-area: 2/1;
+    width: 100%;
+}
+
+.menudos div {
+    background-color: #DCD6F7;
+    width: 100%;
+    padding: 12px;
+    border-top: 1px solid rgb(186, 153, 233);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.menudos div:last-child {
+    border-bottom: 1px solid rgb(186, 153, 233);
+    border-bottom-left-radius: 10px;
+}
+
+.menudos img {
+    width: 100%;
+    height: auto;
+}
+
+#aside:checked ~ .letras {
+    display: flex;
+    flex-direction: column;
+}
+
+.letras {
+    display: none;
+    grid-row: span 2;
+    grid-area: 2/2;
+    background-color: #DCD6F7;
+    border-bottom-right-radius: 10px;
+    border-top-right-radius: 10px;
+    border: 1px solid rgb(186, 153, 233);
+    width: auto;
+    
+    /* === CAMBIOS CRÍTICOS DE BLINDAJE === */
+    height: auto;     /* Permite que la caja crezca según los datos */
+    max-height: 443px;             /* No deja que supere la altura del panel morado izquierdo */
+    overflow-y: auto;              /* Si tienes más de 8 categorías, activa un scroll interno limpio */
+    box-shadow: 4px 4px 12px rgba(70, 56, 119, 0.1);
+}
+
+.letras div {
+    height:100%;
+    display: flex;
+    align-items: center;
+    padding-left: 15px;
+    padding-right: 10px;           /* Evita que los textos largos toquen el borde */
+    border-bottom: 1px solid rgb(186, 153, 233);
+    width: 100%;
+}
+
+.letras div:last-child {
+    border-bottom: none;
+    border-bottom-right-radius: 10px;
+}
+
+.letras p {
+    color: #463877;
+    font-weight: bold;
+    font-size: 0.9rem;
+}
+
+/* Alinea de forma horizontal el icono generado y su respectivo texto */
+.item-menu-lateral {
+    display: flex;
+    align-items: center;
+    gap: 10px; /* Separación horizontal entre el icono y el nombre de la categoría */
+    width: 100%;
+}

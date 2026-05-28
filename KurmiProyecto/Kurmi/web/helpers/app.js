@@ -221,14 +221,23 @@ function verificarErroresURL() {
             if (errorContrasena && inputContrasena) showError(errorContrasena, "Correo o contraseña incorrectos", inputContrasena);
         }
         window.history.replaceState({}, document.title, window.location.pathname);
-    }else{
-            if (errorParam === "invalid_role") {
-                if (errorRol && inputRol) {
-                    showError(errorRol, "El rol seleccionado no es válido.", inputRol);
-                }
-            }
+    } else {
+        // --- ERRORES DEL REGISTRO ---
+        if (errorParam === 'invalid_role') {
+            console.log('[Kurmi - Registro] ❌ Error: rol inválido o no seleccionado.');
+            if (errorRol && inputRol) showError(errorRol, 'El rol seleccionado no es válido.', inputRol);
+
+        } else if (errorParam === 'insert_failed') {
+            console.log('[Kurmi - Registro] ❌ Error: los datos ingresados ya existen en el sistema (correo o teléfono duplicado).');
+            alert('⚠️ Los datos ingresados no son válidos. Por favor verifica la información e intenta de nuevo.');
+
+        } else if (errorParam === 'unexpected_system_error') {
+            console.log('[Kurmi - Registro] ❌ Error inesperado del sistema. Revisa los logs del servidor.');
+            alert('❌ Ocurrió un error inesperado. Por favor intenta de nuevo más tarde.');
+        }
+
         window.history.replaceState({}, document.title, window.location.pathname);
-        } 
+    }
 }
 
 

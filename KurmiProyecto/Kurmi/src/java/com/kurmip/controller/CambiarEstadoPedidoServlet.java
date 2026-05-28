@@ -11,10 +11,10 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Permite al cliente cancelar uno de sus pedidos (estado Completado → Cancelado).
+ * Gestiona cambios de estado de pedidos del cliente:
  *
  * POST /CambiarEstadoPedidoServlet
- *   Params: idPedido (int), nuevoEstado (int) — solo acepta nuevoEstado=3
+ *   Params: idPedido (int), nuevoEstado (int), idMetodo (int, requerido si nuevoEstado=1)
  */
 @WebServlet(name = "CambiarEstadoPedidoServlet", urlPatterns = {"/CambiarEstadoPedidoServlet"})
 public class CambiarEstadoPedidoServlet extends HttpServlet {
@@ -29,7 +29,6 @@ public class CambiarEstadoPedidoServlet extends HttpServlet {
         response.setContentType("application/json");
         response.setCharacterEncoding("UTF-8");
 
-        // Verificar sesión
         HttpSession session = request.getSession(false);
         if (session == null || session.getAttribute("usuarioLogueado") == null) {
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
@@ -42,7 +41,6 @@ public class CambiarEstadoPedidoServlet extends HttpServlet {
 
         Map<String, Object> result = new HashMap<>();
 
-        // Leer parámetros (vienen como application/x-www-form-urlencoded o multipart)
         String idPedidoParam    = request.getParameter("idPedido");
         String nuevoEstadoParam = request.getParameter("nuevoEstado");
 
@@ -50,8 +48,7 @@ public class CambiarEstadoPedidoServlet extends HttpServlet {
                 || idPedidoParam.isBlank() || nuevoEstadoParam.isBlank()) {
             response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
             result.put("ok", false);
-            result.put("msg", "Parámetros inválidos: idPedido=" + idPedidoParam
-                    + ", nuevoEstado=" + nuevoEstadoParam);
+            result.put("msg", "Parámetros inválidos");
             response.getWriter().write(gson.toJson(result));
             return;
         }
@@ -60,19 +57,35 @@ public class CambiarEstadoPedidoServlet extends HttpServlet {
             int idPedido    = Integer.parseInt(idPedidoParam.trim());
             int nuevoEstado = Integer.parseInt(nuevoEstadoParam.trim());
 
-            // Solo se permite cancelar (3) desde este endpoint de cliente
-            if (nuevoEstado != 3) {
+            if (nuevoEstado == 3) {
+                // ── CANCELAR ──────────────────────────────────────────────
+                boolean ok = pedidoDAO.cambiarEstadoPedido(idPedido, idUsuario, 3);
+                result.put("ok", ok);
+                result.put("msg", ok ? "Pedido cancelado correctamente"
+                                     : "No se pudo cancelar el pedido");
+
+            } else if (nuevoEstado == 1) {
+                // ── REACTIVAR (recompra) ───────────────────────────────────
+                String idMetodoParam = request.getParameter("idMetodo");
+                if (idMetodoParam == null || idMetodoParam.isBlank()) {
+                    response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                    result.put("ok", false);
+                    result.put("msg", "Se requiere idMetodo para reactivar el pedido");
+                    response.getWriter().write(gson.toJson(result));
+                    return;
+                }
+                int idMetodo = Integer.parseInt(idMetodoParam.trim());
+                boolean ok = pedidoDAO.reactivarPedido(idPedido, idUsuario, idMetodo);
+                result.put("ok", ok);
+                result.put("msg", ok ? "Pedido reactivado correctamente"
+                                     : "No se pudo reactivar el pedido");
+
+            } else {
                 response.setStatus(HttpServletResponse.SC_FORBIDDEN);
                 result.put("ok", false);
                 result.put("msg", "Operación no permitida");
-                response.getWriter().write(gson.toJson(result));
-                return;
             }
 
-            boolean ok = pedidoDAO.cambiarEstadoPedido(idPedido, idUsuario, nuevoEstado);
-            result.put("ok", ok);
-            result.put("msg", ok ? "Pedido cancelado correctamente"
-                                 : "No se pudo cancelar el pedido");
             response.getWriter().write(gson.toJson(result));
 
         } catch (NumberFormatException e) {

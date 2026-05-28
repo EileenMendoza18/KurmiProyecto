@@ -47,7 +47,6 @@ public class CarritoServlet extends HttpServlet {
             UsuarioDTO user = (UsuarioDTO) session.getAttribute("usuarioLogueado");
             int idUsuarioReal = user.getId();
 
-            // 👇 NOTA: Asegúrate de que el método en tu CarritoDAO se llame así o ajústalo a tu firma exacta
             List<com.kurmip.model.dto.CarritoDetalleDTO> listaProductosCarrito = carritoDAO.obtenerProductosDelCarrito(idUsuarioReal);
 
             // Se serializan los objetos DTO directamente a formato JSON string
@@ -75,6 +74,25 @@ protected void doPost(HttpServletRequest request, HttpServletResponse response)
         int nuevoEstado = Integer.parseInt(request.getParameter("estado"));
         boolean ok = carritoDAO.actualizarEstadoDetalle(idDetalle, nuevoEstado);
         response.getWriter().write(ok ? "OK" : "ERROR");
+        return;
+    }
+    if ("actualizarCantidad".equals(accion)) {
+        try {
+            int idDetalle     = Integer.parseInt(request.getParameter("idDetalle"));
+            int nuevaCantidad = Integer.parseInt(request.getParameter("cantidad"));
+            int idProducto    = Integer.parseInt(request.getParameter("idProducto"));
+            if (nuevaCantidad < 1) nuevaCantidad = 1;
+            int resultado = carritoDAO.actualizarCantidad(idDetalle, nuevaCantidad, idProducto);
+            if (resultado == -1) {
+                response.getWriter().write("STOCK_SUPERADO");
+            } else if (resultado == 1) {
+                response.getWriter().write("OK");
+            } else {
+                response.getWriter().write("ERROR");
+            }
+        } catch (NumberFormatException e) {
+            response.getWriter().write("ERROR");
+        }
         return;
     }
 
