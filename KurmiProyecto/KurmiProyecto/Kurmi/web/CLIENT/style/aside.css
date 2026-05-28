@@ -80,14 +80,14 @@ aside label img {
     width: auto;
     
     /* === CAMBIOS CRÍTICOS DE BLINDAJE === */
-    height: 29.7vh;     /* Permite que la caja crezca según los datos */
+    height: auto;     /* Permite que la caja crezca según los datos */
     max-height: 443px;             /* No deja que supere la altura del panel morado izquierdo */
     overflow-y: auto;              /* Si tienes más de 8 categorías, activa un scroll interno limpio */
     box-shadow: 4px 4px 12px rgba(70, 56, 119, 0.1);
 }
 
 .letras div {
-    height: 6vh;
+    height:100%;
     display: flex;
     align-items: center;
     padding-left: 15px;

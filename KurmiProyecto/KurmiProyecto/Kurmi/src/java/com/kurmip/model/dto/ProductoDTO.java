@@ -12,6 +12,8 @@ public class ProductoDTO {
     private int    stock;
     private String estadoNombre;
     private int idEstado;
+    private String fechaVencimiento;
+    private int    idRelaCatSabor;
 
 
     public ProductoDTO() {}
@@ -48,4 +50,11 @@ public class ProductoDTO {
     
     public int  getIdEstado()              { return idEstado; }
     public void setIdEstado(int idEstado)  { this.idEstado = idEstado; }
+
+    public String getFechaVencimiento() { return fechaVencimiento; }
+    public void setFechaVencimiento(String fechaVencimiento) { this.fechaVencimiento = fechaVencimiento; }
+
+    public int getIdRelaCatSabor() { return idRelaCatSabor; }
+    public void setIdRelaCatSabor(int idRelaCatSabor) { this.idRelaCatSabor = idRelaCatSabor; }
+    
 }

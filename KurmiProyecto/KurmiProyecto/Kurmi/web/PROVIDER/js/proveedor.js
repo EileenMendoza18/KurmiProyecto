@@ -316,6 +316,24 @@ async function cargarCategoriasSabores(selectId) {
     }
 }
 
+async function cargarCategoriasSaboresConSeleccion(selectId, valorSeleccionado) {
+    try {
+        const res  = await fetch(`${BASE_URL}/ObtenerRelacionesCatSaborServlet`);
+        const data = await res.json();
+        const sel  = document.getElementById(selectId);
+        if (!sel) return;
+        sel.innerHTML = `<option value="">-- Selecciona --</option>` +
+            data.map(r =>
+                `<option value="${r.idRelaCatSabor}" ${r.idRelaCatSabor == valorSeleccionado ? 'selected' : ''}>
+                    ${r.nombreCategoria} · ${r.nombreSabor}
+                </option>`
+            ).join('');
+    } catch (_) {
+        const sel = document.getElementById(selectId);
+        if (sel) sel.innerHTML = `<option value="">Error cargando opciones</option>`;
+    }
+}
+
 async function enviarNuevoProducto() {
     const nombre         = document.getElementById('inp-nombre')?.value.trim();
     const precio         = document.getElementById('inp-precio')?.value.trim();
@@ -479,15 +497,15 @@ function abrirModalEditar(idProducto) {
     const producto = todosLosProductos.find(p => p.idProducto === idProducto);
     if (!producto) return;
 
-    document.getElementById('edit-id').value              = producto.idProducto;
-    document.getElementById('edit-nombre').value          = producto.nombre;
-    document.getElementById('edit-precio').value          = producto.precio;
-    document.getElementById('edit-descripcion').value     = producto.descripcion ?? '';
-    document.getElementById('edit-unidad').value          = producto.medida ?? '';
-    document.getElementById('edit-fechaVenc').value       = producto.fechaVencimiento ?? '';
+    document.getElementById('edit-id').value               = producto.idProducto;
+    document.getElementById('edit-nombre').value           = producto.nombre;
+    document.getElementById('edit-precio').value           = producto.precio;
+    document.getElementById('edit-descripcion').value      = producto.descripcion ?? '';
+    document.getElementById('edit-unidad').value = producto.unidadMedida ?? '';
+    document.getElementById('edit-fechaVenc').value        = producto.fechaVencimiento ?? '';
     document.getElementById('edit-stockActual').textContent = producto.stock;
-    document.getElementById('edit-cantidadAniadida').value = 0;
-    document.getElementById('edit-estado').value            = producto.idEstado; // ← aquí
+    document.getElementById('edit-cantidadAniadida').value  = 0;
+    document.getElementById('edit-estado').value            = producto.idEstado;
 
     const pw = document.getElementById('edit-preview-wrap');
     if (pw) pw.style.display = 'none';
@@ -497,7 +515,9 @@ function abrirModalEditar(idProducto) {
     if (fb) fb.style.display = 'none';
 
     document.getElementById('modalEditar').style.display = 'flex';
-    cargarCategoriasSabores('edit-relaCatSabor');
+
+    // Cargar categorías y preseleccionar la actual
+    cargarCategoriasSaboresConSeleccion('edit-relaCatSabor', producto.idRelaCatSabor);
 }
 
 async function enviarEdicionProducto() {
@@ -645,6 +665,13 @@ function validarCamposProducto(campos, modo) {
             errores.push('El stock inicial es obligatorio.');
         } else if (!/^\d+$/.test(stockInicial) || parseInt(stockInicial, 10) < 0) {
             errores.push('El stock inicial debe ser un número entero mayor o igual a 0.');
+        }
+    }
+    // — Estado: obligatorio solo al editar
+    if (modo === 'editar') {
+        const { estado } = campos;
+        if (!estado) {
+            errores.push('El estado del producto es obligatorio.');
         }
     }
 

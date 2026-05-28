@@ -214,4 +214,58 @@ public class UsuarioDAO {
                 cerrarRecursos();
             }
         }
+        // =====================================================================
+// ADMIN — Obtener todos los usuarios (clientes y proveedores)
+// =====================================================================
+public List<UsuarioDTO> obtenerTodosLosUsuarios() {
+    List<UsuarioDTO> lista = new ArrayList<>();
+    String sql = "SELECT u.UsuarioID, u.Nombres, u.Apellidos, u.Correo_Usu, " +
+                 "u.Telefono, u.Direc_Usuario, " +
+                 "r.NombreRol, r.Roles_ID, " +
+                 "e.NombreEstado, e.EstadoID " +
+                 "FROM Usuario u " +
+                 "LEFT JOIN Roles r ON u.Rol_Usuario = r.Roles_ID " +
+                 "LEFT JOIN EstadoCliente e ON u.Est_Vinculacion = e.EstadoID " +
+                 "WHERE u.Rol_Usuario != 2 " +  // excluir admins
+                 "ORDER BY u.UsuarioID DESC";
+    try {
+        con = cn.getConexion();
+        ps  = con.prepareStatement(sql);
+        rs  = ps.executeQuery();
+        while (rs.next()) {
+            UsuarioDTO dto = new UsuarioDTO();
+            dto.setId(rs.getInt("UsuarioID"));
+            dto.setNombres(rs.getString("Nombres"));
+            dto.setApellidos(rs.getString("Apellidos"));
+            dto.setCorreo(rs.getString("Correo_Usu"));
+            dto.setTelefono(rs.getString("Telefono"));
+            dto.setDireccion(rs.getString("Direc_Usuario"));
+            dto.setIdRol(rs.getInt("Roles_ID"));
+            dto.setRolNombre(rs.getString("NombreRol"));
+            dto.setEstadoNombre(rs.getString("NombreEstado"));
+            lista.add(dto);
+        }
+    } catch (Exception e) {
+        System.err.println("Error en obtenerTodosLosUsuarios: " + e.getMessage());
+    } finally { cerrarRecursos(); }
+    return lista;
+}
+
+// =====================================================================
+// ADMIN — Cambiar estado de un usuario
+// idEstado: 1=Activo, 2=Inactivo, 3=Pendiente
+// =====================================================================
+public boolean cambiarEstadoUsuario(int idUsuario, int idEstado) {
+    String sql = "UPDATE Usuario SET Est_Vinculacion = ? WHERE UsuarioID = ?";
+    try {
+        con = cn.getConexion();
+        ps  = con.prepareStatement(sql);
+        ps.setInt(1, idEstado);
+        ps.setInt(2, idUsuario);
+        return ps.executeUpdate() > 0;
+    } catch (Exception e) {
+        System.err.println("Error en cambiarEstadoUsuario: " + e.getMessage());
+        return false;
+    } finally { cerrarRecursos(); }
+}
 }

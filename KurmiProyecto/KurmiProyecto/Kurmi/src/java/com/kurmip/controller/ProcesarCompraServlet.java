@@ -72,6 +72,14 @@ public class ProcesarCompraServlet extends HttpServlet {
                     nuevoPedido.setIdCarrito(Integer.parseInt(idCarParam));
                 }
             }
+            // ── COMPRA DIRECTA: si viene un idProducto, marcar ese ítem como Seleccionado (5) ──
+            if (!esRecompra && idProd != null && !idProd.isEmpty()) {
+                PedidoDAO pedidoDAO2 = new PedidoDAO();
+                pedidoDAO2.marcarItemComoSeleccionado(
+                    Integer.parseInt(idProd),
+                    usuarioLogueado.getId()
+                );
+            }
 
             PedidoDAO pedidoDAO = new PedidoDAO();
             boolean compraExitosa = pedidoDAO.registrarCompraCompleta(nuevoPedido);
