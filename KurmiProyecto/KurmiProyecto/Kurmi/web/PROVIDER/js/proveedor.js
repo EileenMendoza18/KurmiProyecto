@@ -29,6 +29,7 @@ function configurarNavegacion() {
             else if (seccion === 'pagos') renderSeccionPagos(); 
             else if (seccion === 'perfil') renderSeccionPerfil();
             else if (seccion === 'contacto') renderSeccionNosotros();
+            else if (seccion === 'solicitudes') renderSeccionSolicitudes();
             else document.getElementById('contenidoPrincipal').innerHTML =
                 `<p style="padding:40px;color:#999">Sección en construcción.</p>`;
         });
@@ -1146,4 +1147,391 @@ function renderSeccionNosotros() {
 
         </section>
     `;
+}
+
+// ── Estado local ──────────────────────────────────────────────────────────────
+let misSolicitudes = [];
+ 
+// ─────────────────────────────────────────────────────────────────────────────
+// RENDER PRINCIPAL
+// ─────────────────────────────────────────────────────────────────────────────
+function renderSeccionSolicitudes() {
+    const main = document.getElementById('contenidoPrincipal');
+    main.innerHTML = `
+        <div class="seccion-header">
+            <h2>📋 Mis solicitudes</h2>
+            <button class="btn-primario" id="btnNuevaSolicitud">＋ Nueva solicitud</button>
+        </div>
+ 
+        <!-- Filtro por estado -->
+        <div class="filtros-bar">
+            <select id="filtroEstadoSolicitud" class="filtro-select">
+                <option value="">Todos los estados</option>
+                <option value="Pendiente">⏳ Pendiente</option>
+                <option value="Aprobado">✅ Aprobado</option>
+                <option value="Rechazado">❌ Rechazado</option>
+            </select>
+            <button class="btn-limpiar" id="btnLimpiarFiltroSol">✕ Limpiar</button>
+        </div>
+ 
+        <p class="contador-resultados" id="contadorSolicitudes"></p>
+ 
+        <div id="listaSolicitudes" class="solicitudes-lista">
+            <p class="cargando">Cargando solicitudes…</p>
+        </div>
+ 
+        <!-- Modal crear solicitud -->
+        <div id="modalCrearSolicitud" class="modal-overlay" style="display:none">
+            <div class="modal modal--solicitud">
+                <div class="modal__header">
+                    <h3>📋 Nueva solicitud de categoría / sabor</h3>
+                    <button class="modal__cerrar" id="cerrarModalSolicitud">✕</button>
+                </div>
+                <div class="modal__body">
+                    <p class="sol-modal__desc">
+                        ¿Necesitas una nueva categoría o sabor para tus productos?
+                        Envía una solicitud al administrador y él la revisará.
+                    </p>
+ 
+                    <label class="sol-label">Tipo de solicitud <span class="sol-required">*</span></label>
+                    <select id="sol-tipo" class="filtro-select" style="width:100%;margin-bottom:14px;">
+                        <option value="">— Selecciona el tipo —</option>
+                        <option value="Categoria">🏷 Solo categoría nueva</option>
+                        <option value="Sabor">🍦 Solo sabor nuevo</option>
+                        <option value="Ambos">🏷🍦 Categoría y sabor nuevos</option>
+                    </select>
+                    <span class="error-msg" id="error-sol-tipo"></span>
+ 
+                    <div id="sol-campo-cat" style="display:none">
+                        <label class="sol-label">Nombre de la categoría <span class="sol-required">*</span></label>
+                        <input type="text" id="sol-nombreCat" class="filtro-input"
+                               style="width:100%;margin-bottom:4px;"
+                               placeholder="Ej: Paletas artesanales" maxlength="100" />
+                        <span class="error-msg" id="error-sol-cat"></span>
+                    </div>
+ 
+                    <!-- Selector sabor existente (solo tipo=Categoria) -->
+                    <div id="sol-campo-sabor-existente" style="display:none">
+                        <label class="sol-label" style="margin-top:12px;display:block;">
+                            Relacionar con sabor existente <span class="sol-required">*</span>
+                        </label>
+                        <select id="sol-idSaborExistente" class="filtro-select" style="width:100%;margin-bottom:4px;">
+                            <option value="">— Selecciona un sabor —</option>
+                        </select>
+                        <span class="error-msg" id="error-sol-sabor-existente"></span>
+                    </div>
+ 
+                    <div id="sol-campo-sabor" style="display:none">
+                        <label class="sol-label" style="margin-top:12px;display:block;">
+                            Nombre del sabor <span class="sol-required">*</span>
+                        </label>
+                        <input type="text" id="sol-nombreSabor" class="filtro-input"
+                               style="width:100%;margin-bottom:4px;"
+                               placeholder="Ej: Maracuyá con chile" maxlength="100" />
+                        <span class="error-msg" id="error-sol-sabor"></span>
+                    </div>
+ 
+                    <!-- Selector categoría existente (solo tipo=Sabor) -->
+                    <div id="sol-campo-cat-existente" style="display:none">
+                        <label class="sol-label" style="margin-top:12px;display:block;">
+                            Relacionar con categoría existente <span class="sol-required">*</span>
+                        </label>
+                        <select id="sol-idCatExistente" class="filtro-select" style="width:100%;margin-bottom:4px;">
+                            <option value="">— Selecciona una categoría —</option>
+                        </select>
+                        <span class="error-msg" id="error-sol-cat-existente"></span>
+                    </div>
+ 
+                    <label class="sol-label" style="margin-top:14px;display:block;">
+                        Descripción adicional (opcional)
+                    </label>
+                    <textarea id="sol-descripcion" class="sol-textarea"
+                              placeholder="Describe brevemente por qué necesitas esta categoría o sabor…"
+                              maxlength="255" rows="3"></textarea>
+ 
+                    <div id="feedbackSolicitud"></div>
+                </div>
+                <div class="modal__footer">
+                    <button class="btn-secundario" id="cancelarModalSolicitud">Cancelar</button>
+                    <button class="btn-primario"   id="confirmarNuevaSolicitud">Enviar solicitud</button>
+                </div>
+            </div>
+        </div>
+    `;
+ 
+    // Eventos
+    document.getElementById('btnNuevaSolicitud').addEventListener('click', abrirModalSolicitud);
+    document.getElementById('cerrarModalSolicitud').addEventListener('click', cerrarModalSolicitud);
+    document.getElementById('cancelarModalSolicitud').addEventListener('click', cerrarModalSolicitud);
+    document.getElementById('confirmarNuevaSolicitud').addEventListener('click', enviarNuevaSolicitud);
+    document.getElementById('filtroEstadoSolicitud').addEventListener('change', aplicarFiltroSolicitudes);
+    document.getElementById('btnLimpiarFiltroSol').addEventListener('click', () => {
+        document.getElementById('filtroEstadoSolicitud').value = '';
+        renderListaSolicitudes(misSolicitudes);
+    });
+ 
+    // Mostrar/ocultar campos según tipo y cargar selectores de existentes
+    document.getElementById('sol-tipo').addEventListener('change', async () => {
+        const tipo = document.getElementById('sol-tipo').value;
+        const esCat   = tipo === 'Categoria';
+        const esSabor = tipo === 'Sabor';
+        const esAmbos = tipo === 'Ambos';
+ 
+        document.getElementById('sol-campo-cat').style.display             = (esCat || esAmbos) ? 'block' : 'none';
+        document.getElementById('sol-campo-sabor').style.display           = (esSabor || esAmbos) ? 'block' : 'none';
+        document.getElementById('sol-campo-sabor-existente').style.display = esCat   ? 'block' : 'none';
+        document.getElementById('sol-campo-cat-existente').style.display   = esSabor ? 'block' : 'none';
+ 
+        // Cargar opciones de selectores solo cuando se necesitan
+        if (esCat || esSabor) {
+            await cargarOpcionesExistentes();
+        }
+    });
+ 
+    cargarMisSolicitudes();
+}
+ 
+// ── Cargar categorías y sabores existentes para los selectores ───────────────
+async function cargarOpcionesExistentes() {
+    try {
+        const res  = await fetch(`${BASE_URL}/ObtenerSaboresYCategoriasServlet`);
+        const data = await res.json();
+        if (!data.ok) return;
+ 
+        const selSabor = document.getElementById('sol-idSaborExistente');
+        if (selSabor) {
+            selSabor.innerHTML = '<option value="">— Selecciona un sabor —</option>' +
+                (data.sabores ?? []).map(s =>
+                    `<option value="${s.idSabor}">${s.nombreSabor}</option>`
+                ).join('');
+        }
+ 
+        const selCat = document.getElementById('sol-idCatExistente');
+        if (selCat) {
+            selCat.innerHTML = '<option value="">— Selecciona una categoría —</option>' +
+                (data.categorias ?? []).map(c =>
+                    `<option value="${c.idCategoria}">${c.nombreCategoria}</option>`
+                ).join('');
+        }
+    } catch (e) {
+        console.error('Error al cargar opciones existentes:', e);
+    }
+}
+ 
+// ── Cargar solicitudes del proveedor ──────────────────────────────────────────
+async function cargarMisSolicitudes() {
+    const contenedor = document.getElementById('listaSolicitudes');
+    try {
+        const res = await fetch(`${BASE_URL}/SolicitudesServlet?accion=misSolicitudes`);
+        if (!res.ok) throw new Error(`Error ${res.status}`);
+        const data = await res.json();
+ 
+        if (!data.ok) {
+            contenedor.innerHTML = `<p class="error-txt">❌ ${data.error}</p>`;
+            return;
+        }
+ 
+        misSolicitudes = data.solicitudes ?? [];
+        renderListaSolicitudes(misSolicitudes);
+ 
+    } catch (e) {
+        contenedor.innerHTML = `<p class="error-txt">No se pudo conectar: ${e.message}</p>`;
+    }
+}
+ 
+// ── Renderizar lista ──────────────────────────────────────────────────────────
+function renderListaSolicitudes(lista) {
+    const contenedor = document.getElementById('listaSolicitudes');
+    const contador   = document.getElementById('contadorSolicitudes');
+ 
+    if (!lista.length) {
+        contador.textContent = '';
+        contenedor.innerHTML = `
+            <div class="sol-vacio">
+                <span class="sol-vacio__icono">📭</span>
+                <p>No tienes solicitudes aún.<br>
+                   <span style="font-size:.85rem;color:#999;">
+                     Pulsa <strong>+ Nueva solicitud</strong> para pedir una nueva categoría o sabor.
+                   </span>
+                </p>
+            </div>`;
+        return;
+    }
+ 
+    contador.textContent = `${lista.length} solicitud${lista.length !== 1 ? 'es' : ''} encontrada${lista.length !== 1 ? 's' : ''}`;
+    contenedor.innerHTML = lista.map(s => tarjetaSolicitudProveedor(s)).join('');
+}
+ 
+// ── Tarjeta de solicitud ──────────────────────────────────────────────────────
+function tarjetaSolicitudProveedor(s) {
+    const badgeClass = {
+        'Pendiente': 'badge--amarillo',
+        'Aprobado':  'badge--verde',
+        'Rechazado': 'badge--rojo'
+    }[s.estado] ?? 'badge--gris';
+ 
+    const badgeIcon = {
+        'Pendiente': '⏳',
+        'Aprobado':  '✅',
+        'Rechazado': '❌'
+    }[s.estado] ?? '';
+ 
+    const tipoIcono = {
+        'Categoria': '🏷',
+        'Sabor':     '🍦',
+        'Ambos':     '🏷🍦'
+    }[s.tipo] ?? '📋';
+ 
+    const filaCateg  = s.nombreCat   ? `<p class="sol-card__fila"><span class="sol-card__etiq">Categoría nueva:</span> ${s.nombreCat}</p>`   : '';
+    const filaSabor  = s.nombreSabor ? `<p class="sol-card__fila"><span class="sol-card__etiq">Sabor nuevo:</span> ${s.nombreSabor}</p>`     : '';
+    const filaRelCat = s.nombreCatExistente
+        ? `<p class="sol-card__fila"><span class="sol-card__etiq">Relacionar con categoría:</span> ${s.nombreCatExistente}</p>` : '';
+    const filaRelSabor = s.nombreSaborExistente
+        ? `<p class="sol-card__fila"><span class="sol-card__etiq">Relacionar con sabor:</span> ${s.nombreSaborExistente}</p>` : '';
+    const filaDesc   = s.descripcion ? `<p class="sol-card__fila"><span class="sol-card__etiq">Descripción:</span> ${s.descripcion}</p>` : '';
+    const filaMotivo = (s.estado === 'Rechazado' && s.motivoRechazo)
+        ? `<div class="sol-card__rechazo">
+               <span>💬 Motivo del rechazo:</span>
+               <p>${s.motivoRechazo}</p>
+           </div>`
+        : '';
+    const filaRespuesta = s.fechaRespuesta
+        ? `<p class="sol-card__fecha">Respondida: ${s.fechaRespuesta}</p>`
+        : '';
+ 
+    return `
+        <div class="sol-card sol-card--${s.estado.toLowerCase()}">
+            <div class="sol-card__header">
+                <div style="display:flex;align-items:center;gap:10px;">
+                    <span class="sol-card__tipo">${tipoIcono} ${s.tipo}</span>
+                    <span class="badge ${badgeClass}" style="position:static;">
+                        ${badgeIcon} ${s.estado}
+                    </span>
+                </div>
+                <span class="sol-card__fecha">Enviada: ${s.fechaSolicitud ?? '—'}</span>
+            </div>
+            <div class="sol-card__body">
+                ${filaCateg}
+                ${filaRelSabor}
+                ${filaSabor}
+                ${filaRelCat}
+                ${filaDesc}
+                ${filaMotivo}
+                ${filaRespuesta}
+            </div>
+        </div>
+    `;
+}
+ 
+// ── Filtrar por estado ────────────────────────────────────────────────────────
+function aplicarFiltroSolicitudes() {
+    const estado = document.getElementById('filtroEstadoSolicitud').value;
+    const filtradas = estado
+        ? misSolicitudes.filter(s => s.estado === estado)
+        : misSolicitudes;
+    renderListaSolicitudes(filtradas);
+}
+ 
+// ── Modal: abrir / cerrar ─────────────────────────────────────────────────────
+function abrirModalSolicitud() {
+    // Limpiar campos
+    document.getElementById('sol-tipo').value          = '';
+    document.getElementById('sol-nombreCat').value     = '';
+    document.getElementById('sol-nombreSabor').value   = '';
+    document.getElementById('sol-descripcion').value   = '';
+    document.getElementById('sol-campo-cat').style.display   = 'none';
+    document.getElementById('sol-campo-sabor').style.display = 'none';
+    ['error-sol-tipo','error-sol-cat','error-sol-sabor',
+     'error-sol-cat-existente','error-sol-sabor-existente'].forEach(id => {
+        document.getElementById(id).textContent = '';
+    });
+    document.getElementById('sol-campo-sabor-existente').style.display = 'none';
+    document.getElementById('sol-campo-cat-existente').style.display   = 'none';
+    document.getElementById('feedbackSolicitud').innerHTML = '';
+    document.getElementById('modalCrearSolicitud').style.display = 'flex';
+}
+ 
+function cerrarModalSolicitud() {
+    document.getElementById('modalCrearSolicitud').style.display = 'none';
+}
+ 
+// ── Enviar nueva solicitud ────────────────────────────────────────────────────
+async function enviarNuevaSolicitud() {
+    const tipo        = document.getElementById('sol-tipo').value;
+    const nombreCat   = document.getElementById('sol-nombreCat').value.trim();
+    const nombreSabor = document.getElementById('sol-nombreSabor').value.trim();
+    const descripcion = document.getElementById('sol-descripcion').value.trim();
+    const feedback    = document.getElementById('feedbackSolicitud');
+    const btn         = document.getElementById('confirmarNuevaSolicitud');
+ 
+    // ── Validaciones ─────────────────────────────────────────────────────────
+    let valido = true;
+ 
+    document.getElementById('error-sol-tipo').textContent  = '';
+    document.getElementById('error-sol-cat').textContent   = '';
+    document.getElementById('error-sol-sabor').textContent = '';
+    feedback.innerHTML = '';
+ 
+    if (!tipo) {
+        document.getElementById('error-sol-tipo').textContent = 'Selecciona el tipo de solicitud.';
+        valido = false;
+    }
+    if ((tipo === 'Categoria' || tipo === 'Ambos') && !nombreCat) {
+        document.getElementById('error-sol-cat').textContent = 'El nombre de la categoría es obligatorio.';
+        valido = false;
+    }
+    if ((tipo === 'Sabor' || tipo === 'Ambos') && !nombreSabor) {
+        document.getElementById('error-sol-sabor').textContent = 'El nombre del sabor es obligatorio.';
+        valido = false;
+    }
+    // Validar selectores de relacionados
+    if (tipo === 'Categoria' && !document.getElementById('sol-idSaborExistente').value) {
+        document.getElementById('error-sol-sabor-existente').textContent = 'Selecciona el sabor existente a relacionar.';
+        valido = false;
+    }
+    if (tipo === 'Sabor' && !document.getElementById('sol-idCatExistente').value) {
+        document.getElementById('error-sol-cat-existente').textContent = 'Selecciona la categoría existente a relacionar.';
+        valido = false;
+    }
+    if (!valido) return;
+ 
+    // ── Enviar ────────────────────────────────────────────────────────────────
+    btn.disabled     = true;
+    feedback.className   = 'feedback feedback--cargando';
+    feedback.textContent = '⏳ Enviando solicitud…';
+ 
+    try {
+        const res = await fetch(`${BASE_URL}/SolicitudesServlet`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({
+                accion:              'crearSolicitud',
+                tipo,
+                nombreCat,
+                nombreSabor,
+                descripcion,
+                idCatExistente:   document.getElementById('sol-idCatExistente')?.value   ?? '',
+                idSaborExistente: document.getElementById('sol-idSaborExistente')?.value ?? ''
+            }).toString()
+        });
+ 
+        const data = await res.json();
+ 
+        if (data.ok) {
+            feedback.className   = 'feedback feedback--ok';
+            feedback.textContent = '✅ Solicitud enviada correctamente al administrador.';
+            setTimeout(() => {
+                cerrarModalSolicitud();
+                cargarMisSolicitudes();
+            }, 1200);
+        } else {
+            feedback.className   = 'feedback feedback--error';
+            feedback.textContent = `❌ ${data.error ?? 'No se pudo enviar la solicitud.'}`;
+        }
+    } catch (e) {
+        feedback.className   = 'feedback feedback--error';
+        feedback.textContent = `❌ Error de conexión: ${e.message}`;
+    } finally {
+        btn.disabled = false;
+    }
 }
