@@ -14,7 +14,7 @@ import java.util.List;
 
 /**
  *
- * @Eileen Propietario
+ * @Eileen
  */
 @WebServlet(name = "ObtenerProductosServlet", urlPatterns =
 {

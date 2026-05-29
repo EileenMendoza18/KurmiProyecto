@@ -8,14 +8,13 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class UsuarioDAO {
-    Conexion cn = new Conexion(); // Instancia de tu conexión
+    Conexion cn = new Conexion(); // Instancia de conexión
     Connection con;
     PreparedStatement ps;
     ResultSet rs;
 
-    // ESTE ES EL MÉTODO QUE TE FALTA:
     public UsuarioDTO validar(String correo, String contrasena) {
-        // Usamos LEFT JOIN para que si falla la tabla de estados o roles, igual te deje iniciar sesión y no se rompa
+        // Usamos LEFT JOIN para que si falla la tabla de estados o roles
         String sql = "SELECT u.*, r.NombreRol, e.NombreEstado " +
                      "FROM Usuario u " +
                      "LEFT JOIN Roles r ON u.Rol_Usuario = r.Roles_ID " +
@@ -37,10 +36,7 @@ public class UsuarioDAO {
 
             if (rs.next()) {
                 usuario = new UsuarioDTO();
-                
-                // REVISIÓN CRÍTICA DE LLAVE PRIMARIA:
-                // Si en tu tabla la columna ID se llama 'idUsuario', déjala así. 
-                // Si se llama 'UsuarioID', cambia el texto de abajo por "UsuarioID".
+
                 usuario.setId(rs.getInt("UsuarioID")); 
                 
                 usuario.setNombres(rs.getString("Nombres"));
@@ -148,10 +144,7 @@ public class UsuarioDAO {
             System.err.println("Error al cerrar recursos en UsuarioDAO: " + e.getMessage());
         }
     }
-    // =====================================================================
-    // REEMPLAZAR los dos métodos en UsuarioDAO.java
-    // (antes del método privado cerrarRecursos())
-    // =====================================================================
+
 
         public UsuarioDTO obtenerPorId(int idUsuario) {
             String sql = "SELECT u.UsuarioID, u.Nombres, u.Apellidos, u.Fecha_Nacimiento, " +

@@ -16,7 +16,9 @@
             <!-- Filtros de estado -->
             <div class="pedidos__filtros">
                 <button class="filtro__btn filtro__btn--activo" data-estado="1">Pendiente</button>
-                <button class="filtro__btn" data-estado="2">Comprado</button>
+                <button class="filtro__btn" data-estado="en_proceso">En proceso</button>
+                <button class="filtro__btn" data-estado="8">Entregado</button>
+                <button class="filtro__btn" data-estado="9">Devolución</button>
                 <button class="filtro__btn" data-estado="3">Cancelado</button>
             </div>
 
@@ -32,6 +34,8 @@
                 <button class="modal__cerrar" id="modalCerrar">✕</button>
                 <h2 class="modal__titulo" id="modalTitulo">Detalle del pedido</h2>
                 <p class="modal__fecha" id="modalFecha"></p>
+                <!-- Badge de estado dentro del modal -->
+                <div id="modalEstadoBadge" style="margin-bottom:14px;"></div>
                 <div class="modal__productos" id="modalProductos"></div>
                 <div class="modal__footer" id="modalFooter"></div>
             </div>

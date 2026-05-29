@@ -47,7 +47,6 @@ public class CarritoServlet extends HttpServlet {
             UsuarioDTO user = (UsuarioDTO) session.getAttribute("usuarioLogueado");
             int idUsuarioReal = user.getId();
 
-            // 👇 NOTA: Asegúrate de que el método en tu CarritoDAO se llame así o ajústalo a tu firma exacta
             List<com.kurmip.model.dto.CarritoDetalleDTO> listaProductosCarrito = carritoDAO.obtenerProductosDelCarrito(idUsuarioReal);
 
             // Se serializan los objetos DTO directamente a formato JSON string

@@ -3,11 +3,11 @@ package com.kurmip.model.dto;
 public class CarritoDetalleDTO {
     private int idDetalleCarrito;
     private int idProducto;
-    private String nombre;       // Antes: nombreProducto (JS busca item.nombre)
-    private int cantidad;        // JS busca item.cantidad
-    private double precio;       // Antes: precioUnitario (JS busca item.precio)
+    private String nombre;       
+    private int cantidad;        
+    private double precio;       
     private double subtotal;
-    private String imagen;       // JS busca item.imagen
+    private String imagen;       
     private int estadoDetalle;
     private int idCarrito;
 

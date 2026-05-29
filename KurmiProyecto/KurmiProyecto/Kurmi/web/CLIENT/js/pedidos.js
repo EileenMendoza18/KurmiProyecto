@@ -10,7 +10,7 @@ async function cargarModulos() {
     if (!tieneSesion) return;
 
     inicializarFiltros();
-    cargarPedidos(1); // Inicia en Pendiente
+    cargarPedidos('1'); // Inicia en Pendiente
 }
 cargarModulos();
 
@@ -35,10 +35,9 @@ function inicializarFiltros() {
         btn.addEventListener('click', () => {
             document.querySelectorAll('.filtro__btn').forEach(b => b.classList.remove('filtro__btn--activo'));
             btn.classList.add('filtro__btn--activo');
-            cargarPedidos(parseInt(btn.dataset.estado));
+            cargarPedidos(btn.dataset.estado);
         });
     });
-
     // Activar botón Pendiente por defecto
     const btnPendiente = document.querySelector('.filtro__btn[data-estado="1"]');
     if (btnPendiente) btnPendiente.classList.add('filtro__btn--activo');
@@ -57,8 +56,14 @@ async function cargarPedidos(estado) {
         grid.innerHTML = '';
 
         if (!pedidos || pedidos.length === 0) {
-            const etiquetas = { 1: 'pedidos pendientes', 2: 'pedidos completados', 3: 'pedidos cancelados' };
-            grid.innerHTML = '<p class="pedidos__vacio">😕 No tienes ' + (etiquetas[estado] || 'pedidos') + ' aún.</p>';
+            const etiquetas = {
+                '1':          'pedidos pendientes',
+                'en_proceso': 'pedidos en proceso',
+                '8':          'pedidos entregados',
+                '9':          'devoluciones',
+                '3':          'pedidos cancelados'
+            };
+            grid.innerHTML = `<p class="pedidos__vacio">😕 No tienes ${etiquetas[estado] || 'pedidos'} aún.</p>`;
             return;
         }
 
@@ -74,10 +79,11 @@ async function cargarPedidos(estado) {
 }
 
 // ── Crear tarjeta de pedido ───────────────────────────────────────────────────
-function crearTarjetaPedido(pedido, estado) {
+function crearTarjetaPedido(pedido, filtroActivo) {
     const card = document.createElement('div');
     card.className = 'pedido__card';
 
+    // Imagen principal
     const img = document.createElement('img');
     img.className = 'pedido__img';
     const BASE_IMG = '/KurmiProyect/RESOURCES/img/';
@@ -94,6 +100,15 @@ function crearTarjetaPedido(pedido, estado) {
     fecha.className = 'pedido__fecha';
     fecha.textContent = 'Pedido del ' + (pedido.fechaPedido || '');
 
+    // Badge de estado — especialmente útil en "En proceso" donde hay subestados
+    const badgeCfg = estadoBadgeConfig(pedido.estadoPedido);
+    const badge = document.createElement('span');
+    badge.className = 'pedido__estado-badge';
+    badge.textContent = pedido.nombreEstado || '';
+    badge.style.cssText = `background:${badgeCfg.bg};color:${badgeCfg.color};
+        padding:3px 10px;border-radius:20px;font-size:.72rem;font-weight:600;
+        display:inline-block;margin-bottom:4px;`;
+
     const detalle = document.createElement('p');
     detalle.className = 'pedido__detalle';
     detalle.textContent = 'Total productos: ' + (pedido.totalProductos || 0);
@@ -103,13 +118,14 @@ function crearTarjetaPedido(pedido, estado) {
     total.textContent = 'Total: $' + Number(pedido.totalPago).toLocaleString('es-CO');
 
     info.appendChild(fecha);
+    info.appendChild(badge);
     info.appendChild(detalle);
     info.appendChild(total);
     card.appendChild(img);
     card.appendChild(info);
 
-    // ── Botón cancelar — SOLO en Pendiente (1) ──
-    if (estado === 1) {
+    // Botón cancelar — SOLO en Pendiente (1) y solo si el estadoPedido es realmente 1
+    if (filtroActivo === '1' && pedido.estadoPedido === 1) {
         const btnCancelar = document.createElement('button');
         btnCancelar.className = 'btn__pedido-cancelar';
         btnCancelar.textContent = 'Cancelar pedido';
@@ -120,8 +136,23 @@ function crearTarjetaPedido(pedido, estado) {
         card.appendChild(btnCancelar);
     }
 
-    card.addEventListener('click', () => abrirModal(pedido, estado));
+    card.addEventListener('click', () => abrirModal(pedido, filtroActivo));
     return card;
+}
+
+// ── Config de color por estado ────────────────────────────────────────────────
+function estadoBadgeConfig(estadoPedido) {
+    const configs = {
+        1: { bg: '#e67e22', color: '#fff' }, // Pendiente
+        3: { bg: '#e74c3c', color: '#fff' }, // Cancelado
+        4: { bg: '#f39c12', color: '#fff' }, // Preparando
+        5: { bg: '#3498db', color: '#fff' }, // En bodega
+        6: { bg: '#9b59b6', color: '#fff' }, // Empacando
+        7: { bg: '#1abc9c', color: '#fff' }, // Transportando
+        8: { bg: '#2ecc71', color: '#fff' }, // Entregado
+        9: { bg: '#c0392b', color: '#fff' }  // Devolución
+    };
+    return configs[estadoPedido] || { bg: '#aaa', color: '#fff' };
 }
 
 // ── Cancelar pedido ───────────────────────────────────────────────────────────
@@ -138,7 +169,7 @@ async function confirmarCancelacion(idPedido) {
         const data = await res.json();
         if (data.ok) {
             alert('Pedido cancelado correctamente.');
-            cargarPedidos(1); // Refresca la vista de Pendientes
+            cargarPedidos('1');
         } else {
             alert('No se pudo cancelar: ' + (data.msg || 'error desconocido'));
         }
@@ -149,16 +180,38 @@ async function confirmarCancelacion(idPedido) {
 }
 
 // ── Modal ─────────────────────────────────────────────────────────────────────
-function abrirModal(pedido, estado) {
-    const overlay   = document.getElementById('modalOverlay');
-    const titulo    = document.getElementById('modalTitulo');
-    const fecha     = document.getElementById('modalFecha');
-    const productos = document.getElementById('modalProductos');
-    const footer    = document.getElementById('modalFooter');
+function abrirModal(pedido, filtroActivo) {
+    const overlay    = document.getElementById('modalOverlay');
+    const titulo     = document.getElementById('modalTitulo');
+    const fecha      = document.getElementById('modalFecha');
+    const badgeEl    = document.getElementById('modalEstadoBadge');
+    const productos  = document.getElementById('modalProductos');
+    const footer     = document.getElementById('modalFooter');
 
-    const etiquetas = { 1: 'Pedido Pendiente', 2: 'Pedido Completado', 3: 'Pedido Cancelado' };
-    titulo.textContent = etiquetas[estado] || 'Pedido';
-    fecha.textContent  = 'Fecha: ' + (pedido.fechaPedido || '') + '  ·  Pago: ' + (pedido.metodoPago || 'No registrado');
+    // Título según el filtro activo
+    const etiquetasTitulo = {
+        '1':          'Pedido Pendiente',
+        'en_proceso': 'Pedido En Proceso',
+        '8':          'Pedido Entregado',
+        '9':          'Devolución',
+        '3':          'Pedido Cancelado'
+    };
+    titulo.textContent = etiquetasTitulo[filtroActivo] || 'Detalle del pedido';
+    fecha.textContent  = 'Fecha: ' + (pedido.fechaPedido || '') +
+                         '  ·  Pago: ' + (pedido.metodoPago || 'No registrado');
+
+    // Badge de estado real dentro del modal
+    if (pedido.nombreEstado) {
+        const cfg = estadoBadgeConfig(pedido.estadoPedido);
+        badgeEl.innerHTML = `
+            <span style="background:${cfg.bg};color:${cfg.color};padding:4px 14px;
+                         border-radius:20px;font-size:.82rem;font-weight:600;
+                         display:inline-block;">
+                ${pedido.nombreEstado}
+            </span>`;
+    } else {
+        badgeEl.innerHTML = '';
+    }
 
     productos.innerHTML = '';
     footer.innerHTML    = '';
@@ -199,8 +252,7 @@ function abrirModal(pedido, estado) {
     footer.appendChild(spanTotal);
 
     // Botón recomprar — solo en Cancelado (3)
-    if (estado === 3) {
-        // Selector de método de pago
+    if (filtroActivo === '3') {
         const selectMetodo = document.createElement('select');
         selectMetodo.id = 'selectMetodoRecompra';
         selectMetodo.style.cssText = 'padding:6px 10px;border-radius:8px;border:1px solid #c4b5e8;font-size:0.9rem;';
@@ -226,7 +278,7 @@ function abrirModal(pedido, estado) {
     overlay.classList.remove('hidden');
 }
 
-// ── Recomprar: solo cambia estado del pedido cancelado → Pendiente ────────────
+// ── Recomprar ─────────────────────────────────────────────────────────────────
 async function recomprarPedido(idPedido, idMetodo) {
     try {
         const res = await fetch('/KurmiProyect/CambiarEstadoPedidoServlet', {
@@ -240,7 +292,7 @@ async function recomprarPedido(idPedido, idMetodo) {
         if (data.ok) {
             alert('¡Pedido reactivado! Ya aparece en Pendientes.');
             document.getElementById('modalOverlay').classList.add('hidden');
-            cargarPedidos(3); // Refrescar vista Cancelados
+            cargarPedidos('3');
         } else {
             alert('No se pudo reactivar: ' + (data.msg || 'error desconocido'));
         }

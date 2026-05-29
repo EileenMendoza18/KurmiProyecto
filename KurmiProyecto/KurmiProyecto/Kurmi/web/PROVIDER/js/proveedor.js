@@ -53,12 +53,12 @@ function renderSeccionProductos() {
     const main = document.getElementById('contenidoPrincipal');
     main.innerHTML = `
         <div class="seccion-header">
-            <h2>📦 Mis productos</h2>
+            <h2>Mis productos</h2>
             <button class="btn-primario" id="btnNuevoProducto">＋ Nuevo producto</button>
         </div>
 
         <div class="filtros-bar">
-            <input type="text" id="filtroNombre" class="filtro-input" placeholder="🔍 Buscar por nombre…" />
+            <input type="text" id="filtroNombre" class="filtro-input" placeholder="Buscar por nombre…" />
             <select id="filtroEstado" class="filtro-select">
                 <option value="">Todos los estados</option>
                 <option value="Disponible">Disponible</option>
@@ -164,10 +164,10 @@ function tarjetaProducto(p) {
             </div>
             <div class="tarjeta-prov__acciones">
                 <button class="btn-editar" data-id="${p.idProducto}" data-nombre="${p.nombre}" title="Editar producto">
-                    ✏️ Editar
+                    Editar
                 </button>
                 <button class="btn-eliminar" data-id="${p.idProducto}" data-nombre="${p.nombre}" title="Desactivar producto">
-                    🗑️ Eliminar
+                    Eliminar
                 </button>
             </div>
         </div>
@@ -765,7 +765,7 @@ async function renderSeccionPagos() {
     const main = document.getElementById('contenidoPrincipal');
     main.innerHTML = `
         <div class="seccion-header">
-            <h2>💰 Mis ventas</h2>
+            <h2> Mis ventas</h2>
         </div>
         <p class="cargando">Cargando ventas…</p>
     `;
@@ -786,22 +786,22 @@ function renderPagos(data) {
 
     main.innerHTML = `
         <div class="seccion-header">
-            <h2>💰 Mis ventas</h2>
+            <h2>Mis ventas</h2>
         </div>
 
         <!-- Resumen total -->
         <div class="resumen-ganancias">
-            <span class="resumen-ganancias__label">💵 Total ganado (pedidos completados)</span>
+            <span class="resumen-ganancias__label">Total ganado (pedidos completados)</span>
             <span class="resumen-ganancias__valor">$${Number(totalGanado).toLocaleString('es-CO')}</span>
         </div>
 
         <!-- Tabs -->
         <div class="ventas-tabs">
             <button class="ventas-tab ventas-tab--activo" data-tab="pendientes">
-                🕐 Por entregar <span class="badge-count">${pendientes.length}</span>
+                Por entregar <span class="badge-count">${pendientes.length}</span>
             </button>
             <button class="ventas-tab" data-tab="entregados">
-                ✅ Completados <span class="badge-count">${entregados.length}</span>
+                Completados <span class="badge-count">${entregados.length}</span>
             </button>
         </div>
 
@@ -833,18 +833,28 @@ function renderListaPedidos(lista, tipo) {
             pendientes: 'No tienes pedidos por entregar.',
             entregados: 'No tienes pedidos completados aún.'
         };
-        contenedor.innerHTML = `<p class="vacio" style="padding:30px 0">${mensajes[tipo]}</p>`;
+        contenedor.innerHTML = `<p class="vacio" style="padding:30px 0">${mensajes[tipo] ?? ''}</p>`;
         return;
     }
 
-    contenedor.innerHTML = lista.map(p => `
+    contenedor.innerHTML = lista.map(p => {
+        // Badge de estado del proveedor
+        const badgeColor = p.estadoProveedor === 5 ? '#2ecc71' : p.estadoProveedor === 4 ? '#e67e22' : '#3498db';
+        const estadoLabel = p.nombreEstadoProveedor ?? 'Preparando';
+
+        return `
         <div class="pedido-card pedido-card--${tipo}" id="pedido-card-${p.idPedido}">
             <div class="pedido-card__header">
-                <span class="pedido-card__fecha">📅 ${p.fecha}</span>
-                <span class="pedido-card__metodo">💳 ${p.metodoPago}</span>
+                <span class="pedido-card__fecha">#${p.idPedido} · ${p.fecha}</span>
+                <span class="pedido-card__metodo">${p.metodoPago}</span>
+                <!-- Estado del proveedor visible -->
+                <span style="background:${badgeColor};color:#fff;padding:3px 10px;
+                             border-radius:20px;font-size:.78rem;font-weight:600;">
+                    ${estadoLabel}
+                </span>
             </div>
             <div class="pedido-card__receptor">
-                <strong>👤 ${p.receptor}</strong> — ${p.direccion} — 📞 ${p.telefono}
+                <strong>${p.receptor}</strong> — ${p.direccion} — ${p.telefono}
             </div>
             <div class="pedido-card__items">
                 ${p.items.map(i => `
@@ -860,61 +870,55 @@ function renderListaPedidos(lista, tipo) {
             </div>
             <div class="pedido-card__footer">
                 <span>Subtotal: <strong>$${Number(p.subtotalProveedor).toLocaleString('es-CO')}</strong></span>
-                ${tipo === 'pendientes' ? `
+                ${tipo === 'pendientes' && p.estadoProveedor < 5 ? `
                     <button class="btn-entregar" data-id="${p.idPedido}">
-                        ✅ Marcar como entregado
+                        ✅ Marcar en bodega
                     </button>
+                ` : tipo === 'pendientes' && p.estadoProveedor === 5 ? `
+                    <span style="color:#2ecc71;font-weight:600;font-size:.85rem;">
+                        ✔ Entregado en bodega — esperando al admin
+                    </span>
                 ` : ''}
             </div>
         </div>
-    `).join('');
+    `}).join('');
 
-    // Listeners botones entregar
+    // Listeners botones
     if (tipo === 'pendientes') {
         contenedor.querySelectorAll('.btn-entregar').forEach(btn => {
-            btn.addEventListener('click', () => marcarEntregado(Number(btn.dataset.id), btn));
+            btn.addEventListener('click', () => marcarEnBodega(Number(btn.dataset.id), btn));
         });
     }
 }
 
-async function marcarEntregado(idPedido, btn) {
-    if (!confirm(`¿Confirmas que entregaste el pedido #${idPedido}?`)) return;
+async function marcarEnBodega(idPedido, btn) {
+    if (!confirm(`¿Confirmas que tus productos del pedido #${idPedido} están listos en bodega?`)) return;
 
     btn.disabled = true;
     btn.textContent = 'Guardando…';
 
     try {
-        const res  = await fetch(`${BASE_URL}/MarcarEntregadoServlet`, {
+        const res = await fetch(`${BASE_URL}/MarcarEntregadoServlet`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: `idPedido=${idPedido}`
+            body: `idPedido=${idPedido}&nuevoEstado=5`
         });
         const data = await res.json();
 
         if (data.ok) {
-            // Quitar la tarjeta con animación
-            const card = document.getElementById(`pedido-card-${idPedido}`);
-            if (card) {
-                card.style.opacity = '0';
-                card.style.transition = 'opacity 0.3s';
-                setTimeout(() => {
-                    card.remove();
-                    // Recargar para actualizar contadores y tab de completados
-                    renderSeccionPagos();
-                }, 300);
-            }
+            // Recargar la sección para reflejar el nuevo estado
+            renderSeccionPagos();
         } else {
             alert(`Error: ${data.msg}`);
             btn.disabled = false;
-            btn.textContent = '✅ Marcar como entregado';
+            btn.textContent = '✅ Marcar en bodega';
         }
     } catch (err) {
         alert(`Error de conexión: ${err.message}`);
         btn.disabled = false;
-        btn.textContent = '✅ Marcar como entregado';
+        btn.textContent = '✅ Marcar en bodega';
     }
 }
-
 // ─────────────────────────────────────────────────────────────────────────────
 // SECCIÓN MI PERFIL
 // ─────────────────────────────────────────────────────────────────────────────
@@ -929,7 +933,7 @@ async function renderSeccionPerfil() {
 
         main.innerHTML = `
             <div class="seccion-header">
-                <h2>👤 Mi perfil</h2>
+                <h2>Mi perfil</h2>
             </div>
 
             <div class="perfil-card">
@@ -966,7 +970,7 @@ async function renderSeccionPerfil() {
 
                 <div class="perfil-card__acciones">
                     <button class="btn-primario" id="btnActualizarPerfil">Actualizar datos</button>
-                    <button class="btn-cerrar-sesion" id="btnCerrarSesionProv">🚪 Cerrar sesión</button>
+                    <button class="btn-cerrar-sesion" id="btnCerrarSesionProv">Cerrar sesión</button>
                 </div>
             </div>
         `;

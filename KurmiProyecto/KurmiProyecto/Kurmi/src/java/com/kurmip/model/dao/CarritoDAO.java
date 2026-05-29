@@ -90,16 +90,10 @@ public class CarritoDAO {
                 return -1;
             }
 
-            // ── BUG 2 FIX ── Línea 94: se añade ORDER BY ID_Carrito DESC LIMIT 1
-            // para garantizar que siempre se usa el carrito activo más reciente.
-            // Sin LIMIT, si por alguna inconsistencia hubiera más de uno activo,
-            // rs.next() tomaba el primero (el más viejo) y dejaba el nuevo vacío,
-            // lo que luego hacía que al no encontrar el ID del carrito correcto
-            // se creara un carrito adicional innecesario.
             String sqlBuscarCarrito =
-                "SELECT ID_Carrito FROM Carrito_Compras " +               // LÍNEA 94 — cambiada
-                "WHERE ID_Cliente = ? AND EstadoCarrito = 1 " +           // LÍNEA 95 — cambiada
-                "ORDER BY ID_Carrito DESC LIMIT 1";                       // LÍNEA 96 — nueva
+                "SELECT ID_Carrito FROM Carrito_Compras " +               
+                "WHERE ID_Cliente = ? AND EstadoCarrito = 1 " +           
+                "ORDER BY ID_Carrito DESC LIMIT 1";                       
             ps = con.prepareStatement(sqlBuscarCarrito);
             ps.setInt(1, idUsuario);
             rs = ps.executeQuery();
@@ -129,15 +123,11 @@ public class CarritoDAO {
 
             if (idCarrito == -1) throw new SQLException("No se pudo obtener o crear el encabezado del carrito.");
 
-            // ── BUG 1 FIX ── Líneas 126-128: se incluye estado 2 (eliminado) en la búsqueda.
-            // Antes solo buscaba estado IN (4,5), por lo que si el usuario eliminaba
-            // un producto (estado 2, cantidad 0) y lo volvía a agregar, no encontraba
-            // el registro existente y hacía un INSERT nuevo en lugar de reactivarlo.
-            // Ahora busca también estado 2 para poder reutilizar y reactivar esa fila.
+            
             String sqlBuscarProducto =
-                "SELECT ID_DetalleCarrito, Cantidad_Producto, Estado_Carrito " + // LÍNEA 126 — cambiada
-                "FROM Carrito_Detalle WHERE ID_Carrito = ? AND ID_Producto = ? " + // LÍNEA 127 — igual
-                "AND Estado_Carrito IN (2, 4, 5)";                               // LÍNEA 128 — cambiada: añadido estado 2
+                "SELECT ID_DetalleCarrito, Cantidad_Producto, Estado_Carrito " + 
+                "FROM Carrito_Detalle WHERE ID_Carrito = ? AND ID_Producto = ? " + 
+                "AND Estado_Carrito IN (2, 4, 5)";                              
             ps = con.prepareStatement(sqlBuscarProducto);
             ps.setInt(1, idCarrito);
             ps.setInt(2, idProducto);
@@ -145,12 +135,12 @@ public class CarritoDAO {
 
             int idDetalle       = -1;
             int cantidadExistente = 0;
-            int estadoActual    = -1;                                            // LÍNEA nueva
+            int estadoActual    = -1;                                            
 
             if (rs.next()) {
                 idDetalle         = rs.getInt("ID_DetalleCarrito");
                 cantidadExistente = rs.getInt("Cantidad_Producto");
-                estadoActual      = rs.getInt("Estado_Carrito");                 // LÍNEA nueva
+                estadoActual      = rs.getInt("Estado_Carrito");                 
             }
 
             if (rs  != null) rs.close();
@@ -159,12 +149,10 @@ public class CarritoDAO {
             int resultadoOperacion = 0;
 
             if (idDetalle != -1) {
-                // ── BUG 1 FIX ── Si el item estaba eliminado (estado 2, cantidad 0),
-                // se reactiva con la cantidad nueva en lugar de insertar una fila nueva.
-                // Si estaba activo (4 o 5), se suma la cantidad como antes.
+                
                 int nuevaCantidad;
                 if (estadoActual == 2) {
-                    // Producto eliminado: reactivar con la cantidad pedida desde cero  — LÍNEAS nuevas
+                    // Producto eliminado: reactivar con la cantidad pedida desde cero 
                     nuevaCantidad = cantidad;
                 } else {
                     // Producto activo: acumular cantidad

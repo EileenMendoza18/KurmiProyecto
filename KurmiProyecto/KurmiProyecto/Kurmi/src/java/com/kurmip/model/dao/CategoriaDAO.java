@@ -15,7 +15,6 @@ public class CategoriaDAO {
     PreparedStatement ps;
     ResultSet rs;
 
-    // Método original — NO se toca
     public List<String> obtenerCategorias() {
         List<String> lista = new ArrayList<>();
         String sql = "SELECT Nombre_Categoria FROM Categorias";
@@ -36,7 +35,6 @@ public class CategoriaDAO {
         return lista;
     }
 
-    // Método nuevo — devuelve combinaciones categoría+sabor para el formulario del proveedor
     public List<CategoriaDTO> obtenerRelacionesCatSabor() {
         List<CategoriaDTO> lista = new ArrayList<>();
         String sql =

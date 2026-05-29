@@ -30,6 +30,7 @@ function configurarNavegacion() {
             const seccion = btn.dataset.seccion;
             if      (seccion === 'productos') renderSeccionProductos();
             else if (seccion === 'clientes')  renderSeccionClientes();
+            else if (seccion === 'pedidos') renderSeccionPedidos();
             else if (seccion === 'perfil')    renderSeccionPerfil();
         });
     });
@@ -52,13 +53,13 @@ function renderSeccionProductos() {
     const main = document.getElementById('contenidoPrincipal');
     main.innerHTML = `
         <div class="seccion-header">
-            <h2>📦 Todos los productos</h2>
+            <h2>Todos los productos</h2>
         </div>
 
         <!-- Tarjetas de estadísticas -->
         <div class="admin-stats-bar">
             <div class="stat-card">
-                <div class="stat-card__icon">💰</div>
+                <div class="stat-card__icon"></div>
                 <div class="stat-card__info">
                     <span class="stat-card__label">Total ventas acumuladas</span>
                     <span class="stat-card__valor" id="statTotalVentas">—</span>
@@ -66,7 +67,7 @@ function renderSeccionProductos() {
                 </div>
             </div>
             <div class="stat-card">
-                <div class="stat-card__icon">📋</div>
+                <div class="stat-card__icon"></div>
                 <div class="stat-card__info">
                     <span class="stat-card__label">Pedidos totales</span>
                     <span class="stat-card__valor" id="statTotalPedidos">—</span>
@@ -74,7 +75,7 @@ function renderSeccionProductos() {
                 </div>
             </div>
             <div class="stat-card">
-                <div class="stat-card__icon">📦</div>
+                <div class="stat-card__icon"></div>
                 <div class="stat-card__info">
                     <span class="stat-card__label">Total productos</span>
                     <span class="stat-card__valor" id="statTotalProductos">—</span>
@@ -86,7 +87,7 @@ function renderSeccionProductos() {
         <!-- Filtros -->
         <div class="filtros-bar">
             <input  type="text" id="filtroNombre" class="filtro-input"
-                    placeholder="🔍 Buscar por nombre…" />
+                    placeholder="Buscar por nombre…" />
             <select id="filtroEstado" class="filtro-select">
                 <option value="">Todos los estados</option>
                 <option value="Disponible">Disponible</option>
@@ -106,7 +107,7 @@ function renderSeccionProductos() {
         <div id="modalEstado" class="modal-overlay" style="display:none">
             <div class="modal">
                 <div class="modal__header">
-                    <h3>🔄 Cambiar estado del producto</h3>
+                    <h3>Cambiar estado del producto</h3>
                     <button class="modal__cerrar" id="cerrarModalEstado">✕</button>
                 </div>
                 <div class="modal__body">
@@ -115,9 +116,9 @@ function renderSeccionProductos() {
                         Estado actual: <strong id="modalEstadoActual"></strong>
                     </p>
                     <select class="modal-estado-select" id="selectNuevoEstado">
-                        <option value="1">✅ Disponible</option>
-                        <option value="2">⚠️ Agotado</option>
-                        <option value="3">🚫 Descontinuado</option>
+                        <option value="1">Disponible</option>
+                        <option value="2">Agotado</option>
+                        <option value="3">Descontinuado</option>
                     </select>
                     <div id="feedbackEstado"></div>
                 </div>
@@ -367,7 +368,7 @@ function renderSeccionClientes() {
         <!-- Filtros -->
         <div class="filtros-bar">
             <input type="text" id="filtroNombreUsuario" class="filtro-input"
-                   placeholder="🔍 Buscar por nombre o correo…" />
+                   placeholder="Buscar por nombre o correo…" />
             <select id="filtroRolUsuario" class="filtro-select">
                 <option value="">Todos los roles</option>
                 <option value="Cliente">Cliente</option>
@@ -664,7 +665,7 @@ async function renderSeccionPerfil() {
 
                 <div class="perfil-card__acciones">
                     <button class="btn-primario" id="btnActualizarPerfilAdmin">Actualizar datos</button>
-                    <button class="btn-cerrar-sesion" id="btnCerrarSesionAdmin">🚪 Cerrar sesión</button>
+                    <button class="btn-cerrar-sesion" id="btnCerrarSesionAdmin">Cerrar sesión</button>
                 </div>
             </div>
         `;
@@ -843,4 +844,199 @@ function configurarPerfilAdmin() {
         try { await fetch(`${BASE_URL}/CerrarSesionServlet`, { method: 'POST' }); } catch (_) {}
         window.location.replace(`${BASE_URL}/inicioSesion.html`);
     });
+}
+    // ─────────────────────────────────────────────────────────────────────────────
+// SECCIÓN GESTIÓN DE PEDIDOS (Admin)
+// ─────────────────────────────────────────────────────────────────────────────
+let pedidosFiltro = 'activos';
+
+async function renderSeccionPedidos() {
+    const main = document.getElementById('contenidoPrincipal');
+    main.innerHTML = `
+        <div class="seccion-header">
+            <h2>📦 Gestión de pedidos</h2>
+        </div>
+
+        <!-- Tabs filtro -->
+        <div class="ventas-tabs">
+            <button class="ventas-tab ventas-tab--activo" data-filtro="activos">En proceso</button>
+            <button class="ventas-tab" data-filtro="entregados">Entregados</button>
+            <button class="ventas-tab" data-filtro="todos">Todos</button>
+        </div>
+
+        <div id="listaPedidosAdmin" class="pedidos-admin-lista">
+            <p class="cargando">Cargando pedidos…</p>
+        </div>
+    `;
+
+    document.querySelectorAll('.ventas-tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+            document.querySelectorAll('.ventas-tab').forEach(t => t.classList.remove('ventas-tab--activo'));
+            tab.classList.add('ventas-tab--activo');
+            pedidosFiltro = tab.dataset.filtro;
+            cargarPedidosAdmin(pedidosFiltro);
+        });
+    });
+
+    cargarPedidosAdmin('activos');
+}
+
+async function cargarPedidosAdmin(filtro) {
+    const contenedor = document.getElementById('listaPedidosAdmin');
+    contenedor.innerHTML = `<p class="cargando">Cargando…</p>`;
+    try {
+        const res = await fetch(`${BASE_URL}/PedidosAdminServlet?filtro=${filtro}`);
+        if (!res.ok) throw new Error(`Error ${res.status}`);
+        const pedidos = await res.json();
+        renderPedidosAdmin(pedidos);
+    } catch (e) {
+        contenedor.innerHTML = `<p class="error-txt">No se pudo cargar: ${e.message}</p>`;
+    }
+}
+
+function renderPedidosAdmin(pedidos) {
+    const contenedor = document.getElementById('listaPedidosAdmin');
+
+    if (!pedidos.length) {
+        contenedor.innerHTML = `<p class="vacio" style="padding:30px 0">No hay pedidos en esta categoría.</p>`;
+        return;
+    }
+
+    contenedor.innerHTML = pedidos.map(p => {
+        // Colores por estado general del pedido
+        const coloresEstado = {
+            1: '#e67e22', 4: '#e67e22', 5: '#3498db',
+            6: '#9b59b6', 7: '#1abc9c', 8: '#2ecc71', 9: '#e74c3c'
+        };
+        const colorEstado = coloresEstado[p.estadoPedido] ?? '#aaa';
+
+        // Estado de cada proveedor
+        const proveedoresHtml = p.proveedores.map(prov => {
+            const colorProv = prov.estadoItem >= 5 ? '#2ecc71' : '#e67e22';
+            return `
+                <div style="display:flex;align-items:center;gap:8px;margin:4px 0;font-size:.82rem;">
+                    <span style="color:#666;">🏭 ${prov.nombre}</span>
+                    <span style="background:${colorProv};color:#fff;padding:2px 8px;
+                                 border-radius:12px;font-size:.75rem;">
+                        ${prov.nombreEstado}
+                    </span>
+                </div>
+            `;
+        }).join('');
+
+        // Botones de avance de estado — solo si no está entregado ni en devolución
+        const puedeAvanzar = p.estadoPedido < 8;
+        const estadosSiguientes = {
+            1: [{ v: 4, l: '📦 Pasar a Preparando' }],
+            4: [{ v: 5, l: '📦 Pasar a En bodega' }],
+            5: [{ v: 6, l: '🎁 Pasar a Empacando' }],
+            6: [{ v: 7, l: '🚚 Pasar a Transportando' }],
+            7: [{ v: 8, l: '✅ Marcar como Entregado' }]
+        };
+        const botonesAvance = puedeAvanzar && estadosSiguientes[p.estadoPedido]
+            ? estadosSiguientes[p.estadoPedido].map(e => `
+                <button class="btn-avanzar-estado" 
+                        data-id="${p.idPedido}" 
+                        data-estado="${e.v}"
+                        ${!p.todosEnBodega && e.v > 5 ? 'disabled title="Espera que todos los proveedores estén en bodega"' : ''}>
+                    ${e.l}
+                </button>
+              `).join('')
+            : '';
+
+        // Botón devolución (siempre disponible si no está entregado ni ya en devolución)
+        const btnDevolucion = p.estadoPedido !== 8 && p.estadoPedido !== 9 ? `
+            <button class="btn-devolucion" data-id="${p.idPedido}">
+                🔄 Marcar devolución
+            </button>
+        ` : '';
+
+        return `
+        <div class="pedido-card" id="pedido-admin-${p.idPedido}">
+            <div class="pedido-card__header">
+                <span class="pedido-card__fecha">#${p.idPedido} · ${p.fechaPedido}</span>
+                <span style="background:${colorEstado};color:#fff;padding:3px 12px;
+                             border-radius:20px;font-size:.8rem;font-weight:600;">
+                    ${p.nombreEstado}
+                </span>
+                <span class="pedido-card__metodo">${p.metodoPago}</span>
+            </div>
+
+            <div class="pedido-card__receptor">
+                <strong>Cliente:</strong> ${p.cliente} &nbsp;|&nbsp;
+                <strong>Receptor:</strong> ${p.receptor} — ${p.direccion} — ${p.telefono}
+            </div>
+
+            <!-- Estado de cada proveedor -->
+            <div style="margin:10px 0;padding:10px;background:#f9f9f9;border-radius:8px;">
+                <p style="font-size:.8rem;color:#999;margin-bottom:6px;font-weight:600;">
+                    ESTADO POR PROVEEDOR:
+                </p>
+                ${proveedoresHtml || '<span style="color:#aaa;font-size:.8rem;">Sin proveedores registrados</span>'}
+                ${!p.todosEnBodega ? `
+                    <p style="color:#e67e22;font-size:.78rem;margin-top:6px;">
+                        ⚠ Esperando que todos los proveedores marquen sus productos en bodega
+                    </p>
+                ` : `
+                    <p style="color:#2ecc71;font-size:.78rem;margin-top:6px;">
+                        ✔ Todos los proveedores han entregado en bodega
+                    </p>
+                `}
+            </div>
+
+            <div class="pedido-card__footer" style="gap:8px;flex-wrap:wrap;">
+                <span>Total: <strong>$${Number(p.totalPago).toLocaleString('es-CO')}</strong></span>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                    ${botonesAvance}
+                    ${btnDevolucion}
+                </div>
+            </div>
+        </div>
+        `;
+    }).join('');
+
+    // Listeners botones avanzar estado
+    contenedor.querySelectorAll('.btn-avanzar-estado').forEach(btn => {
+        btn.addEventListener('click', () =>
+            cambiarEstadoPedidoAdmin(Number(btn.dataset.id), Number(btn.dataset.estado), btn));
+    });
+
+    // Listeners botones devolución
+    contenedor.querySelectorAll('.btn-devolucion').forEach(btn => {
+        btn.addEventListener('click', () =>
+            cambiarEstadoPedidoAdmin(Number(btn.dataset.id), 9, btn));
+    });
+}
+
+async function cambiarEstadoPedidoAdmin(idPedido, nuevoEstado, btn) {
+    const labels = {
+        4: 'Preparando',5: 'En bodega', 6: 'Empacando', 7: 'Transportando', 8: 'Entregado', 9: 'Devolución'
+    };
+    if (!confirm(`¿Cambiar el pedido #${idPedido} a "${labels[nuevoEstado]}"?`)) return;
+
+    btn.disabled = true;
+    const textoOriginal = btn.textContent;
+    btn.textContent = 'Guardando…';
+
+    try {
+        const res = await fetch(`${BASE_URL}/PedidosAdminServlet`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: `idPedido=${idPedido}&nuevoEstado=${nuevoEstado}`
+        });
+        const data = await res.json();
+
+        if (data.ok) {
+            // Recargar la lista para reflejar el nuevo estado
+            cargarPedidosAdmin(pedidosFiltro);
+        } else {
+            alert(`Error: ${data.msg}`);
+            btn.disabled = false;
+            btn.textContent = textoOriginal;
+        }
+    } catch (err) {
+        alert(`Error de conexión: ${err.message}`);
+        btn.disabled = false;
+        btn.textContent = textoOriginal;
+    }
 }
