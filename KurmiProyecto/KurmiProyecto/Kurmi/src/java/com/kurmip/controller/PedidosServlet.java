@@ -10,6 +10,19 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * PedidosServlet — retorna pedidos del cliente logueado
+ *
+ * GET /PedidosServlet?estado=<valor>
+ *
+ * Valores de estado aceptados:
+ *   1          → Pendiente
+ *   en_proceso → Agrupa estados 4 (Preparando), 5 (En bodega),
+ *                              6 (Empacando), 7 (Transportando)
+ *   8          → Entregado
+ *   9          → Devolución
+ *   3          → Cancelado
+ */
 @WebServlet(name = "PedidosServlet", urlPatterns = {"/PedidosServlet"})
 public class PedidosServlet extends HttpServlet {
 
@@ -34,12 +47,19 @@ public class PedidosServlet extends HttpServlet {
         int idUsuario = usuario.getId();
 
         String estadoParam = request.getParameter("estado");
-        int estado = 2; // Por defecto Comprado
-        if (estadoParam != null) {
-            try { estado = Integer.parseInt(estadoParam); } catch (NumberFormatException e) {}
+        List<Map<String, Object>> pedidos;
+
+        if ("en_proceso".equalsIgnoreCase(estadoParam)) {
+            // Agrupa Preparando(4) + En bodega(5) + Empacando(6) + Transportando(7)
+            pedidos = pedidoDAO.obtenerPedidosEnProceso(idUsuario);
+        } else {
+            int estado = 1; // Pendiente por defecto
+            if (estadoParam != null && !estadoParam.isBlank()) {
+                try { estado = Integer.parseInt(estadoParam); } catch (NumberFormatException ignored) {}
+            }
+            pedidos = pedidoDAO.obtenerPedidosPorUsuario(idUsuario, estado);
         }
 
-        List<Map<String, Object>> pedidos = pedidoDAO.obtenerPedidosPorUsuario(idUsuario, estado);
         response.getWriter().write(gson.toJson(pedidos));
     }
 }

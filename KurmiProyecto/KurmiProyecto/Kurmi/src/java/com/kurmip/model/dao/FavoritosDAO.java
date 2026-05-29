@@ -45,7 +45,7 @@ public class FavoritosDAO {
     public List<ProductoDTO> listarFavoritos(int idUsuario) {
         List<ProductoDTO> lista = new ArrayList<>();
         String sql = "SELECT p.ID_Producto, p.Nombre_Producto, p.Valor_Producto, " +
-                     "p.Descripcion_Producto, p.Imagen_Producto " +  // ← agregar imagen
+                     "p.Descripcion_Producto, p.Imagen_Producto " +  
                      "FROM Favoritos f " +
                      "JOIN Productos p ON f.ID_Producto = p.ID_Producto " +
                      "WHERE f.ID_Usuario = ?";
@@ -59,7 +59,7 @@ public class FavoritosDAO {
                     dto.setNombre(rs.getString("Nombre_Producto"));
                     dto.setPrecio(rs.getDouble("Valor_Producto"));
                     dto.setDescripcion(rs.getString("Descripcion_Producto"));
-                    dto.setImagen(rs.getString("Imagen_Producto")); // ← leer de BD
+                    dto.setImagen(rs.getString("Imagen_Producto"));
                     lista.add(dto);
                 }
             }

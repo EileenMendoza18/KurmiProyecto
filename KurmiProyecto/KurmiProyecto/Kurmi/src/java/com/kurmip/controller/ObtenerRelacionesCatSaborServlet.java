@@ -11,7 +11,6 @@ import java.io.IOException;
 import java.io.PrintWriter;
 
 /**
- * Servlet NUEVO exclusivo para el proveedor.
  * Devuelve {idRelaCatSabor, nombreCategoria, nombreSabor} para el select del modal.
  * URL: GET /ObtenerRelacionesCatSaborServlet
  */

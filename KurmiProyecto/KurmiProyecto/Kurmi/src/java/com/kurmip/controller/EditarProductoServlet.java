@@ -29,11 +29,8 @@ import java.util.UUID;
 )
 public class EditarProductoServlet extends HttpServlet {
 
-    // ── BUG 3 FIX ── Línea 32: era "RESOURCES/img", ahora "RESOURCES/img/productos"
-    // Mismo fix que en CrearProductoServlet: el frontend busca las imágenes
-    // en /KurmiProyect/RESOURCES/img/productos/ pero el servlet las guardaba
-    // un nivel arriba en /KurmiProyect/RESOURCES/img/ → 404 en todas las imágenes.
-    private static final String CARPETA_IMG = "RESOURCES/img";        // LÍNEA 32 — cambiada
+    
+    private static final String CARPETA_IMG = "RESOURCES/img";  
     private static final String[] EXTS_OK   = {"jpg", "jpeg", "png", "webp", "gif"};
 
     @Override
@@ -85,7 +82,7 @@ public class EditarProductoServlet extends HttpServlet {
             int    idRelaCatSabor  = Integer.parseInt(idRelaCatStr);
             int    cantidadAniadida = cantidadStr.isEmpty() ? 0 : Integer.parseInt(cantidadStr);
 
-            // Procesar imagen (opcional)
+            // Procesar imagen
             Part filePart   = request.getPart("imagen");
             String nombreImg = null; // null = no cambiar imagen
 

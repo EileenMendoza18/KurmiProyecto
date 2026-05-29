@@ -19,7 +19,7 @@ public class RegistroServlet extends HttpServlet {
 
     /**
      * Procesa la petición POST enviada por el formulario de registro.
-     * * @param request Petición del cliente con los parámetros de texto y los bytes de la imagen.
+     * * @param request Petición del cliente con los parámetros de texto
      * @param response Respuesta del servidor para manejar las redirecciones.
      * @throws ServletException
      * @throws IOException 
@@ -29,7 +29,7 @@ public class RegistroServlet extends HttpServlet {
             throws ServletException, IOException {
         
         try {
-            // 1. Capturar los campos de texto usando los atributos "name" exactos de tu HTML
+            // 1. Capturar los campos de texto usando los atributos "name" exactos del HTML
             String nombres = request.getParameter("inputNombre");
             String apellidos = request.getParameter("inputApellido");
             String telefono = request.getParameter("inputTelefono");

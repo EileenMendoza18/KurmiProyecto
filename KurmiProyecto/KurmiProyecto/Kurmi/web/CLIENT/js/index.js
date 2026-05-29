@@ -408,9 +408,7 @@ async function cargarSeccionesTienda(contenedorId) {
             // Crear la rejilla (Grid) donde se alinearán las tarjetas de esta categoría
             const gridTarjetas = document.createElement('div');
             gridTarjetas.className = 'tienda-productos-grid';
-            gridTarjetas.style.display = 'grid';
-            gridTarjetas.style.gridTemplateColumns = 'repeat(auto-fill, minmax(240px, 1fr))';
-            gridTarjetas.style.gap = '25px';
+            
 
             // Inyectar cada producto correspondiente a esta sección
             for (const prod of listaProductos) {
@@ -858,7 +856,7 @@ function inicializarBuscador() {
 
         const grid = document.createElement('div');
         grid.className = 'tienda-productos-grid';
-        grid.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:25px;';
+        
 
         for (const prod of filtrados) {
             const tarjeta = plantillaTarjetaTienda.cloneNode(true);
@@ -893,7 +891,7 @@ function renderizarPorCategorias(productos, contenedor) {
 
         const grid = document.createElement('div');
         grid.className = 'tienda-productos-grid';
-        grid.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:25px;';
+        
 
         for (const prod of lista) {
             const tarjeta = plantillaTarjetaTienda.cloneNode(true);

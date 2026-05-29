@@ -30,12 +30,12 @@ public class ProductoDAO {
     }
 
     // =========================================================================
-    // NUEVO: crear producto + vincular al proveedor (transacción)
+    // crear producto + vincular al proveedor (transacción)
     // =========================================================================
     public int crearProducto(String nombre, double precio, String descripcion,
                          String unidadMedida, String fechaVencimiento,
                          int idRelaCatSabor, String nombreImagen, int idProveedor,
-                         int stockInicial) {          // ← parámetro añadido aquí
+                         int stockInicial) {         
 
     String sqlProducto =
         "INSERT INTO Productos " +
@@ -93,14 +93,14 @@ public class ProductoDAO {
     }
 }
     // =========================================================================
-    // NUEVO: productos del proveedor con estadoNombre para el filtro
+    // productos del proveedor con estadoNombre para el filtro
     // =========================================================================
     public List<ProductoDTO> obtenerProductosDelProveedor(int idUsuario) {
     List<ProductoDTO> lista = new ArrayList<>();
     String sql =
         "SELECT p.ID_Producto, p.Nombre_Producto, p.Valor_Producto, p.Descripcion_Producto, " +
-        "p.Imagen_Producto, p.Unidad_Medida, p.Fecha_vencimiento, " +        // ← agregar
-        "p.ID_RelaCategSabor, p.ID_Estado, " +                               // ← agregar
+        "p.Imagen_Producto, p.Unidad_Medida, p.Fecha_vencimiento, " +        
+        "p.ID_RelaCategSabor, p.ID_Estado, " +                               
         "c.Nombre_Categoria, s.Nombre_Sabor, ep.Nombre AS estadoNombre, " +
         "COALESCE((SELECT SUM(i.StockInicial + i.CantidadAnadida) " +
         "          FROM Inventario i WHERE i.ID_Producto = p.ID_Producto), 0) AS stockTotal " +
@@ -124,9 +124,9 @@ public class ProductoDAO {
             dto.setPrecio(rs.getDouble("Valor_Producto"));
             dto.setDescripcion(rs.getString("Descripcion_Producto"));
             dto.setMedida(rs.getString("Unidad_Medida"));
-            dto.setFechaVencimiento(rs.getString("Fecha_vencimiento"));      // ← agregar
-            dto.setIdRelaCatSabor(rs.getInt("ID_RelaCategSabor"));           // ← agregar
-            dto.setIdEstado(rs.getInt("ID_Estado"));                         // ← agregar
+            dto.setFechaVencimiento(rs.getString("Fecha_vencimiento"));      
+            dto.setIdRelaCatSabor(rs.getInt("ID_RelaCategSabor"));           
+            dto.setIdEstado(rs.getInt("ID_Estado"));                        
             dto.setCategoria(rs.getString("Nombre_Categoria"));
             dto.setNombreSabor(rs.getString("Nombre_Sabor"));
             dto.setStock(rs.getInt("stockTotal"));
@@ -140,9 +140,6 @@ public class ProductoDAO {
     return lista;
 }
 
-    // =========================================================================
-    // Métodos existentes — solo se agrega lectura de Imagen_Producto
-    // =========================================================================
     public List<ProductoDTO> obtenerMasVendidos(int limite) {
         List<ProductoDTO> lista = new ArrayList<>();
         String sql =

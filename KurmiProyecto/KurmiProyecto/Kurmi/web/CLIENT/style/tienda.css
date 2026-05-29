@@ -143,8 +143,8 @@ main.tienda-main {
 }
 .products div>img{
     object-fit: cover;
-    height: 100%;
-    width: 100%;
+    height:350px;
+    width: 400px;
 }
 .botones{
     display: grid;
@@ -225,4 +225,15 @@ main.tienda-main {
 .buscador-input:focus {
     border-color: #B1B2FF;
     box-shadow: 0 0 0 3px rgba(177, 178, 255, 0.25);
+}
+
+.tienda-productos-grid{
+    display: flex;
+    flex-wrap: wrap;
+    width: 90%;
+    height: auto;
+    gap: 20px;
+    justify-items: center;
+    align-items: center;
+    text-align: center;
 }
