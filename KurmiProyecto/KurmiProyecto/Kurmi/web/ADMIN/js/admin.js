@@ -33,6 +33,8 @@ function configurarNavegacion() {
             else if (seccion === 'pedidos') renderSeccionPedidos();
             else if (seccion === 'perfil')    renderSeccionPerfil();
             else if (seccion === 'solicitudes') renderSeccionSolicitudesAdmin();
+            else if (seccion === 'cancelaciones') renderSeccionCancelacionesAdmin();
+            else if (seccion === 'devoluciones') renderSeccionDevolucionesAdmin();
         });
     });
 }
@@ -217,7 +219,21 @@ function renderProductosAdmin(lista) {
     contenedor.innerHTML = lista.map(p => tarjetaProductoAdmin(p)).join('');
 
     contenedor.querySelectorAll('.btn-estado').forEach(btn => {
-        btn.addEventListener('click', () => abrirModalEstado(Number(btn.dataset.id)));
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            abrirModalEstado(Number(btn.dataset.id));
+        });
+    });
+
+    // Click en la tarjeta (fuera del botón) abre el modal de detalle
+    contenedor.querySelectorAll('.tarjeta-prov').forEach(card => {
+        card.style.cursor = 'pointer';
+        card.addEventListener('click', (e) => {
+            if (e.target.closest('.btn-estado')) return;
+            const id = Number(card.dataset.id);
+            const prod = todosLosProductos.find(p => p.idProducto === id);
+            if (prod) abrirModalDetalleAdmin(prod);
+        });
     });
 }
 
@@ -233,7 +249,7 @@ function tarjetaProductoAdmin(p) {
     }[p.estadoNombre] ?? 'badge--gris';
 
     return `
-        <div class="tarjeta-prov">
+        <div class="tarjeta-prov" data-id="${p.idProducto}">
             <div class="tarjeta-prov__img-wrap" style="position:relative">
                 <img src="${urlImg}" alt="${p.nombre}"
                      onerror="this.src='${IMG_DEF}'"
@@ -300,6 +316,164 @@ function abrirModalEstado(idProducto) {
 function cerrarModalEstado() {
     document.getElementById('modalEstado').style.display = 'none';
     productoSeleccionadoId = null;
+}
+
+// ── Modal de detalle de producto (vista similar al cliente + datos de admin) ──
+function abrirModalDetalleAdmin(prod) {
+    // Inyectar estilos solo una vez
+    if (!document.getElementById('estilos-modal-detalle-admin')) {
+        const style = document.createElement('style');
+        style.id = 'estilos-modal-detalle-admin';
+        style.textContent = `
+            .mda-overlay {
+                position: fixed; inset: 0;
+                background: rgba(74,59,83,.55);
+                backdrop-filter: blur(3px);
+                z-index: 9999;
+                display: flex; align-items: center; justify-content: center;
+                padding: 16px;
+                animation: mdaFadeIn .18s ease;
+            }
+            @keyframes mdaFadeIn { from { opacity:0 } to { opacity:1 } }
+            .mda-modal {
+                background: #fff; border-radius: 20px;
+                max-width: 540px; width: 100%;
+                box-shadow: 0 12px 48px rgba(74,59,83,.22);
+                overflow: hidden;
+                animation: mdaSlideUp .22s ease;
+                display: flex; flex-direction: column;
+                max-height: 92vh; overflow-y: auto;
+            }
+            @keyframes mdaSlideUp {
+                from { transform:translateY(28px); opacity:0 }
+                to   { transform:translateY(0);    opacity:1 }
+            }
+            .mda-img-wrap {
+                position: relative; width: 100%; height: 220px;
+                background: #F4EEFF; overflow: hidden; flex-shrink: 0;
+            }
+            .mda-img-wrap img { width:100%; height:100%; object-fit:cover; }
+            .mda-cerrar {
+                position: absolute; top:12px; right:14px;
+                background: rgba(255,255,255,.85); border: none;
+                border-radius: 50%; width:32px; height:32px;
+                font-size:1rem; cursor:pointer; color:#4A3B53;
+                box-shadow: 0 2px 8px rgba(0,0,0,.15);
+                display:flex; align-items:center; justify-content:center;
+            }
+            .mda-cerrar:hover { background:#fff; }
+            .mda-body { padding: 24px 28px 16px; display:flex; flex-direction:column; gap:10px; }
+            .mda-nombre { font-size:1.35rem; font-weight:700; color:#4A3B53; margin:0; }
+            .mda-precio { font-size:1.45rem; font-weight:800; color:#7C4DFF; margin:0; }
+            .mda-desc   { font-size:.9rem; color:#666; line-height:1.5; margin:0; }
+            .mda-grid {
+                display: grid; grid-template-columns: 1fr 1fr;
+                gap: 8px 16px; margin-top:4px;
+            }
+            .mda-campo { display:flex; flex-direction:column; gap:2px; }
+            .mda-label {
+                font-size:.72rem; font-weight:700; color:#a68fc0;
+                text-transform:uppercase; letter-spacing:.04em;
+            }
+            .mda-valor { font-size:.88rem; color:#333; font-weight:500; }
+            .mda-badge-row { display:flex; align-items:center; gap:8px; }
+            .mda-footer {
+                padding: 0 28px 24px; display:flex; gap:10px; flex-wrap: wrap;
+            }
+            .mda-btn-estado {
+                flex:1; padding:12px;
+                background: #7C4DFF; color:#fff;
+                border:none; border-radius:12px;
+                font-size:.95rem; font-weight:700; cursor:pointer;
+                transition: background .15s;
+            }
+            .mda-btn-estado:hover { background:#6a3de8; }
+        `;
+        document.head.appendChild(style);
+    }
+
+    document.getElementById('mda-root')?.remove();
+
+    const BASE_IMG_MODAL = '/KurmiProyect/RESOURCES/img/';
+    const imgSrc = (prod.imagen && !['default.png','inicioHelado.png'].includes(prod.imagen))
+        ? BASE_IMG_MODAL + prod.imagen
+        : BASE_IMG_MODAL + 'inicioHelado.png';
+    const fechaFormateada = prod.fechaVencimiento
+        ? prod.fechaVencimiento.substring(0, 10) : '—';
+
+    const badgeColor = {
+        'Disponible':    '#22c55e',
+        'Agotado':       '#ef4444',
+        'Descontinuado': '#9ca3af'
+    }[prod.estadoNombre] ?? '#9ca3af';
+
+    const overlay = document.createElement('div');
+    overlay.className = 'mda-overlay';
+    overlay.id = 'mda-root';
+    overlay.innerHTML = `
+        <div class="mda-modal" role="dialog" aria-modal="true">
+            <div class="mda-img-wrap">
+                <img src="${imgSrc}" alt="${prod.nombre}"
+                     onerror="this.src='${BASE_IMG_MODAL}inicioHelado.png'" />
+                <button class="mda-cerrar" id="mdaCerrar" title="Cerrar">✕</button>
+            </div>
+            <div class="mda-body">
+                <p class="mda-nombre">${prod.nombre}</p>
+                <p class="mda-precio">$${Number(prod.precio).toLocaleString('es-CO')}</p>
+                <p class="mda-desc">${prod.descripcion || 'Sin descripción.'}</p>
+                <div class="mda-grid">
+                    <div class="mda-campo">
+                        <span class="mda-label">Categoría</span>
+                        <span class="mda-valor">${prod.categoria || '—'}</span>
+                    </div>
+                    <div class="mda-campo">
+                        <span class="mda-label">Sabor</span>
+                        <span class="mda-valor">${prod.nombreSabor || '—'}</span>
+                    </div>
+                    <div class="mda-campo">
+                        <span class="mda-label">Unidad de medida</span>
+                        <span class="mda-valor">${prod.unidadMedida || '—'}</span>
+                    </div>
+                    <div class="mda-campo">
+                        <span class="mda-label">Vence</span>
+                        <span class="mda-valor">${fechaFormateada}</span>
+                    </div>
+                    <div class="mda-campo">
+                        <span class="mda-label">Stock</span>
+                        <span class="mda-valor">${prod.stock ?? '—'}</span>
+                    </div>
+                    <div class="mda-campo">
+                        <span class="mda-label">Estado</span>
+                        <span class="mda-valor mda-badge-row">
+                            <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${badgeColor};margin-right:5px;"></span>
+                            ${prod.estadoNombre ?? '—'}
+                        </span>
+                    </div>
+                    <div class="mda-campo" style="grid-column:span 2">
+                        <span class="mda-label">Proveedor</span>
+                        <span class="mda-valor">${prod.proveedor || '—'}</span>
+                    </div>
+                </div>
+            </div>
+            <div class="mda-footer">
+                <button class="mda-btn-estado" id="mdaBtnEstado">🔄 Cambiar estado</button>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(overlay);
+
+    overlay.addEventListener('click', (e) => {
+        if (e.target === overlay || e.target.id === 'mdaCerrar') overlay.remove();
+    });
+    document.getElementById('mdaBtnEstado').addEventListener('click', () => {
+        overlay.remove();
+        abrirModalEstado(prod.idProducto);
+    });
+    const onKey = (e) => {
+        if (e.key === 'Escape') { overlay.remove(); document.removeEventListener('keydown', onKey); }
+    };
+    document.addEventListener('keydown', onKey);
 }
 
 async function guardarCambioEstado() {
@@ -862,6 +1036,7 @@ async function renderSeccionPedidos() {
         <div class="ventas-tabs">
             <button class="ventas-tab ventas-tab--activo" data-filtro="activos">En proceso</button>
             <button class="ventas-tab" data-filtro="entregados">Entregados</button>
+            <button class="ventas-tab" data-filtro="cancelados">❌ Cancelados</button>
             <button class="ventas-tab" data-filtro="todos">Todos</button>
         </div>
 
@@ -907,12 +1082,13 @@ function renderPedidosAdmin(pedidos) {
         // Colores por estado general del pedido
         const coloresEstado = {
             1: '#e67e22', 4: '#e67e22', 5: '#3498db',
-            6: '#9b59b6', 7: '#1abc9c', 8: '#2ecc71', 9: '#e74c3c'
+            6: '#9b59b6', 7: '#1abc9c', 8: '#2ecc71', 9: '#e74c3c', 11: '#f39c12'
         };
         const colorEstado = coloresEstado[p.estadoPedido] ?? '#aaa';
 
-        // Estado de cada proveedor
-        const proveedoresHtml = p.proveedores.map(prov => {
+        // Estado de cada proveedor — ocultar si el pedido está cancelado o en cancelación solicitada
+        const esCancelado = p.estadoPedido === 3 || p.estadoPedido === 11;
+        const proveedoresHtml = !esCancelado ? p.proveedores.map(prov => {
             const colorProv = prov.estadoItem >= 5 ? '#2ecc71' : '#e67e22';
             return `
                 <div style="display:flex;align-items:center;gap:8px;margin:4px 0;font-size:.82rem;">
@@ -923,10 +1099,10 @@ function renderPedidosAdmin(pedidos) {
                     </span>
                 </div>
             `;
-        }).join('');
+        }).join('') : '';
 
-        // Botones de avance de estado — solo si no está entregado ni en devolución
-        const puedeAvanzar = p.estadoPedido < 8;
+        // Botones de avance de estado — solo si no está cancelado, entregado ni en devolución
+        const puedeAvanzar = p.estadoPedido < 8 && p.estadoPedido !== 3 && p.estadoPedido !== 11;
         const estadosSiguientes = {
             1: [{ v: 4, l: '📦 Pasar a Preparando' }],
             4: [{ v: 5, l: '📦 Pasar a En bodega' }],
@@ -945,13 +1121,6 @@ function renderPedidosAdmin(pedidos) {
               `).join('')
             : '';
 
-        // Botón devolución (siempre disponible si no está entregado ni ya en devolución)
-        const btnDevolucion = p.estadoPedido !== 8 && p.estadoPedido !== 9 ? `
-            <button class="btn-devolucion" data-id="${p.idPedido}">
-                🔄 Marcar devolución
-            </button>
-        ` : '';
-
         return `
         <div class="pedido-card" id="pedido-admin-${p.idPedido}">
             <div class="pedido-card__header">
@@ -968,7 +1137,8 @@ function renderPedidosAdmin(pedidos) {
                 <strong>Receptor:</strong> ${p.receptor} — ${p.direccion} — ${p.telefono}
             </div>
 
-            <!-- Estado de cada proveedor -->
+            <!-- Estado de cada proveedor — ocultar en cancelados -->
+            ${!esCancelado ? `
             <div style="margin:10px 0;padding:10px;background:#f9f9f9;border-radius:8px;">
                 <p style="font-size:.8rem;color:#999;margin-bottom:6px;font-weight:600;">
                     ESTADO POR PROVEEDOR:
@@ -983,13 +1153,12 @@ function renderPedidosAdmin(pedidos) {
                         ✔ Todos los proveedores han entregado en bodega
                     </p>
                 `}
-            </div>
+            </div>` : ''}
 
             <div class="pedido-card__footer" style="gap:8px;flex-wrap:wrap;">
                 <span>Total: <strong>$${Number(p.totalPago).toLocaleString('es-CO')}</strong></span>
                 <div style="display:flex;gap:8px;flex-wrap:wrap;">
                     ${botonesAvance}
-                    ${btnDevolucion}
                 </div>
             </div>
         </div>
@@ -1002,11 +1171,6 @@ function renderPedidosAdmin(pedidos) {
             cambiarEstadoPedidoAdmin(Number(btn.dataset.id), Number(btn.dataset.estado), btn));
     });
 
-    // Listeners botones devolución
-    contenedor.querySelectorAll('.btn-devolucion').forEach(btn => {
-        btn.addEventListener('click', () =>
-            cambiarEstadoPedidoAdmin(Number(btn.dataset.id), 9, btn));
-    });
 }
 
 async function cambiarEstadoPedidoAdmin(idPedido, nuevoEstado, btn) {
@@ -1522,3 +1686,541 @@ async function crearDesdeAprobacion(sol) {
     }
 }
  
+// ═════════════════════════════════════════════════════════════════════════════
+// SECCIÓN DEVOLUCIONES — Administrador
+// Añadir al final de admin.js  +  registrar en configurarNavegacion():
+//   else if (seccion === 'devoluciones') renderSeccionDevolucionesAdmin();
+// ═════════════════════════════════════════════════════════════════════════════
+
+// ─────────────────────────────────────────────────────────────────────────────
+// RENDER PRINCIPAL
+// ─────────────────────────────────────────────────────────────────────────────
+function renderSeccionDevolucionesAdmin() {
+    const contenido = document.getElementById('contenidoPrincipal');
+    contenido.innerHTML = `
+        <div class="ventas-header">
+            <h2 class="ventas-titulo">↩ Solicitudes de Devolución</h2>
+        </div>
+
+        <!-- Pestañas de filtro -->
+        <div class="ventas-tabs">
+            <button class="ventas-tab ventas-tab--activo" data-filtro-dev="">Todas</button>
+            <button class="ventas-tab" data-filtro-dev="Pendiente">⏳ Pendientes</button>
+            <button class="ventas-tab" data-filtro-dev="Aprobada">✅ Aprobadas</button>
+            <button class="ventas-tab" data-filtro-dev="Rechazada">❌ Rechazadas</button>
+        </div>
+
+        <p class="contador-resultados" id="contadorDevAdmin"></p>
+
+        <div id="listaDevAdmin" class="solicitudes-lista">
+            <p class="cargando">Cargando solicitudes…</p>
+        </div>
+
+        <!-- ── Modal responder devolución ──────────────────────── -->
+        <div id="modalResponderDevolucion" class="modal-overlay" style="display:none">
+            <div class="modal modal--solicitud">
+                <div class="modal__header">
+                    <h3 id="modalDevTitulo">Responder devolución</h3>
+                    <button class="modal__cerrar" id="cerrarModalDev">✕</button>
+                </div>
+                <div class="modal__body">
+
+                    <!-- Detalle de la solicitud -->
+                    <div class="sol-modal__detalle" id="devModalDetalle"></div>
+
+                    <!-- Decisión -->
+                    <label class="sol-label" style="margin-top:16px;display:block;">
+                        Decisión <span class="sol-required">*</span>
+                    </label>
+                    <div class="sol-radio-group">
+                        <label class="sol-radio">
+                            <input type="radio" name="devDecision" value="Aprobada"> ✅ Aprobar devolución
+                        </label>
+                        <label class="sol-radio">
+                            <input type="radio" name="devDecision" value="Rechazada"> ❌ Rechazar devolución
+                        </label>
+                    </div>
+
+                    <!-- Motivo de rechazo (solo visible si se rechaza) -->
+                    <div id="dev-motivo-wrap" style="display:none;margin-top:14px;">
+                        <label class="sol-label">
+                            Motivo del rechazo <span class="sol-required">*</span>
+                        </label>
+                        <textarea id="dev-motivoRespuesta" class="sol-textarea"
+                                  placeholder="Indica brevemente por qué no se puede aprobar esta devolución…"
+                                  maxlength="255"></textarea>
+                    </div>
+
+                    <!-- Error -->
+                    <p class="sol-error hidden" id="devModalError"></p>
+                </div>
+
+                <div class="modal__footer">
+                    <button class="sol-btn-cancelar" id="devModalCancelar">Cancelar</button>
+                    <button class="sol-btn-confirmar" id="devModalConfirmar">Confirmar</button>
+                </div>
+            </div>
+        </div>
+    `;
+
+    // Pestañas
+    document.querySelectorAll('[data-filtro-dev]').forEach(tab => {
+        tab.addEventListener('click', () => {
+            document.querySelectorAll('[data-filtro-dev]').forEach(t => t.classList.remove('ventas-tab--activo'));
+            tab.classList.add('ventas-tab--activo');
+            cargarDevolucionesAdmin(tab.dataset.filtroDev);
+        });
+    });
+
+    // Modal: cerrar
+    document.getElementById('cerrarModalDev').addEventListener('click',   cerrarModalDev);
+    document.getElementById('devModalCancelar').addEventListener('click', cerrarModalDev);
+
+    // Modal: mostrar/ocultar motivo según decisión
+    document.querySelectorAll('input[name="devDecision"]').forEach(radio => {
+        radio.addEventListener('change', () => {
+            const wrap = document.getElementById('dev-motivo-wrap');
+            wrap.style.display = radio.value === 'Rechazada' ? 'block' : 'none';
+            if (radio.value !== 'Rechazada') {
+                document.getElementById('dev-motivoRespuesta').value = '';
+            }
+        });
+    });
+
+    // Carga inicial
+    cargarDevolucionesAdmin('');
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CARGAR DEVOLUCIONES DEL SERVIDOR
+// ─────────────────────────────────────────────────────────────────────────────
+async function cargarDevolucionesAdmin(filtro) {
+    const contenedor = document.getElementById('listaDevAdmin');
+    if (!contenedor) return;
+    contenedor.innerHTML = '<p class="cargando">Cargando…</p>';
+
+    try {
+        const url = `${BASE_URL}/DevolucionServlet?accion=todasDevoluciones` +
+                    (filtro ? `&estado=${encodeURIComponent(filtro)}` : '');
+        const res  = await fetch(url);
+        if (res.status === 401) { window.location.href = `${BASE_URL}/inicioSesion.html`; return; }
+        const data = await res.json();
+
+        if (!data.ok) {
+            contenedor.innerHTML = '<p class="sol-vacia">Error al cargar solicitudes.</p>';
+            return;
+        }
+
+        const lista = data.devoluciones || [];
+        const contadorEl = document.getElementById('contadorDevAdmin');
+        if (contadorEl) {
+            contadorEl.textContent = lista.length === 0
+                ? 'Sin solicitudes'
+                : `${lista.length} solicitud${lista.length !== 1 ? 'es' : ''}`;
+        }
+
+        if (lista.length === 0) {
+            contenedor.innerHTML = '<p class="sol-vacia">😕 No hay solicitudes de devolución.</p>';
+            return;
+        }
+
+        contenedor.innerHTML = '';
+        lista.forEach(dev => {
+            contenedor.appendChild(crearTarjetaDevAdmin(dev));
+        });
+
+    } catch (e) {
+        console.error('cargarDevolucionesAdmin:', e);
+        if (contenedor) contenedor.innerHTML = '<p class="sol-vacia">Error de red.</p>';
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CREAR TARJETA DE DEVOLUCIÓN (panel admin)
+// ─────────────────────────────────────────────────────────────────────────────
+function crearTarjetaDevAdmin(dev) {
+    const cfgEstado = {
+        'Pendiente': { bg: '#e67e22', color: '#fff' },
+        'Aprobada':  { bg: '#2ecc71', color: '#fff' },
+        'Rechazada': { bg: '#e74c3c', color: '#fff' }
+    };
+    const cfg = cfgEstado[dev.estado] || { bg: '#aaa', color: '#fff' };
+
+    const BASE_IMG = `${BASE_URL}/RESOURCES/img/`;
+    const imgSrc   = dev.imagenPrueba
+        ? BASE_IMG + 'devoluciones/' + dev.imagenPrueba
+        : null;
+
+    const tarjeta = document.createElement('div');
+    tarjeta.className = 'sol-card';
+
+    tarjeta.innerHTML = `
+        <div class="sol-card__header">
+            <div class="sol-card__info">
+                <strong>Pedido #${dev.idPedido}</strong>
+                — Cliente: <em>${dev.nombreCliente || '—'}</em>
+            </div>
+            <span class="sol-badge"
+                  style="background:${cfg.bg};color:${cfg.color};">
+                ${dev.estado}
+            </span>
+        </div>
+
+        <div class="sol-card__body">
+            <p><strong>Total del pedido:</strong>
+               $${Number(dev.totalPago).toLocaleString('es-CO')}</p>
+            <p><strong>Fecha pedido:</strong>
+               ${dev.fechaPedido ? dev.fechaPedido.substring(0, 10) : '—'}</p>
+            <p><strong>Solicitud enviada:</strong>
+               ${dev.fechaSolicitud ? dev.fechaSolicitud.substring(0, 16).replace('T',' ') : '—'}</p>
+            <p style="margin-top:8px;"><strong>Motivo del cliente:</strong><br>
+               ${dev.motivo}</p>
+            ${imgSrc ? `
+                <div style="margin-top:10px;">
+                    <strong>Imagen de prueba:</strong><br>
+                    <img src="${imgSrc}"
+                         alt="Prueba devolución"
+                         onerror="this.style.display='none'"
+                         style="max-width:200px;max-height:160px;border-radius:10px;
+                                margin-top:6px;object-fit:cover;border:2px solid #DCD6F7;">
+                </div>` : ''}
+            ${dev.motivoRespuesta ? `
+                <p style="margin-top:8px;color:#8e44ad;">
+                    <strong>Respuesta registrada:</strong> ${dev.motivoRespuesta}
+                </p>` : ''}
+            ${dev.fechaRespuesta ? `
+                <p style="font-size:.78rem;color:#999;">
+                    Respondida: ${dev.fechaRespuesta.substring(0, 16).replace('T',' ')}
+                </p>` : ''}
+        </div>
+
+        ${dev.estado === 'Pendiente' ? `
+        <div class="sol-card__footer">
+            <button class="sol-btn-responder" data-id="${dev.idDevolucion}"
+                    data-pedido="${dev.idPedido}" data-cliente="${dev.nombreCliente || ''}">
+                ✏️ Responder
+            </button>
+        </div>` : ''}
+    `;
+
+    // Listener del botón responder
+    const btnR = tarjeta.querySelector('.sol-btn-responder');
+    if (btnR) {
+        btnR.addEventListener('click', () => {
+            abrirModalResponderDevolucion(
+                Number(btnR.dataset.id),
+                Number(btnR.dataset.pedido),
+                btnR.dataset.cliente
+            );
+        });
+    }
+
+    return tarjeta;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MODAL RESPONDER
+// ─────────────────────────────────────────────────────────────────────────────
+let _idDevolucionActiva = null;
+
+function abrirModalResponderDevolucion(idDevolucion, idPedido, nombreCliente) {
+    _idDevolucionActiva = idDevolucion;
+
+    // Limpiar estado previo
+    document.querySelectorAll('input[name="devDecision"]').forEach(r => r.checked = false);
+    document.getElementById('dev-motivo-wrap').style.display = 'none';
+    document.getElementById('dev-motivoRespuesta').value = '';
+    const errorEl = document.getElementById('devModalError');
+    errorEl.classList.add('hidden');
+    errorEl.textContent = '';
+
+    // Llenar detalle
+    document.getElementById('devModalDetalle').innerHTML = `
+        <p><strong>Solicitud #${idDevolucion}</strong> — Pedido #${idPedido}</p>
+        <p>Cliente: <em>${nombreCliente}</em></p>
+    `;
+
+    // Botón confirmar
+    const btnConfirmar = document.getElementById('devModalConfirmar');
+    // Clonar para limpiar listeners anteriores
+    const btnNuevo = btnConfirmar.cloneNode(true);
+    btnConfirmar.parentNode.replaceChild(btnNuevo, btnConfirmar);
+    btnNuevo.addEventListener('click', () => enviarRespuestaDevolucion(idDevolucion));
+
+    document.getElementById('modalResponderDevolucion').style.display = 'flex';
+}
+
+function cerrarModalDev() {
+    const modal = document.getElementById('modalResponderDevolucion');
+    if (modal) modal.style.display = 'none';
+    _idDevolucionActiva = null;
+}
+
+async function enviarRespuestaDevolucion(idDevolucion) {
+    const decisionEl = document.querySelector('input[name="devDecision"]:checked');
+    const errorEl    = document.getElementById('devModalError');
+    const motivo     = document.getElementById('dev-motivoRespuesta').value.trim();
+
+    errorEl.classList.add('hidden');
+    errorEl.textContent = '';
+
+    if (!decisionEl) {
+        errorEl.textContent = 'Debes seleccionar una decisión.';
+        errorEl.classList.remove('hidden');
+        return;
+    }
+    const decision = decisionEl.value;
+    if (decision === 'Rechazada' && !motivo) {
+        errorEl.textContent = 'Debes indicar el motivo del rechazo.';
+        errorEl.classList.remove('hidden');
+        return;
+    }
+
+    const btnC = document.getElementById('devModalConfirmar');
+    if (btnC) { btnC.disabled = true; btnC.textContent = 'Procesando…'; }
+
+    const formData = new FormData();
+    formData.append('accion',           'responderDevolucion');
+    formData.append('idDevolucion',     idDevolucion);
+    formData.append('estado',           decision);
+    formData.append('motivoRespuesta',  motivo);
+
+    try {
+        const res  = await fetch(`${BASE_URL}/DevolucionServlet`, {
+            method: 'POST',
+            body: formData
+        });
+        const data = await res.json();
+
+        if (data.ok) {
+            cerrarModalDev();
+            // Recargar pestaña activa
+            const tabActivo = document.querySelector('[data-filtro-dev].ventas-tab--activo');
+            cargarDevolucionesAdmin(tabActivo ? tabActivo.dataset.filtroDev : '');
+        } else {
+            errorEl.textContent = data.error || 'Error al procesar la solicitud.';
+            errorEl.classList.remove('hidden');
+            if (btnC) { btnC.disabled = false; btnC.textContent = 'Confirmar'; }
+        }
+    } catch (e) {
+        console.error('enviarRespuestaDevolucion:', e);
+        errorEl.textContent = 'Error de red. Intenta de nuevo.';
+        errorEl.classList.remove('hidden');
+        if (btnC) { btnC.disabled = false; btnC.textContent = 'Confirmar'; }
+    }
+}
+// ═════════════════════════════════════════════════════════════════════════════
+// SECCIÓN CANCELACIONES — Administrador
+// ═════════════════════════════════════════════════════════════════════════════
+
+function renderSeccionCancelacionesAdmin() {
+    const main = document.getElementById('contenidoPrincipal');
+    main.innerHTML = `
+        <div class="seccion-header">
+            <h2>🚫 Solicitudes de Cancelación</h2>
+        </div>
+
+        <div class="ventas-tabs">
+            <button class="ventas-tab ventas-tab--activo" data-filtro-can="">Todas</button>
+            <button class="ventas-tab" data-filtro-can="Pendiente">⏳ Pendientes</button>
+            <button class="ventas-tab" data-filtro-can="Aprobada">✅ Aprobadas</button>
+            <button class="ventas-tab" data-filtro-can="Rechazada">❌ Rechazadas</button>
+        </div>
+
+        <div id="listaCancelAdmin" class="solicitudes-lista">
+            <p class="cargando">Cargando solicitudes…</p>
+        </div>
+
+        <!-- Modal responder cancelación -->
+        <div id="modalResponderCancelacion" class="modal-overlay" style="display:none">
+            <div class="modal modal--solicitud">
+                <div class="modal__header">
+                    <h3 id="modalCanTitulo">Responder cancelación</h3>
+                    <button class="modal__cerrar" id="cerrarModalCan">✕</button>
+                </div>
+                <div class="modal__body">
+                    <div class="sol-modal__detalle" id="canModalDetalle"></div>
+
+                    <label class="sol-label" style="margin-top:16px;display:block;">
+                        Decisión <span class="sol-required">*</span>
+                    </label>
+                    <div class="sol-radio-group">
+                        <label class="sol-radio">
+                            <input type="radio" name="canDecision" value="Aprobada"> ✅ Aprobar cancelación
+                        </label>
+                        <label class="sol-radio">
+                            <input type="radio" name="canDecision" value="Rechazada"> ❌ Rechazar cancelación
+                        </label>
+                    </div>
+
+                    <div id="can-motivo-wrap" style="display:none;margin-top:14px;">
+                        <label class="sol-label">
+                            Motivo del rechazo <span class="sol-required">*</span>
+                        </label>
+                        <textarea id="can-motivoRespuesta" class="sol-textarea"
+                                  placeholder="Indica brevemente por qué no se puede aprobar…"
+                                  maxlength="255"></textarea>
+                    </div>
+
+                    <p class="sol-error hidden" id="canModalError"></p>
+                </div>
+                <div class="modal__footer">
+                    <button class="sol-btn-cancelar" id="canModalCancelar">Cancelar</button>
+                    <button class="sol-btn-confirmar" id="canModalConfirmar">Confirmar</button>
+                </div>
+            </div>
+        </div>
+    `;
+
+    document.querySelectorAll('[data-filtro-can]').forEach(tab => {
+        tab.addEventListener('click', () => {
+            document.querySelectorAll('[data-filtro-can]').forEach(t => t.classList.remove('ventas-tab--activo'));
+            tab.classList.add('ventas-tab--activo');
+            cargarCancelacionesAdmin(tab.dataset.filtroCan);
+        });
+    });
+
+    document.getElementById('cerrarModalCan').addEventListener('click',  cerrarModalCan);
+    document.getElementById('canModalCancelar').addEventListener('click', cerrarModalCan);
+
+    document.querySelectorAll('input[name="canDecision"]').forEach(radio => {
+        radio.addEventListener('change', () => {
+            document.getElementById('can-motivo-wrap').style.display =
+                radio.value === 'Rechazada' ? 'block' : 'none';
+            if (radio.value !== 'Rechazada')
+                document.getElementById('can-motivoRespuesta').value = '';
+        });
+    });
+
+    cargarCancelacionesAdmin('Pendiente');
+    // Activar tab Pendientes por defecto
+    document.querySelectorAll('[data-filtro-can]').forEach(t => t.classList.remove('ventas-tab--activo'));
+    document.querySelector('[data-filtro-can="Pendiente"]').classList.add('ventas-tab--activo');
+}
+
+async function cargarCancelacionesAdmin(filtro) {
+    const contenedor = document.getElementById('listaCancelAdmin');
+    if (!contenedor) return;
+    contenedor.innerHTML = '<p class="cargando">Cargando…</p>';
+
+    try {
+        const url = `${BASE_URL}/CancelacionesAdminServlet` +
+                    (filtro ? `?filtro=${encodeURIComponent(filtro)}` : '');
+        const res  = await fetch(url);
+        if (!res.ok) throw new Error(`Error ${res.status}`);
+        const lista = await res.json();
+
+        if (!lista.length) {
+            contenedor.innerHTML = '<p class="solicitudes-vacia">📭 No hay solicitudes en esta categoría.</p>';
+            return;
+        }
+
+        contenedor.innerHTML = lista.map(c => {
+            const colorEstado = { Pendiente: '#e67e22', Aprobada: '#2ecc71', Rechazada: '#e74c3c' }[c.estado] ?? '#aaa';
+            const esPendiente = c.estado === 'Pendiente';
+            return `
+            <div class="sol-card" id="cancel-card-${c.idCancelacion}">
+                <div class="sol-card__header">
+                    <span class="sol-card__id">Pedido #${c.idPedido}</span>
+                    <span class="sol-card__badge" style="background:${colorEstado}">${c.estado}</span>
+                    <span class="sol-card__fecha">${c.fechaSolicitud}</span>
+                </div>
+                <div class="sol-card__body">
+                    <p><strong>Cliente:</strong> ${c.cliente} — ${c.correo} · ${c.telefono}</p>
+                    <p><strong>Total del pedido:</strong> $${Number(c.totalPago).toLocaleString('es-CO')}</p>
+                    <p><strong>Motivo del cliente:</strong> ${c.motivo}</p>
+                    ${c.motivoRespuesta ? `<p><strong>Respuesta admin:</strong> ${c.motivoRespuesta}</p>` : ''}
+                </div>
+                ${esPendiente ? `
+                <div class="sol-card__footer">
+                    <button class="sol-btn-responder" data-id="${c.idCancelacion}" data-pedido="${c.idPedido}">
+                        📝 Responder
+                    </button>
+                </div>` : ''}
+            </div>`;
+        }).join('');
+
+        contenedor.querySelectorAll('.sol-btn-responder').forEach(btn => {
+            btn.addEventListener('click', () =>
+                abrirModalCancelacion(Number(btn.dataset.id), Number(btn.dataset.pedido)));
+        });
+
+    } catch (e) {
+        contenedor.innerHTML = `<p class="sol-error">❌ Error al cargar: ${e.message}</p>`;
+    }
+}
+
+let _idCancelacionActual = null;
+
+function abrirModalCancelacion(idCancelacion, idPedido) {
+    _idCancelacionActual = idCancelacion;
+    document.getElementById('modalCanTitulo').textContent = `Responder cancelación — Pedido #${idPedido}`;
+    document.getElementById('canModalDetalle').innerHTML =
+        `<p style="font-size:.85rem;color:#555;">Revisa el motivo del cliente arriba y elige tu decisión.</p>`;
+    document.querySelectorAll('input[name="canDecision"]').forEach(r => r.checked = false);
+    document.getElementById('can-motivo-wrap').style.display = 'none';
+    document.getElementById('can-motivoRespuesta').value = '';
+    document.getElementById('canModalError').classList.add('hidden');
+    document.getElementById('canModalConfirmar').disabled = false;
+    document.getElementById('canModalConfirmar').textContent = 'Confirmar';
+    document.getElementById('modalResponderCancelacion').style.display = 'flex';
+
+    // Asignar listener al botón confirmar (clonar para evitar duplicados)
+    const btnC = document.getElementById('canModalConfirmar');
+    const nuevoBtn = btnC.cloneNode(true);
+    btnC.parentNode.replaceChild(nuevoBtn, btnC);
+    nuevoBtn.addEventListener('click', enviarRespuestaCancelacion);
+}
+
+function cerrarModalCan() {
+    document.getElementById('modalResponderCancelacion').style.display = 'none';
+    _idCancelacionActual = null;
+}
+
+async function enviarRespuestaCancelacion() {
+    const errorEl  = document.getElementById('canModalError');
+    const btnC     = document.getElementById('canModalConfirmar');
+    const decision = document.querySelector('input[name="canDecision"]:checked')?.value;
+    const motivo   = document.getElementById('can-motivoRespuesta').value.trim();
+
+    if (!decision) {
+        errorEl.textContent = '⚠ Selecciona una decisión.';
+        errorEl.classList.remove('hidden');
+        return;
+    }
+    if (decision === 'Rechazada' && !motivo) {
+        errorEl.textContent = '⚠ Escribe el motivo del rechazo.';
+        errorEl.classList.remove('hidden');
+        return;
+    }
+
+    btnC.disabled = true;
+    btnC.textContent = 'Guardando…';
+    errorEl.classList.add('hidden');
+
+    try {
+        const res = await fetch(`${BASE_URL}/CancelacionesAdminServlet`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: `idCancelacion=${_idCancelacionActual}` +
+                  `&decision=${encodeURIComponent(decision)}` +
+                  `&motivoRespuesta=${encodeURIComponent(motivo)}`
+        });
+        const data = await res.json();
+        if (data.ok) {
+            cerrarModalCan();
+            const tabActivo = document.querySelector('[data-filtro-can].ventas-tab--activo');
+            cargarCancelacionesAdmin(tabActivo ? tabActivo.dataset.filtroCan : 'Pendiente');
+        } else {
+            errorEl.textContent = `❌ ${data.msg ?? 'Error al procesar.'}`;
+            errorEl.classList.remove('hidden');
+            btnC.disabled = false;
+            btnC.textContent = 'Confirmar';
+        }
+    } catch (e) {
+        errorEl.textContent = `❌ Error de conexión: ${e.message}`;
+        errorEl.classList.remove('hidden');
+        btnC.disabled = false;
+        btnC.textContent = 'Confirmar';
+    }
+}

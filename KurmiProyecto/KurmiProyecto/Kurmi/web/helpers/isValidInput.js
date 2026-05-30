@@ -41,11 +41,19 @@ export const isValidInput = (inputElement, rule, errorElement) => {
             if (typeof rule.custom === "function") {
                 const pasaValidacionCustom = rule.custom(value, inputElement);
                 if (!pasaValidacionCustom) {
-                    showError(
-                        errorElement,
-                        rule.message || "El valor ingresado no es válido",
-                        inputElement
-                    );
+                    // Solo llamamos showError si hay un mensaje definido en la regla.
+                    // Si rule.message está vacío, la función custom ya escribió
+                    // su propio mensaje directamente en el errorElement.
+                    if (rule.message) {
+                        showError(
+                            errorElement,
+                            rule.message,
+                            inputElement
+                        );
+                    } else {
+                        // Aplica solo el estilo de error al input sin sobreescribir el mensaje
+                        inputElement.classList.add("error");
+                    }
                     return false;
                 }
             }

@@ -59,17 +59,21 @@ public class MarcarEntregadoServlet extends HttpServlet {
         try {
             int idPedido = Integer.parseInt(idPedidoParam.trim());
 
-            // Si no se manda nuevoEstado se asume 5 (En bodega) por compatibilidad
-            int nuevoEstado = 5;
-            if (nuevoEstadoParam != null && !nuevoEstadoParam.isBlank()) {
-                nuevoEstado = Integer.parseInt(nuevoEstadoParam.trim());
+            // nuevoEstado es OBLIGATORIO — el frontend debe mandarlo explícitamente
+            if (nuevoEstadoParam == null || nuevoEstadoParam.isBlank()) {
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                result.put("ok", false);
+                result.put("msg", "Falta nuevoEstado");
+                response.getWriter().write(gson.toJson(result));
+                return;
             }
+            int nuevoEstado = Integer.parseInt(nuevoEstadoParam.trim());
 
             // El proveedor solo puede manejar estados 4 (Preparando) y 5 (En bodega)
-            if (nuevoEstado < 4 || nuevoEstado > 5) {
+            if (nuevoEstado != 4 && nuevoEstado != 5) {
                 response.setStatus(HttpServletResponse.SC_FORBIDDEN);
                 result.put("ok", false);
-                result.put("msg", "Estado no permitido para proveedor. Solo 4=Preparando o 5=En bodega.");
+                result.put("msg", "Estado no permitido para proveedor. Solo 4=Iniciar preparación o 5=Listo en bodega.");
                 response.getWriter().write(gson.toJson(result));
                 return;
             }

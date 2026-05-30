@@ -45,6 +45,8 @@ public class PedidosAdminServlet extends HttpServlet {
         int filtroEstado;
         if ("entregados".equalsIgnoreCase(filtro)) {
             filtroEstado = 8;   // Entregado = 8
+        } else if ("cancelados".equalsIgnoreCase(filtro)) {
+            filtroEstado = 3;   // Cancelado = 3
         } else if ("todos".equalsIgnoreCase(filtro)) {
             filtroEstado = -1;
         } else {

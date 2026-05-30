@@ -67,8 +67,16 @@ public class CambiarEstadoPedidoServlet extends HttpServlet {
             int nuevoEstado = Integer.parseInt(nuevoEstadoParam.trim());
 
             if (nuevoEstado == 3) {
-                // ── CANCELAR ──────────────────────────────────────────────────
-                // Solo se puede cancelar si el pedido está en estado Pendiente (1)
+                // ── SOLICITAR CANCELACIÓN ─────────────────────────────────────
+                String motivo = request.getParameter("motivo");
+                if (motivo == null || motivo.isBlank()) {
+                    response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                    result.put("ok", false);
+                    result.put("msg", "Debes indicar el motivo de la cancelación");
+                    response.getWriter().write(gson.toJson(result));
+                    return;
+                }
+
                 int estadoActual = pedidoDAO.obtenerEstadoPedidoDeUsuario(idPedido, idUsuario);
 
                 if (estadoActual == -1) {
@@ -88,10 +96,10 @@ public class CambiarEstadoPedidoServlet extends HttpServlet {
                     return;
                 }
 
-                boolean ok = pedidoDAO.cambiarEstadoPedido(idPedido, idUsuario, 3);
+                boolean ok = pedidoDAO.solicitarCancelacion(idPedido, idUsuario, motivo.trim());
                 result.put("ok", ok);
-                result.put("msg", ok ? "Pedido cancelado correctamente"
-                                     : "No se pudo cancelar el pedido");
+                result.put("msg", ok ? "Solicitud de cancelación enviada. El administrador la revisará pronto."
+                                     : "No se pudo enviar la solicitud");
 
             } else if (nuevoEstado == 1) {
                 // ── REACTIVAR (recompra) ──────────────────────────────────────
