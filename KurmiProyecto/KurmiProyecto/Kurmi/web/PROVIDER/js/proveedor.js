@@ -855,6 +855,11 @@ function renderListaPedidos(lista, tipo) {
             <div class="pedido-card__footer">
                 <span>Subtotal: <strong>$${Number(p.subtotalProveedor).toLocaleString('es-CO')}</strong></span>
                 ${accionFooter}
+                <button class="btn-factura-prov" data-id="${p.idPedido}"
+                        style="padding:6px 16px;background:#7C4DFF;color:#fff;border:none;
+                               border-radius:20px;font-size:.82rem;font-weight:600;cursor:pointer;">
+                    🧾 Ver factura
+                </button>
             </div>
         </div>
         `;
@@ -867,6 +872,131 @@ function renderListaPedidos(lista, tipo) {
             btn.addEventListener('click', () => marcarEstadoProveedor(Number(btn.dataset.id), btn, nuevoEstado));
         });
     }
+
+    // Listeners botones factura
+    contenedor.querySelectorAll('.btn-factura-prov').forEach(btn => {
+        const idPedido = Number(btn.dataset.id);
+        const pedido = lista.find(p => p.idPedido === idPedido);
+        if (pedido) btn.addEventListener('click', () => generarFacturaProv(pedido));
+    });
+}
+
+// ── Factura proveedor ─────────────────────────────────────────────────────────
+function generarFacturaProv(p) {
+    const estadoLabel = p.estadoProveedor === 1 ? 'Pendiente'
+                      : p.estadoProveedor === 4 ? 'Preparando'
+                      : p.estadoProveedor === 5 ? 'En bodega'
+                      : (p.nombreEstadoProveedor ?? 'Pendiente');
+    const badgeBg  = p.estadoProveedor === 5 ? '#2ecc71'
+                   : p.estadoProveedor === 4 ? '#f39c12'
+                   : '#3498db';
+    const fecha    = p.fecha      || '—';
+    const metodo   = p.metodoPago || 'No registrado';
+    const receptor = p.receptor   || '—';
+    const direccion= p.direccion  || '—';
+    const telefono = p.telefono   || '—';
+    const subtotal = Number(p.subtotalProveedor).toLocaleString('es-CO');
+
+    const filas = (p.items || []).map(i => `
+        <tr>
+            <td>${i.nombre || '—'}</td>
+            <td style="text-align:center">${i.cantidad}</td>
+            <td style="text-align:right">$${Number(i.precio || 0).toLocaleString('es-CO')}</td>
+            <td style="text-align:right">$${Number(i.subtotal || 0).toLocaleString('es-CO')}</td>
+        </tr>
+    `).join('');
+
+    const html = `<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Factura Pedido #${p.idPedido} — Kurmi</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; color: #2d2d2d; background: #fff; padding: 40px; }
+        .factura { max-width: 720px; margin: 0 auto; }
+        .factura__header { display: flex; justify-content: space-between; align-items: flex-start;
+            margin-bottom: 32px; padding-bottom: 20px; border-bottom: 3px solid #7C4DFF; }
+        .factura__marca h1 { font-size: 2rem; color: #7C4DFF; font-weight: 800; letter-spacing: -1px; }
+        .factura__marca p  { font-size: .82rem; color: #888; margin-top: 2px; }
+        .factura__num      { text-align: right; }
+        .factura__num h2   { font-size: 1.1rem; font-weight: 700; color: #463877; }
+        .factura__num p    { font-size: .82rem; color: #888; margin-top: 2px; }
+        .estado-badge { display: inline-block; padding: 4px 14px; border-radius: 20px;
+            font-size: .78rem; font-weight: 700; background: ${badgeBg}; color: #fff; margin-top: 4px; }
+        .factura__info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 28px; }
+        .info-bloque h3 { font-size: .72rem; font-weight: 700; color: #a68fc0;
+            text-transform: uppercase; letter-spacing: .06em; margin-bottom: 8px; }
+        .info-bloque p  { font-size: .88rem; color: #333; line-height: 1.6; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+        thead tr { background: #F4EEFF; }
+        thead th { text-align: left; padding: 10px 12px; font-size: .78rem; font-weight: 700;
+            color: #463877; text-transform: uppercase; letter-spacing: .04em; }
+        tbody tr { border-bottom: 1px solid #f0ecff; }
+        tbody td { padding: 10px 12px; font-size: .88rem; color: #333; }
+        tbody tr:hover { background: #faf8ff; }
+        .factura__total { display: flex; justify-content: flex-end; margin-top: 8px; }
+        .total-box { background: #F4EEFF; border-radius: 12px; padding: 14px 24px;
+            text-align: right; min-width: 200px; }
+        .total-box p      { font-size: .82rem; color: #888; margin-bottom: 4px; }
+        .total-box strong { font-size: 1.4rem; color: #7C4DFF; font-weight: 800; }
+        .factura__footer  { margin-top: 40px; padding-top: 16px; border-top: 1px solid #e8e0f7;
+            text-align: center; font-size: .75rem; color: #aaa; }
+        .btn-imprimir { display: block; margin: 0 auto 32px; padding: 12px 32px;
+            background: #7C4DFF; color: #fff; border: none; border-radius: 30px;
+            font-size: .95rem; font-weight: 700; cursor: pointer; }
+        .btn-imprimir:hover { background: #6a3de8; }
+        @media print { .btn-imprimir { display: none !important; } body { padding: 20px; } }
+    </style>
+</head>
+<body>
+<div class="factura">
+    <button class="btn-imprimir" onclick="window.print()">⬇ Descargar / Imprimir factura</button>
+    <div class="factura__header">
+        <div class="factura__marca"><h1>Kurmi</h1><p>Tu jardín de deseos</p></div>
+        <div class="factura__num">
+            <h2>Factura #${p.idPedido}</h2>
+            <p>Fecha: ${fecha}</p>
+            <span class="estado-badge">${estadoLabel}</span>
+        </div>
+    </div>
+    <div class="factura__info-grid">
+        <div class="info-bloque">
+            <h3>Datos de entrega</h3>
+            <p><strong>Receptor:</strong> ${receptor}</p>
+            <p><strong>Dirección:</strong> ${direccion}</p>
+            <p><strong>Teléfono:</strong> ${telefono}</p>
+        </div>
+        <div class="info-bloque">
+            <h3>Pago</h3>
+            <p><strong>Método:</strong> ${metodo}</p>
+            <p><strong>Fecha:</strong> ${fecha}</p>
+        </div>
+    </div>
+    <table>
+        <thead>
+            <tr>
+                <th>Producto</th>
+                <th style="text-align:center">Cant.</th>
+                <th style="text-align:right">Precio unit.</th>
+                <th style="text-align:right">Subtotal</th>
+            </tr>
+        </thead>
+        <tbody>${filas}</tbody>
+    </table>
+    <div class="factura__total">
+        <div class="total-box"><p>Subtotal de tus productos</p><strong>$${subtotal}</strong></div>
+    </div>
+    <div class="factura__footer">
+        <p>Kurmi — Gracias por tu compra 💜 &nbsp;·&nbsp; Este documento es tu comprobante de pago.</p>
+    </div>
+</div>
+</body>
+</html>`;
+
+    const ventana = window.open('', '_blank', 'width=800,height=700');
+    ventana.document.write(html);
+    ventana.document.close();
 }
 
 // ── Avanzar estado del proveedor: 1→4 (preparando) o 4→5 (en bodega) ─────────

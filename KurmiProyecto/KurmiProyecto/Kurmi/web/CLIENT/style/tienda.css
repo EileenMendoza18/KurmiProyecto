@@ -19,18 +19,16 @@
 /* --- CONTENEDOR DE LA TIENDA (MAIN) --- */
 main.tienda-main {
     grid-column: 2;
-    /* Relleno de 320px a la izquierda para dejarle vía libre al aside fixed */
     padding: 40px 40px 40px 40px; 
     display: flex;
     flex-direction: column;
-    align-items: center; /* Centra los bloques principales */
+    align-items: center;
     width: 100%;
     height: auto;
     min-height: 80vh;
     gap: 40px;
 }
 
-/* Modificamos el comportamiento del main heredado por main.css */
 main.tienda-main {
     display: flex !important;
 }
@@ -47,7 +45,7 @@ main.tienda-main {
 /* --- BARRA DE BÚSQUEDA CONTROLADA --- */
 .buscador-seccion {
     width: 100%;
-    max-width: 800px;
+    max-width: 900px;
     margin-bottom: 40px;
 }
 
@@ -55,7 +53,7 @@ main.tienda-main {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 12px;
+    gap: 14px;
     width: 100%;
 }
 
@@ -65,10 +63,20 @@ main.tienda-main {
     font-weight: bold;
 }
 
+/* Fila que contiene input + select lado a lado */
+.buscador-fila {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    max-width: 780px;
+    justify-content: center;
+}
+
 .buscador-input-wrapper {
     position: relative;
-    width: 100%;
-    max-width: 480px;
+    width: 480px;
+    flex-shrink: 0;
 }
 
 .buscador-input {
@@ -82,7 +90,6 @@ main.tienda-main {
     outline: none;
 }
 
-/* DOMA ABSOLUTA DEL PAJARITO GIGANTE EN EL BUSCADOR */
 .buscador-icono {
     position: absolute !important;
     right: 15px !important;
@@ -166,14 +173,12 @@ main.tienda-main {
 .products img{
     width: 100%;
     height: 100%;
-
 }
 .botones  button:nth-child(1){
     width: 80px;
     padding: 10px;
     font-size: 0.8rem;
     border-radius: 8px;
-    
 }
 
 .like, .carrito {
@@ -185,7 +190,6 @@ main.tienda-main {
     padding: 7px;
 }
 
-
 .categorias{
     display: flex;
     flex-direction: column;
@@ -195,10 +199,11 @@ main.tienda-main {
     justify-items: center;
     text-align: center;
 }
-/* Asegura el tamaño de las imágenes del carrito/favoritos nativos de tu plantilla */
+
 .botones input[type="image"], .botones button {
     cursor: pointer;
 }
+
 /* ---- BUSCADOR: sin resultados ---- */
 .buscador__sin-resultados {
     display: flex;
@@ -236,4 +241,32 @@ main.tienda-main {
     justify-items: center;
     align-items: center;
     text-align: center;
+}
+
+/* ── Filtro de proveedor al lado del buscador ── */
+.buscador-filtros-extra {
+    flex-shrink: 0;
+}
+
+.buscador-select-proveedor {
+    appearance: none;
+    -webkit-appearance: none;
+    background: rgba(255,255,255,0.85) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%237C4DFF' stroke-width='2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat right 14px center;
+    border: 2px solid #DCD6F7;
+    border-radius: 30px;
+    padding: 12px 42px 12px 18px;
+    font-size: 0.9rem;
+    color: #4A3B53;
+    font-weight: 500;
+    cursor: pointer;
+    width: 220px;
+    flex-shrink: 0;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.buscador-select-proveedor:focus,
+.buscador-select-proveedor:hover {
+    outline: none;
+    border-color: #B1B2FF;
+    box-shadow: 0 0 0 3px rgba(177,178,255,0.25);
 }

@@ -430,11 +430,24 @@ async function cargarSeccionesTienda(contenedorId) {
     try {
         const response = await fetch('/KurmiProyect/ObtenerProductosPorCategoriaServlet');
         const productos = await response.json();
-        
-        console.log("Productos recibidos del Servlet:", productos);
 
         // Guardar globalmente para el buscador
         todosLosProductosTienda = productos;
+
+        // Poblar el select de proveedores aquí, cuando los datos ya están disponibles
+        const selectProv = document.getElementById('filtroProveedorTienda');
+        if (selectProv) {
+            while (selectProv.options.length > 1) selectProv.remove(1);
+            const proveedoresUnicos = [...new Set(
+                productos.map(p => p.proveedor).filter(p => p != null && String(p).trim() !== '' && p !== 'null')
+            )].sort();
+            proveedoresUnicos.forEach(nombre => {
+                const opt = document.createElement('option');
+                opt.value = nombre;
+                opt.textContent = nombre;
+                selectProv.appendChild(opt);
+            });
+        }
 
         // 1. Agrupar los productos por su nombre de categoría
         const categoriasMap = {};
@@ -447,55 +460,40 @@ async function cargarSeccionesTienda(contenedorId) {
         }
 
         const contenedorPadre = document.getElementById(contenedorId);
-        if (!contenedorPadre) {
-            console.error("No se encontró el contenedor padre con ID:", contenedorId);
-            return;
-        }
-        contenedorPadre.innerHTML = ''; // Limpiar contenedor de carga
+        if (!contenedorPadre) return;
+        contenedorPadre.innerHTML = '';
 
-        // 2. Traer la plantilla HTML de la tarjeta de producto
         const responseTemplate = await fetch('/KurmiProyect/components/tarjetaProducto.html');
         const templateHTML = await responseTemplate.text();
         const parser = new DOMParser();
         const docTemplate = parser.parseFromString(templateHTML, 'text/html');
-        plantillaTarjetaTienda = docTemplate.querySelector('.tarjeta'); // Guardar globalmente
+        plantillaTarjetaTienda = docTemplate.querySelector('.tarjeta');
 
-        if (!plantillaTarjetaTienda) {
-            console.error("No se encontró la clase '.tarjeta' dentro de tarjetaProducto.html");
-            return;
-        }
+        if (!plantillaTarjetaTienda) return;
 
-        // 3. Iterar por cada categoría agrupada y construir sus bloques independientes
         for (const [nombreCategoria, listaProductos] of Object.entries(categoriasMap)) {
-            
-            // CONSTRUCCIÓN DEL BLOQUE DE LA CATEGORÍA (Aquí se soluciona el ReferenceError)
             const seccionBloque = document.createElement('section');
             seccionBloque.className = 'categoria-bloque';
             seccionBloque.style.marginBottom = '40px';
 
-            // Crear el título de la categoría (Ej: "Postres de cuchara", "Postres fritos")
             const tituloCat = document.createElement('h2');
             tituloCat.textContent = nombreCategoria;
             tituloCat.className = 'categoria-titulo';
             tituloCat.style.fontSize = '1.6rem';
-            tituloCat.style.color = '#4A3B53'; // Tono morado oscuro acorde a tu paleta pastel
+            tituloCat.style.color = '#4A3B53';
             tituloCat.style.marginBottom = '20px';
             tituloCat.style.fontWeight = '600';
             seccionBloque.appendChild(tituloCat);
-            
-            // Crear la rejilla (Grid) donde se alinearán las tarjetas de esta categoría
+
             const gridTarjetas = document.createElement('div');
             gridTarjetas.className = 'tienda-productos-grid';
-            
 
-            // Inyectar cada producto correspondiente a esta sección
             for (const prod of listaProductos) {
                 const nuevaTarjeta = plantillaTarjetaTienda.cloneNode(true);
                 mapearDatosTarjeta(nuevaTarjeta, prod);
                 gridTarjetas.appendChild(nuevaTarjeta);
             }
 
-            // Unir la rejilla al bloque contenedor y este al contenedor de la página
             seccionBloque.appendChild(gridTarjetas);
             contenedorPadre.appendChild(seccionBloque);
         }
@@ -890,37 +888,61 @@ function actualizarResumenCarrito() {
 
 // ─── BUSCADOR EN TIEMPO REAL ──────────────────────────────────────────────────
 function inicializarBuscador() {
-    const inputBuscador = document.querySelector('.buscador-input');
-    const contenedor    = document.getElementById('contenedorTiendaCategorias');
+    const inputBuscador  = document.querySelector('.buscador-input');
+    const selectProv     = document.getElementById('filtroProveedorTienda');
+    const contenedor     = document.getElementById('contenedorTiendaCategorias');
     if (!inputBuscador || !contenedor) return;
 
-    inputBuscador.addEventListener('input', () => {
-        const termino = inputBuscador.value.trim().toLowerCase();
+    // Poblar el select de proveedores con los únicos disponibles
+    if (selectProv) {
+        const proveedoresUnicos = [...new Set(
+            todosLosProductosTienda
+                .map(p => p.proveedor)
+                .filter(p => p != null && p !== 'null' && p.trim() !== '' && p !== '--' && p !== '—')
+        )].sort();
 
-        // Sin texto → restaurar vista por categorías normal
-        if (!termino) {
+        // Limpiar opciones previas (excepto la primera "Todos")
+        while (selectProv.options.length > 1) selectProv.remove(1);
+
+        proveedoresUnicos.forEach(nombre => {
+            const opt = document.createElement('option');
+            opt.value = nombre;
+            opt.textContent = nombre;
+            selectProv.appendChild(opt);
+        });
+    }
+
+    function aplicarFiltrosTienda() {
+        const termino    = inputBuscador.value.trim().toLowerCase();
+        const proveedor  = selectProv ? selectProv.value : '';
+
+        // Sin filtros → vista normal por categorías
+        if (!termino && !proveedor) {
             renderizarPorCategorias(todosLosProductosTienda, contenedor);
             return;
         }
 
-        // Filtrar por nombre o categoría
         const filtrados = todosLosProductosTienda.filter(p => {
-            const nombre    = (p.nombre    || '').toLowerCase();
-            const categoria = (p.categoria || '').toLowerCase();
-            const sabor     = (p.nombreSabor || '').toLowerCase();
-            return nombre.includes(termino) || categoria.includes(termino) || sabor.includes(termino);
+            const coincideTexto = !termino || (
+                (p.nombre || '').toLowerCase().includes(termino) ||
+                (p.categoria || '').toLowerCase().includes(termino) ||
+                (p.nombreSabor || '').toLowerCase().includes(termino)
+            );
+            const provProd = (p.proveedor ?? '').trim();
+            const coincideProveedor = !proveedor || provProd === proveedor;
+            return coincideTexto && coincideProveedor;
         });
 
         if (filtrados.length === 0) {
             contenedor.innerHTML = `
                 <div class="buscador__sin-resultados">
-                    <p>😕 No encontramos productos con "<strong>${inputBuscador.value.trim()}</strong>"</p>
-                    <p>Intenta con otro nombre o categoría.</p>
+                    <p>😕 No encontramos productos con "<strong>${inputBuscador.value.trim() || proveedor}</strong>"</p>
+                    <p>Intenta con otro nombre, categoría o proveedor.</p>
                 </div>`;
             return;
         }
 
-        // Mostrar resultados como una sección plana sin agrupar
+        // Mostrar resultados como sección plana
         contenedor.innerHTML = '';
         const seccion = document.createElement('section');
         seccion.className = 'categoria-bloque';
@@ -929,12 +951,12 @@ function inicializarBuscador() {
         const titulo = document.createElement('h2');
         titulo.className = 'categoria-titulo';
         titulo.style.cssText = 'font-size:1.4rem;color:#4A3B53;margin-bottom:20px;font-weight:600;';
-        titulo.textContent = `Resultados para "${inputBuscador.value.trim()}" (${filtrados.length})`;
+        const labelFiltro = proveedor ? `Proveedor: ${proveedor}` : `"${inputBuscador.value.trim()}"`;
+        titulo.textContent = `Resultados para ${labelFiltro} (${filtrados.length})`;
         seccion.appendChild(titulo);
 
         const grid = document.createElement('div');
         grid.className = 'tienda-productos-grid';
-        
 
         for (const prod of filtrados) {
             const tarjeta = plantillaTarjetaTienda.cloneNode(true);
@@ -944,7 +966,10 @@ function inicializarBuscador() {
 
         seccion.appendChild(grid);
         contenedor.appendChild(seccion);
-    });
+    }
+
+    inputBuscador.addEventListener('input', aplicarFiltrosTienda);
+    if (selectProv) selectProv.addEventListener('change', aplicarFiltrosTienda);
 }
 
 // Renderiza los productos agrupados por categoría (restaurar vista original)

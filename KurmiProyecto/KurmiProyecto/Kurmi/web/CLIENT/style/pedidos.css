@@ -163,6 +163,26 @@
     color: white;
 }
 
+/* ── Botón factura en tarjeta ── */
+.btn__pedido-factura {
+    margin: 0 14px 14px;
+    padding: 9px 0;
+    background: transparent;
+    color: #7C4DFF;
+    border: 2px solid #7C4DFF;
+    border-radius: 10px;
+    font-size: 0.83rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    width: calc(100% - 28px);
+}
+.btn__pedido-factura:hover {
+    background: #7C4DFF;
+    color: white;
+}
+
+
 /* ── Tarjeta de solicitud de devolución ── */
 .dev__solicitud-card { cursor: default; }
 .dev__solicitud-card:hover {
