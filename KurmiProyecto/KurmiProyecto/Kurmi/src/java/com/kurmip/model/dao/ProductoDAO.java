@@ -238,15 +238,17 @@ public class ProductoDAO {
             "SELECT p.ID_Producto, p.Nombre_Producto, p.Valor_Producto, p.Descripcion_Producto, " +
             "p.Imagen_Producto, p.Unidad_Medida, p.Fecha_vencimiento, " +
             "c.Nombre_Categoria, s.Nombre_Sabor, " +
-            "CONCAT(u.Nombres, ' ', u.Apellidos) AS nombreProveedor, " +
+            "COALESCE((SELECT CONCAT(u2.Nombres, ' ', u2.Apellidos) " +
+            "          FROM RelaProductoVendedor rpv2 " +
+            "          JOIN Usuario u2 ON u2.UsuarioID = rpv2.ID_Usuario " +
+            "          WHERE rpv2.ID_Productos = p.ID_Producto LIMIT 1), 'Sin proveedor') AS nombreProveedor, " +
             "COALESCE((SELECT SUM(i.StockInicial + i.CantidadAnadida) FROM Inventario i WHERE i.ID_Producto = p.ID_Producto), 0) AS stockTotal " +
             "FROM Productos p " +
             "JOIN RelaCatSabor r ON p.ID_RelaCategSabor = r.ID_RelaCatSabor " +
             "JOIN Categorias c ON r.ID_Categoria = c.ID_Categoria " +
             "JOIN Sabores s ON r.ID_Sabor = s.ID_Sabor " +
-            "LEFT JOIN RelaProductoVendedor rpv ON rpv.ID_Productos = p.ID_Producto " +
-            "LEFT JOIN Usuario u ON u.UsuarioID = rpv.ID_Usuario " +
-            "WHERE c.Nombre_Categoria = ? AND p.ID_Estado = 1 HAVING stockTotal > 0";
+            "WHERE c.Nombre_Categoria = ? AND p.ID_Estado = 1 " +
+            "AND COALESCE((SELECT SUM(i2.StockInicial + i2.CantidadAnadida) FROM Inventario i2 WHERE i2.ID_Producto = p.ID_Producto), 0) > 0";
         try {
             con = cn.getConexion();
             ps  = con.prepareStatement(sql);
@@ -279,15 +281,18 @@ public class ProductoDAO {
             "SELECT p.ID_Producto, p.Nombre_Producto, p.Valor_Producto, p.Descripcion_Producto, " +
             "p.Imagen_Producto, p.Unidad_Medida, p.Fecha_vencimiento, " +
             "c.Nombre_Categoria, s.Nombre_Sabor, " +
-            "CONCAT(u.Nombres, ' ', u.Apellidos) AS nombreProveedor, " +
+            "COALESCE((SELECT CONCAT(u2.Nombres, ' ', u2.Apellidos) " +
+            "          FROM RelaProductoVendedor rpv2 " +
+            "          JOIN Usuario u2 ON u2.UsuarioID = rpv2.ID_Usuario " +
+            "          WHERE rpv2.ID_Productos = p.ID_Producto LIMIT 1), 'Sin proveedor') AS nombreProveedor, " +
             "COALESCE((SELECT SUM(i.StockInicial + i.CantidadAnadida) FROM Inventario i WHERE i.ID_Producto = p.ID_Producto), 0) AS stockTotal " +
             "FROM Productos p " +
             "JOIN RelaCatSabor r ON p.ID_RelaCategSabor = r.ID_RelaCatSabor " +
             "JOIN Categorias c ON r.ID_Categoria = c.ID_Categoria " +
             "JOIN Sabores s ON r.ID_Sabor = s.ID_Sabor " +
-            "LEFT JOIN RelaProductoVendedor rpv ON rpv.ID_Productos = p.ID_Producto " +
-            "LEFT JOIN Usuario u ON u.UsuarioID = rpv.ID_Usuario " +
-            "WHERE p.ID_Estado = 1 HAVING stockTotal > 0 ORDER BY c.Nombre_Categoria ASC";
+            "WHERE p.ID_Estado = 1 " +
+            "AND COALESCE((SELECT SUM(i2.StockInicial + i2.CantidadAnadida) FROM Inventario i2 WHERE i2.ID_Producto = p.ID_Producto), 0) > 0 " +
+            "ORDER BY c.Nombre_Categoria ASC";
         try {
             con = cn.getConexion();
             ps  = con.prepareStatement(sql);

@@ -687,12 +687,41 @@ public class PedidoDAO {
                 ResultSet rsProv = psProv.executeQuery();
                 while (rsProv.next()) {
                     int est = rsProv.getInt("Estado_Item");
+                    int idProveedor = rsProv.getInt("ID_Proveedor");
                     if (est < 5) todosEnBodega = false;
                     Map<String, Object> prov = new java.util.LinkedHashMap<>();
-                    prov.put("idProveedor",  rsProv.getInt("ID_Proveedor"));
+                    prov.put("idProveedor",  idProveedor);
                     prov.put("nombre",       rsProv.getString("Nombres") + " " + rsProv.getString("Apellidos"));
                     prov.put("estadoItem",   est);
                     prov.put("nombreEstado", etiquetaEstado(est));
+
+                    // Productos de este proveedor en este pedido
+                    int idCarritoProv = rsPed.getInt("ID_Carrito");
+                    String fechaProv  = rsPed.getString("Fecha_Pedido");
+                    PreparedStatement psProvProd = conLocal.prepareStatement(
+                        "SELECT pr.Nombre_Producto, cd.Cantidad_producto, " +
+                        "cd.Precio_Unitario_Momento, cd.SubTotal " +
+                        "FROM Carrito_Detalle cd " +
+                        "JOIN Productos pr ON pr.ID_Producto = cd.ID_Producto " +
+                        "JOIN RelaProductoVendedor rpv ON rpv.ID_Productos = pr.ID_Producto " +
+                        "WHERE cd.ID_Carrito = ? AND rpv.ID_Usuario = ? " +
+                        "AND cd.Estado_Carrito IN (3, 6) AND cd.Fecha_Venta = ?");
+                    psProvProd.setInt(1, idCarritoProv);
+                    psProvProd.setInt(2, idProveedor);
+                    psProvProd.setString(3, fechaProv);
+                    ResultSet rsProvProd = psProvProd.executeQuery();
+                    List<Map<String, Object>> prodsProv = new ArrayList<>();
+                    while (rsProvProd.next()) {
+                        Map<String, Object> pp = new java.util.LinkedHashMap<>();
+                        pp.put("nombre",      rsProvProd.getString("Nombre_Producto"));
+                        pp.put("cantidad",    rsProvProd.getInt("Cantidad_producto"));
+                        pp.put("precio",      rsProvProd.getDouble("Precio_Unitario_Momento"));
+                        pp.put("subtotal",    rsProvProd.getDouble("SubTotal"));
+                        prodsProv.add(pp);
+                    }
+                    rsProvProd.close(); psProvProd.close();
+                    prov.put("productos", prodsProv);
+
                     proveedores.add(prov);
                 }
                 rsProv.close(); psProv.close();
@@ -711,6 +740,32 @@ public class PedidoDAO {
                                             ? rsPed.getString("metodoPago") : "No registrado");
                 pedido.put("proveedores",   proveedores);
                 pedido.put("todosEnBodega", todosEnBodega);
+
+                // Productos del pedido
+                int idCarrito = rsPed.getInt("ID_Carrito");
+                String fechaPedido = rsPed.getString("Fecha_Pedido");
+                List<Map<String, Object>> productos = new ArrayList<>();
+                PreparedStatement psProd = conLocal.prepareStatement(
+                    "SELECT pr.Nombre_Producto, cd.Cantidad_producto, " +
+                    "cd.Precio_Unitario_Momento, cd.SubTotal " +
+                    "FROM Carrito_Detalle cd " +
+                    "JOIN Productos pr ON pr.ID_Producto = cd.ID_Producto " +
+                    "WHERE cd.ID_Carrito = ? AND cd.Estado_Carrito IN (3, 6) " +
+                    "AND cd.Fecha_Venta = ?");
+                psProd.setInt(1, idCarrito);
+                psProd.setString(2, fechaPedido);
+                ResultSet rsProd = psProd.executeQuery();
+                while (rsProd.next()) {
+                    Map<String, Object> prod = new java.util.LinkedHashMap<>();
+                    prod.put("nombre",      rsProd.getString("Nombre_Producto"));
+                    prod.put("cantidad",    rsProd.getInt("Cantidad_producto"));
+                    prod.put("precio",      rsProd.getDouble("Precio_Unitario_Momento"));
+                    prod.put("precioTotal", rsProd.getDouble("SubTotal"));
+                    productos.add(prod);
+                }
+                rsProd.close(); psProd.close();
+                pedido.put("productos", productos);
+
                 lista.add(pedido);
             }
             rsPed.close(); psPed.close();

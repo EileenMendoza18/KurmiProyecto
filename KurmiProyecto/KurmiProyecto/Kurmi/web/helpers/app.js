@@ -270,3 +270,25 @@ function verificarErroresURL() {
 
 
 verificarErroresURL();
+
+// ── Modal Términos y Condiciones ──────────────────────────────────────────────
+(function iniciarModalTerminos() {
+    const modal      = document.getElementById('modalTerminos');
+    const linkTC     = document.getElementById('linkTerminos');
+    const btnCerrar  = document.getElementById('cerrarModalTerminos');
+    const btnAceptar = document.getElementById('btnAceptarTerminos');
+    const chk        = document.getElementById('chkTerminos');
+
+    if (!modal || !linkTC) return; // solo aplica en la página de registro
+
+    const abrir  = () => modal.classList.add('abierto');
+    const cerrar = () => modal.classList.remove('abierto');
+
+    linkTC.addEventListener('click', e => { e.preventDefault(); abrir(); });
+    btnCerrar.addEventListener('click', cerrar);
+    btnAceptar.addEventListener('click', () => {
+        if (chk) chk.checked = true; // marca el checkbox automáticamente
+        cerrar();
+    });
+    modal.addEventListener('click', e => { if (e.target === modal) cerrar(); });
+}());

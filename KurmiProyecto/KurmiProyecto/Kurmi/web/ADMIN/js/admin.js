@@ -97,6 +97,9 @@ function renderSeccionProductos() {
                 <option value="Agotado">Agotado</option>
                 <option value="Descontinuado">Descontinuado</option>
             </select>
+            <select id="filtroProveedor" class="filtro-select">
+                <option value="">Todos los proveedores</option>
+            </select>
             <button class="btn-limpiar" id="btnLimpiarFiltros">✕ Limpiar</button>
         </div>
 
@@ -135,6 +138,7 @@ function renderSeccionProductos() {
 
     document.getElementById('filtroNombre').addEventListener('input',  aplicarFiltros);
     document.getElementById('filtroEstado').addEventListener('change', aplicarFiltros);
+    document.getElementById('filtroProveedor').addEventListener('change', aplicarFiltros);
     document.getElementById('btnLimpiarFiltros').addEventListener('click', limpiarFiltros);
     document.getElementById('cerrarModalEstado').addEventListener('click',  cerrarModalEstado);
     document.getElementById('cancelarModalEstado').addEventListener('click', cerrarModalEstado);
@@ -186,6 +190,20 @@ async function cargarTodosLosProductos() {
         todosLosProductos = data;
         actualizarStatsProductos(data);
         renderProductosAdmin(data);
+
+        // Poblar el select de proveedores con los únicos disponibles
+        const selectProv = document.getElementById('filtroProveedor');
+        if (selectProv) {
+            const proveedoresUnicos = [...new Set(
+                data.map(p => p.proveedor).filter(p => p && p !== '--' && p !== '—')
+            )].sort();
+            proveedoresUnicos.forEach(nombre => {
+                const opt = document.createElement('option');
+                opt.value = nombre;
+                opt.textContent = nombre;
+                selectProv.appendChild(opt);
+            });
+        }
 
     } catch (e) {
         contenedor.innerHTML = `<p class="error-txt">No se pudo conectar: ${e.message}</p>`;
@@ -276,19 +294,22 @@ function tarjetaProductoAdmin(p) {
 
 // ── Filtros ───────────────────────────────────────────────────────────────────
 function aplicarFiltros() {
-    const termino  = document.getElementById('filtroNombre').value.trim().toLowerCase();
-    const estado   = document.getElementById('filtroEstado').value;
+    const termino    = document.getElementById('filtroNombre').value.trim().toLowerCase();
+    const estado     = document.getElementById('filtroEstado').value;
+    const proveedor  = document.getElementById('filtroProveedor').value;
     const filtrados = todosLosProductos.filter(p => {
-        const coincideNombre = !termino || p.nombre.toLowerCase().includes(termino);
-        const coincideEstado = !estado  || (p.estadoNombre ?? '') === estado;
-        return coincideNombre && coincideEstado;
+        const coincideNombre    = !termino    || p.nombre.toLowerCase().includes(termino);
+        const coincideEstado    = !estado     || (p.estadoNombre ?? '') === estado;
+        const coincideProveedor = !proveedor  || (p.proveedor ?? '') === proveedor;
+        return coincideNombre && coincideEstado && coincideProveedor;
     });
     renderProductosAdmin(filtrados);
 }
 
 function limpiarFiltros() {
-    document.getElementById('filtroNombre').value = '';
-    document.getElementById('filtroEstado').value = '';
+    document.getElementById('filtroNombre').value    = '';
+    document.getElementById('filtroEstado').value    = '';
+    document.getElementById('filtroProveedor').value = '';
     renderProductosAdmin(todosLosProductos);
 }
 
@@ -514,7 +535,7 @@ async function guardarCambioEstado() {
 
             setTimeout(() => {
                 cerrarModalEstado();
-                renderProductosAdmin(todosLosProductos);
+                aplicarFiltros(); // Respeta los filtros activos en lugar de mostrar todos
             }, 900);
         } else {
             feedback.className   = 'feedback feedback--error';
@@ -1090,13 +1111,23 @@ function renderPedidosAdmin(pedidos) {
         const esCancelado = p.estadoPedido === 3 || p.estadoPedido === 11;
         const proveedoresHtml = !esCancelado ? p.proveedores.map(prov => {
             const colorProv = prov.estadoItem >= 5 ? '#2ecc71' : '#e67e22';
+            const prodsProv = (prov.productos || []).map(pr => `
+                <div style="display:flex;justify-content:space-between;align-items:center;
+                            padding:3px 0 3px 12px;font-size:.78rem;color:#555;border-left:2px solid #e8e0f7;margin:2px 0;">
+                    <span>🍦 ${pr.nombre} <span style="color:#aaa;">x${pr.cantidad}</span></span>
+                    <span style="color:#7C4DFF;font-weight:600;">$${Number(pr.subtotal).toLocaleString('es-CO')}</span>
+                </div>
+            `).join('');
             return `
-                <div style="display:flex;align-items:center;gap:8px;margin:4px 0;font-size:.82rem;">
-                    <span style="color:#666;">🏭 ${prov.nombre}</span>
-                    <span style="background:${colorProv};color:#fff;padding:2px 8px;
-                                 border-radius:12px;font-size:.75rem;">
-                        ${prov.nombreEstado}
-                    </span>
+                <div style="margin:6px 0;padding:8px;background:#fff;border-radius:8px;border:1px solid #f0ecff;">
+                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:${prodsProv ? '6px' : '0'};">
+                        <span style="color:#666;font-size:.82rem;">🏭 ${prov.nombre}</span>
+                        <span style="background:${colorProv};color:#fff;padding:2px 8px;
+                                     border-radius:12px;font-size:.75rem;">
+                            ${prov.nombreEstado}
+                        </span>
+                    </div>
+                    ${prodsProv}
                 </div>
             `;
         }).join('') : '';
@@ -1159,6 +1190,11 @@ function renderPedidosAdmin(pedidos) {
                 <span>Total: <strong>$${Number(p.totalPago).toLocaleString('es-CO')}</strong></span>
                 <div style="display:flex;gap:8px;flex-wrap:wrap;">
                     ${botonesAvance}
+                    <button class="btn-factura-admin" data-id="${p.idPedido}"
+                            style="padding:6px 16px;background:#7C4DFF;color:#fff;border:none;
+                                   border-radius:20px;font-size:.82rem;font-weight:600;cursor:pointer;">
+                        🧾 Ver factura
+                    </button>
                 </div>
             </div>
         </div>
@@ -1171,6 +1207,134 @@ function renderPedidosAdmin(pedidos) {
             cambiarEstadoPedidoAdmin(Number(btn.dataset.id), Number(btn.dataset.estado), btn));
     });
 
+    // Listeners botones factura
+    contenedor.querySelectorAll('.btn-factura-admin').forEach(btn => {
+        const idPedido = Number(btn.dataset.id);
+        const pedido = pedidos.find(p => p.idPedido === idPedido);
+        if (pedido) btn.addEventListener('click', () => generarFacturaAdmin(pedido));
+    });
+
+}
+
+// ── Factura admin ─────────────────────────────────────────────────────────────
+function generarFacturaAdmin(p) {
+    const coloresEstado = {
+        1: '#e67e22', 3: '#e74c3c', 4: '#e67e22', 5: '#3498db',
+        6: '#9b59b6', 7: '#1abc9c', 8: '#2ecc71', 9: '#e74c3c', 11: '#f39c12'
+    };
+    const badgeBg    = coloresEstado[p.estadoPedido] ?? '#aaa';
+    const estado     = p.nombreEstado   || '—';
+    const fecha      = p.fechaPedido    || '—';
+    const metodo     = p.metodoPago     || 'No registrado';
+    const total      = Number(p.totalPago).toLocaleString('es-CO');
+    const receptor   = p.receptor       || '—';
+    const direccion  = p.direccion      || '—';
+    const telefono   = p.telefono       || '—';
+    const cliente    = p.cliente        || '—';
+    const proveedoresLista = (p.proveedores || []).map(pv => pv.nombre).join(', ') || '—';
+
+    const filas = (p.productos || []).map(prod => `
+        <tr>
+            <td>${prod.nombre || '—'}</td>
+            <td style="text-align:center">${prod.cantidad}</td>
+            <td style="text-align:right">$${Number(prod.precio || 0).toLocaleString('es-CO')}</td>
+            <td style="text-align:right">$${Number(prod.precioTotal || prod.subtotal || 0).toLocaleString('es-CO')}</td>
+        </tr>
+    `).join('');
+
+    const html = `<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Factura Pedido #${p.idPedido} — Kurmi</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; color: #2d2d2d; background: #fff; padding: 40px; }
+        .factura { max-width: 720px; margin: 0 auto; }
+        .factura__header { display: flex; justify-content: space-between; align-items: flex-start;
+            margin-bottom: 32px; padding-bottom: 20px; border-bottom: 3px solid #7C4DFF; }
+        .factura__marca h1 { font-size: 2rem; color: #7C4DFF; font-weight: 800; letter-spacing: -1px; }
+        .factura__marca p  { font-size: .82rem; color: #888; margin-top: 2px; }
+        .factura__num      { text-align: right; }
+        .factura__num h2   { font-size: 1.1rem; font-weight: 700; color: #463877; }
+        .factura__num p    { font-size: .82rem; color: #888; margin-top: 2px; }
+        .estado-badge { display: inline-block; padding: 4px 14px; border-radius: 20px;
+            font-size: .78rem; font-weight: 700; background: ${badgeBg}; color: #fff; margin-top: 4px; }
+        .factura__info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 28px; }
+        .info-bloque h3 { font-size: .72rem; font-weight: 700; color: #a68fc0;
+            text-transform: uppercase; letter-spacing: .06em; margin-bottom: 8px; }
+        .info-bloque p  { font-size: .88rem; color: #333; line-height: 1.6; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+        thead tr { background: #F4EEFF; }
+        thead th { text-align: left; padding: 10px 12px; font-size: .78rem; font-weight: 700;
+            color: #463877; text-transform: uppercase; letter-spacing: .04em; }
+        tbody tr { border-bottom: 1px solid #f0ecff; }
+        tbody td { padding: 10px 12px; font-size: .88rem; color: #333; }
+        tbody tr:hover { background: #faf8ff; }
+        .factura__total { display: flex; justify-content: flex-end; margin-top: 8px; }
+        .total-box { background: #F4EEFF; border-radius: 12px; padding: 14px 24px;
+            text-align: right; min-width: 200px; }
+        .total-box p      { font-size: .82rem; color: #888; margin-bottom: 4px; }
+        .total-box strong { font-size: 1.4rem; color: #7C4DFF; font-weight: 800; }
+        .factura__footer  { margin-top: 40px; padding-top: 16px; border-top: 1px solid #e8e0f7;
+            text-align: center; font-size: .75rem; color: #aaa; }
+        .btn-imprimir { display: block; margin: 0 auto 32px; padding: 12px 32px;
+            background: #7C4DFF; color: #fff; border: none; border-radius: 30px;
+            font-size: .95rem; font-weight: 700; cursor: pointer; }
+        .btn-imprimir:hover { background: #6a3de8; }
+        @media print { .btn-imprimir { display: none !important; } body { padding: 20px; } }
+    </style>
+</head>
+<body>
+<div class="factura">
+    <button class="btn-imprimir" onclick="window.print()">⬇ Descargar / Imprimir factura</button>
+    <div class="factura__header">
+        <div class="factura__marca"><h1>Kurmi</h1><p>Tu jardín de deseos</p></div>
+        <div class="factura__num">
+            <h2>Factura #${p.idPedido}</h2>
+            <p>Fecha: ${fecha}</p>
+            <span class="estado-badge">${estado}</span>
+        </div>
+    </div>
+    <div class="factura__info-grid">
+        <div class="info-bloque">
+            <h3>Datos de entrega</h3>
+            <p><strong>Cliente:</strong> ${cliente}</p>
+            <p><strong>Receptor:</strong> ${receptor}</p>
+            <p><strong>Dirección:</strong> ${direccion}</p>
+            <p><strong>Teléfono:</strong> ${telefono}</p>
+            <p><strong>Proveedor(es):</strong> ${proveedoresLista}</p>
+        </div>
+        <div class="info-bloque">
+            <h3>Pago</h3>
+            <p><strong>Método:</strong> ${metodo}</p>
+            <p><strong>Fecha:</strong> ${fecha}</p>
+        </div>
+    </div>
+    <table>
+        <thead>
+            <tr>
+                <th>Producto</th>
+                <th style="text-align:center">Cant.</th>
+                <th style="text-align:right">Precio unit.</th>
+                <th style="text-align:right">Subtotal</th>
+            </tr>
+        </thead>
+        <tbody>${filas}</tbody>
+    </table>
+    <div class="factura__total">
+        <div class="total-box"><p>Total pagado</p><strong>$${total}</strong></div>
+    </div>
+    <div class="factura__footer">
+        <p>Kurmi — Gracias por tu compra 💜 &nbsp;·&nbsp; Este documento es tu comprobante de pago.</p>
+    </div>
+</div>
+</body>
+</html>`;
+
+    const ventana = window.open('', '_blank', 'width=800,height=700');
+    ventana.document.write(html);
+    ventana.document.close();
 }
 
 async function cambiarEstadoPedidoAdmin(idPedido, nuevoEstado, btn) {
