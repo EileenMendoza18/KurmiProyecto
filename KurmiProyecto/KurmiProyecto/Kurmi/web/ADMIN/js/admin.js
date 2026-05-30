@@ -150,7 +150,7 @@ function renderSeccionProductos() {
 // ── Ventas totales (VentasTotalesAdminServlet) ────────────────────────────────
 async function cargarVentasTotales() {
     try {
-        const res  = await fetch(`${BASE_URL}/VentasTotalesAdminServlet`);
+        const res  = await fetch(`${BASE_URL}/AdminServlet?accion=ventasTotales`);
         if (!res.ok) return;
         const data = await res.json();
 
@@ -172,7 +172,7 @@ async function cargarVentasTotales() {
 async function cargarTodosLosProductos() {
     const contenedor = document.getElementById('listaProductos');
     try {
-        const res = await fetch(`${BASE_URL}/ObtenerTodosProductosServlet`);
+        const res = await fetch(`${BASE_URL}/ProductoServlet?accion=todos`);
         const contentType = res.headers.get('content-type') || '';
 
         if (!contentType.includes('application/json')) {
@@ -509,7 +509,7 @@ async function guardarCambioEstado() {
     btn.disabled = true;
 
     try {
-        const res = await fetch(`${BASE_URL}/CambiarEstadoProductoAdminServlet`, {
+        const res = await fetch(`${BASE_URL}/AdminServlet?accion=cambiarEstadoProducto`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body: new URLSearchParams({
@@ -626,7 +626,7 @@ function renderSeccionClientes() {
 async function cargarTodosLosUsuarios() {
     const contenedor = document.getElementById('listaUsuarios');
     try {
-        const res = await fetch(`${BASE_URL}/ObtenerClientesAdminServlet`);
+        const res = await fetch(`${BASE_URL}/AdminServlet?accion=clientes`);
         const contentType = res.headers.get('content-type') || '';
         if (!contentType.includes('application/json')) {
             contenedor.innerHTML = `<p class="error-txt">Error del servidor (${res.status}).</p>`;
@@ -770,7 +770,7 @@ async function guardarCambioEstadoUsuario() {
     btn.disabled = true;
 
     try {
-        const res = await fetch(`${BASE_URL}/CambiarEstadoUsuarioAdminServlet`, {
+        const res = await fetch(`${BASE_URL}/AdminServlet?accion=cambiarEstadoUsuario`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body: new URLSearchParams({

@@ -101,7 +101,7 @@ function renderSeccionProductos() {
 async function cargarMisProductos() {
     const contenedor = document.getElementById('listaProductos');
     try {
-        const res = await fetch(`${BASE_URL}/ObtenerMisProductosServlet`);
+        const res = await fetch(`${BASE_URL}/ProductoServlet?accion=misProductos`);
         const contentType = res.headers.get('content-type') || '';
         if (!contentType.includes('application/json')) {
             contenedor.innerHTML = `<p class="error-txt">Error del servidor (${res.status}).</p>`;
@@ -295,7 +295,7 @@ function cerrarModalCrear() {
 
 async function cargarCategoriasSabores(selectId) {
     try {
-        const res  = await fetch(`${BASE_URL}/ObtenerRelacionesCatSaborServlet`);
+        const res  = await fetch(`${BASE_URL}/CatalogoServlet?accion=relaciones`);
         const data = await res.json();
         const sel  = document.getElementById(selectId);
         if (!sel) return;
@@ -311,7 +311,7 @@ async function cargarCategoriasSabores(selectId) {
 
 async function cargarCategoriasSaboresConSeleccion(selectId, valorSeleccionado) {
     try {
-        const res  = await fetch(`${BASE_URL}/ObtenerRelacionesCatSaborServlet`);
+        const res  = await fetch(`${BASE_URL}/CatalogoServlet?accion=relaciones`);
         const data = await res.json();
         const sel  = document.getElementById(selectId);
         if (!sel) return;
@@ -364,10 +364,11 @@ async function enviarNuevoProducto() {
     fd.append('unidadMedida',   unidadMedida);
     fd.append('fechaVenc',      fechaVenc);
     fd.append('idRelaCatSabor', idRelaCatSabor);
+    fd.append('accion',         'crear');
     if (imagenFile) fd.append('imagen', imagenFile);
 
     try {
-        const res  = await fetch(`${BASE_URL}/CrearProductoServlet`, { method: 'POST', body: fd });
+        const res  = await fetch(`${BASE_URL}/GestionProductoServlet`, { method: 'POST', body: fd });
         const data = await res.json();
 
         if (data.ok) {
@@ -551,11 +552,12 @@ async function enviarEdicionProducto() {
     fd.append('fechaVenc',        fechaVenc);
     fd.append('idRelaCatSabor',   idRelaCatSabor);
     fd.append('cantidadAniadida', cantidadAniadida);
+    fd.append('accion',           'editar');
     if (imagenFile) fd.append('imagen', imagenFile);
     fd.append('estado', estado);
 
     try {
-        const res  = await fetch(`${BASE_URL}/EditarProductoServlet`, { method: 'POST', body: fd });
+        const res  = await fetch(`${BASE_URL}/GestionProductoServlet`, { method: 'POST', body: fd });
         const data = await res.json();
 
         if (data.ok) {
@@ -588,10 +590,10 @@ async function confirmarEliminar(idProducto, nombre) {
     if (!confirmado) return;
 
     try {
-        const res = await fetch(`${BASE_URL}/EliminarProductoServlet`, {
+        const res = await fetch(`${BASE_URL}/GestionProductoServlet`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: `idProducto=${encodeURIComponent(id)}`
+            body: `accion=eliminar&idProducto=${encodeURIComponent(id)}`
         });
 
         if (!res.ok) {
@@ -1399,7 +1401,7 @@ function renderSeccionSolicitudes() {
 
 async function cargarOpcionesExistentes() {
     try {
-        const res  = await fetch(`${BASE_URL}/ObtenerSaboresYCategoriasServlet`);
+        const res  = await fetch(`${BASE_URL}/CatalogoServlet?accion=saboresYCategorias`);
         const data = await res.json();
         if (!data.ok) return;
 
