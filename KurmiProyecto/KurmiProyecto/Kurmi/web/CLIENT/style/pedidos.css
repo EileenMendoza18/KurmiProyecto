@@ -49,6 +49,17 @@
     color: white;
     border-color: #463877;
 }
+/* Botón "Mis devoluciones" con estilo propio */
+.filtro__btn--devoluciones {
+    border-color: #8e44ad;
+    color: #8e44ad;
+}
+.filtro__btn--devoluciones:hover,
+.filtro__btn--devoluciones.filtro__btn--activo {
+    background: #8e44ad;
+    color: white;
+    border-color: #8e44ad;
+}
 
 /* ── Grid de pedidos ── */
 .pedidos__grid {
@@ -133,7 +144,220 @@
     color: white;
 }
 
-/* ── Modal ── */
+/* ── Botón devolver en tarjeta ── */
+.btn__pedido-devolver {
+    margin: 0 14px 14px;
+    padding: 9px 0;
+    background: transparent;
+    color: #8e44ad;
+    border: 2px solid #8e44ad;
+    border-radius: 10px;
+    font-size: 0.83rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    width: calc(100% - 28px);
+}
+.btn__pedido-devolver:hover {
+    background: #8e44ad;
+    color: white;
+}
+
+/* ── Tarjeta de solicitud de devolución ── */
+.dev__solicitud-card { cursor: default; }
+.dev__solicitud-card:hover {
+    transform: none;
+    box-shadow: 0 2px 10px rgba(70,56,119,0.08);
+}
+.dev__motivo-resp {
+    font-size: 0.8rem;
+    color: #c0392b;
+    background: #fdecea;
+    border-radius: 8px;
+    padding: 8px 10px;
+    margin-top: 6px;
+    line-height: 1.4;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   MODAL DE FORMULARIO DE DEVOLUCIÓN
+═══════════════════════════════════════════════════════════════════ */
+.dev__card {
+    max-width: 520px;
+}
+
+.dev__form {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 14px;
+}
+
+.dev__label {
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: #463877;
+}
+.dev__required { color: #e74c3c; margin-left: 2px; }
+.dev__opcional { font-weight: 400; color: #999; font-size: 0.8rem; }
+
+.dev__textarea {
+    width: 100%;
+    min-height: 100px;
+    border: 2px solid #DCD6F7;
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-size: 0.88rem;
+    color: #333;
+    resize: vertical;
+    font-family: inherit;
+    transition: border-color 0.2s;
+    box-sizing: border-box;
+}
+.dev__textarea:focus {
+    outline: none;
+    border-color: #8e44ad;
+}
+
+.dev__contador {
+    font-size: 0.75rem;
+    color: #999;
+    text-align: right;
+    margin: 0;
+}
+
+/* Upload */
+.dev__upload-wrap {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+.dev__file-input {
+    display: none;
+}
+.dev__upload-btn {
+    padding: 8px 18px;
+    background: #f0eaff;
+    color: #463877;
+    border: 2px solid #DCD6F7;
+    border-radius: 10px;
+    font-size: 0.84rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+.dev__upload-btn:hover {
+    background: #DCD6F7;
+}
+.dev__file-name {
+    font-size: 0.8rem;
+    color: #888;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 200px;
+}
+
+/* Vista previa */
+.dev__preview-wrap {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 4px;
+}
+.dev__preview-img {
+    width: 80px;
+    height: 80px;
+    object-fit: cover;
+    border-radius: 10px;
+    border: 2px solid #DCD6F7;
+}
+.dev__remove-img {
+    background: none;
+    border: none;
+    color: #c0392b;
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 6px;
+    transition: background 0.2s;
+}
+.dev__remove-img:hover { background: #fdecea; }
+
+/* Error */
+.dev__error {
+    font-size: 0.82rem;
+    color: #c0392b;
+    background: #fdecea;
+    border-radius: 8px;
+    padding: 8px 12px;
+    margin-top: 4px;
+}
+.dev__error.hidden { display: none; }
+
+/* Footer del formulario */
+.dev__footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 18px;
+}
+.dev__btn-cancelar {
+    padding: 10px 22px;
+    background: transparent;
+    color: #463877;
+    border: 2px solid #DCD6F7;
+    border-radius: 10px;
+    font-size: 0.88rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.dev__btn-cancelar:hover { background: #DCD6F7; }
+
+.dev__btn-enviar {
+    padding: 10px 26px;
+    background: #8e44ad;
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-size: 0.88rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+.dev__btn-enviar:hover  { background: #7d3c98; }
+.dev__btn-enviar:disabled { background: #c8a0e0; cursor: not-allowed; }
+
+/* ── Toast ── */
+.dev__toast {
+    position: fixed;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: #463877;
+    color: white;
+    padding: 12px 28px;
+    border-radius: 30px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    opacity: 0;
+    transition: opacity 0.3s, transform 0.3s;
+    z-index: 9999;
+    box-shadow: 0 4px 16px rgba(70,56,119,0.3);
+    white-space: nowrap;
+}
+.dev__toast--visible {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   MODAL DETALLE (sin cambios respecto al original)
+═══════════════════════════════════════════════════════════════════ */
 .modal__overlay {
     position: fixed;
     inset: 0;
@@ -180,7 +404,6 @@
     margin: 0 0 8px;
 }
 
-/* Tarjetas de productos dentro del modal */
 .modal__productos {
     display: flex;
     flex-direction: column;
@@ -219,7 +442,6 @@
     color: #0000007a;
 }
 
-/* Footer del modal */
 .modal__footer {
     display: flex;
     justify-content: flex-end;
@@ -244,4 +466,105 @@
     .pedidos__titulo { font-size: 1.3rem; }
     .pedido__img { height: 120px; }
     .filtro__btn { padding: 8px 16px; font-size: 0.78rem; }
+    .dev__footer { flex-direction: column; }
+    .dev__btn-cancelar, .dev__btn-enviar { width: 100%; }
+}
+/* ── Modal cancelación ──────────────────────────────────────────────────────── */
+.cancel__card {
+    max-width: 480px;
+    width: 92%;
+    padding: 28px 28px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+.cancel__subtitulo {
+    font-size: .87rem;
+    color: #666;
+    margin: 0;
+}
+.cancel__label {
+    font-size: .85rem;
+    font-weight: 600;
+    color: #463877;
+}
+.cancel__textarea {
+    width: 100%;
+    min-height: 110px;
+    border: 1.5px solid #ccc;
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-size: .88rem;
+    font-family: inherit;
+    resize: vertical;
+    box-sizing: border-box;
+    transition: border-color .2s;
+}
+.cancel__textarea:focus {
+    outline: none;
+    border-color: #7c6fcd;
+}
+.cancel__contador {
+    font-size: .75rem;
+    color: #aaa;
+    text-align: right;
+    margin: -8px 0 0;
+}
+.cancel__error {
+    font-size: .82rem;
+    color: #e74c3c;
+    margin: 0;
+}
+.cancel__error.hidden { display: none; }
+.cancel__footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 4px;
+}
+.cancel__btn-volver {
+    padding: 9px 20px;
+    border: 1.5px solid #ccc;
+    border-radius: 20px;
+    background: #fff;
+    color: #555;
+    font-size: .85rem;
+    cursor: pointer;
+    transition: background .2s;
+}
+.cancel__btn-volver:hover { background: #f0f0f0; }
+.cancel__btn-confirmar {
+    padding: 9px 22px;
+    border: none;
+    border-radius: 20px;
+    background: #e74c3c;
+    color: #fff;
+    font-size: .85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background .2s;
+}
+.cancel__btn-confirmar:hover { background: #c0392b; }
+.cancel__btn-confirmar:disabled { background: #ccc; cursor: default; }
+
+/* ── Toast notificación ─────────────────────────────────────────────────────── */
+.notificacion__toast {
+    position: fixed;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: #463877;
+    color: #fff;
+    padding: 12px 24px;
+    border-radius: 24px;
+    font-size: .88rem;
+    font-weight: 500;
+    opacity: 0;
+    transition: opacity .3s, transform .3s;
+    z-index: 9999;
+    pointer-events: none;
+}
+.notificacion__toast--visible {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
 }

@@ -143,7 +143,7 @@ public class PedidoDAO {
             while (rsProv.next()) {
                 PreparedStatement psInsertPPE = con.prepareStatement(
                     "INSERT IGNORE INTO Pedido_Proveedor_Estado " +
-                    "(ID_Pedido, ID_Proveedor, Estado_Item) VALUES (?, ?, 4)");
+                    "(ID_Pedido, ID_Proveedor, Estado_Item) VALUES (?, ?, 1)");
                 psInsertPPE.setInt(1, idPedidoGenerado);
                 psInsertPPE.setInt(2, rsProv.getInt("ID_Usuario"));
                 psInsertPPE.executeUpdate();
@@ -515,7 +515,7 @@ public class PedidoDAO {
                 if (estadoPedido == 8) {
                     entregados.add(pedido);
                     totalGanado += subtotalProveedor;
-                } else if (estadoPedido != 3 && estadoPedido != 9) {
+                } else if (estadoPedido != 3 && estadoPedido != 9 && estadoPedido != 11) {
                     pendientes.add(pedido);
                 }
             }
@@ -535,22 +535,30 @@ public class PedidoDAO {
         return resultado;
     }
 
-    // Proveedor actualiza su estado (solo 4=Preparando → 5=En bodega)
+    // Proveedor actualiza su estado: 1=Pendiente → 4=Preparando → 5=En bodega
     public boolean actualizarEstadoProveedor(int idPedido, int idProveedor, int nuevoEstado) {
-        if (nuevoEstado < 4 || nuevoEstado > 5) return false;
+        // Solo se permiten transiciones válidas del proveedor
+        if (nuevoEstado != 4 && nuevoEstado != 5) return false;
 
-        String sqlCheck =
-            "SELECT COUNT(*) FROM Pedido_Proveedor_Estado " +
+        String sqlEstadoActual =
+            "SELECT Estado_Item FROM Pedido_Proveedor_Estado " +
             "WHERE ID_Pedido = ? AND ID_Proveedor = ?";
         String sqlUpdate =
             "UPDATE Pedido_Proveedor_Estado SET Estado_Item = ? " +
             "WHERE ID_Pedido = ? AND ID_Proveedor = ?";
         try {
             con = cn.getConexion();
-            ps = con.prepareStatement(sqlCheck);
+
+            // Verificar estado actual y que la transición sea válida
+            ps = con.prepareStatement(sqlEstadoActual);
             ps.setInt(1, idPedido); ps.setInt(2, idProveedor);
             rs = ps.executeQuery();
-            if (!rs.next() || rs.getInt(1) == 0) return false;
+            if (!rs.next()) return false;
+            int estadoActual = rs.getInt("Estado_Item");
+
+            // Solo se permite: 1→4 (iniciar preparación) y 4→5 (listo en bodega)
+            if (nuevoEstado == 4 && estadoActual != 1) return false;
+            if (nuevoEstado == 5 && estadoActual != 4) return false;
 
             ps = con.prepareStatement(sqlUpdate);
             ps.setInt(1, nuevoEstado);
@@ -639,8 +647,9 @@ public class PedidoDAO {
         List<Map<String, Object>> lista = new ArrayList<>();
 
         String condicion = "";
-        if (filtroEstado == 0)      condicion = "AND p.Estado_Pedido NOT IN (8, 9)";
+        if (filtroEstado == 0)      condicion = "AND p.Estado_Pedido NOT IN (3, 8, 9, 11)";
         else if (filtroEstado == 8) condicion = "AND p.Estado_Pedido = 8";
+        else if (filtroEstado == 3) condicion = "AND p.Estado_Pedido = 3";
         // filtroEstado == -1 → sin filtro adicional
 
         String sqlPedidos =
@@ -651,7 +660,7 @@ public class PedidoDAO {
             "JOIN Usuario u ON u.UsuarioID = p.ID_Cliente " +
             "LEFT JOIN Pago_Pedido pp ON pp.ID_Pedido = p.ID_Pedido " +
             "LEFT JOIN Metodo_Pago mp ON mp.ID_Metodo = pp.ID_Metodo " +
-            "WHERE p.Estado_Pedido != 9 " + condicion +
+            "WHERE 1=1 " + condicion +
             " ORDER BY p.Fecha_Pedido DESC";
 
         String sqlProveedores =
@@ -778,17 +787,224 @@ public class PedidoDAO {
     // ─────────────────────────────────────────────────────────────────────────
     public static String etiquetaEstado(int estado) {
         return switch (estado) {
-            case 1 -> "Pendiente";
-            case 2 -> "Completado";
-            case 3 -> "Cancelado";
-            case 4 -> "Preparando";
-            case 5 -> "En bodega";
-            case 6 -> "Empacando";
-            case 7 -> "Transportando";
-            case 8 -> "Entregado";
-            case 9 -> "Devolución";
+            case 1  -> "Pendiente";
+            case 2  -> "Completado";
+            case 3  -> "Cancelado";
+            case 4  -> "Preparando";
+            case 5  -> "En bodega";
+            case 6  -> "Empacando";
+            case 7  -> "Transportando";
+            case 8  -> "Entregado";
+            case 9  -> "Devolución";
+            case 11 -> "Cancelación Solicitada";
             default -> "Desconocido";
         };
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // SOLICITAR CANCELACIÓN (Cliente)
+    // Cambia el pedido a estado 11 y crea registro en Solicitudes_Cancelacion
+    // ─────────────────────────────────────────────────────────────────────────
+    public boolean solicitarCancelacion(int idPedido, int idCliente, String motivo) {
+        Connection conLocal = null;
+        try {
+            conLocal = cn.getConexion();
+            conLocal.setAutoCommit(false);
+
+            // Verificar que el pedido pertenece al cliente y está Pendiente (1)
+            PreparedStatement psVer = conLocal.prepareStatement(
+                "SELECT ID_Pedido FROM Pedidos_Cliente " +
+                "WHERE ID_Pedido = ? AND ID_Cliente = ? AND Estado_Pedido = 1");
+            psVer.setInt(1, idPedido); psVer.setInt(2, idCliente);
+            ResultSet rsVer = psVer.executeQuery();
+            boolean existe = rsVer.next();
+            rsVer.close(); psVer.close();
+            if (!existe) { conLocal.rollback(); return false; }
+
+            // Cambiar estado del pedido a 11 (Cancelación Solicitada)
+            PreparedStatement psUpd = conLocal.prepareStatement(
+                "UPDATE Pedidos_Cliente SET Estado_Pedido = 11 " +
+                "WHERE ID_Pedido = ? AND ID_Cliente = ?");
+            psUpd.setInt(1, idPedido); psUpd.setInt(2, idCliente);
+            if (psUpd.executeUpdate() == 0) { conLocal.rollback(); return false; }
+            psUpd.close();
+
+            // Insertar solicitud de cancelación
+            PreparedStatement psIns = conLocal.prepareStatement(
+                "INSERT INTO Solicitudes_Cancelacion (ID_Pedido, ID_Cliente, Motivo) VALUES (?, ?, ?)");
+            psIns.setInt(1, idPedido); psIns.setInt(2, idCliente);
+            psIns.setString(3, motivo);
+            psIns.executeUpdate(); psIns.close();
+
+            conLocal.commit();
+            return true;
+        } catch (Exception e) {
+            System.err.println("Error en solicitarCancelacion: " + e.getMessage());
+            try { if (conLocal != null) conLocal.rollback(); } catch (Exception ignored) {}
+            return false;
+        } finally {
+            try { if (conLocal != null) conLocal.close(); } catch (Exception ignored) {}
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // OBTENER SOLICITUDES DE CANCELACIÓN (Admin)
+    // ─────────────────────────────────────────────────────────────────────────
+    public List<Map<String, Object>> obtenerSolicitudesCancelacion(String filtroEstado) {
+        List<Map<String, Object>> lista = new ArrayList<>();
+        String condicion = (filtroEstado == null || filtroEstado.isBlank())
+            ? "" : "AND sc.Estado = ?";
+        String sql =
+            "SELECT sc.ID_Cancelacion, sc.ID_Pedido, sc.Motivo, sc.Estado, " +
+            "sc.Motivo_Respuesta, sc.Fecha_Solicitud, sc.Fecha_Respuesta, " +
+            "p.Total_Pago, p.Estado_Pedido, " +
+            "u.Nombres, u.Apellidos, u.Correo_Usu, u.Telefono " +
+            "FROM Solicitudes_Cancelacion sc " +
+            "JOIN Pedidos_Cliente p ON p.ID_Pedido = sc.ID_Pedido " +
+            "JOIN Usuario u ON u.UsuarioID = sc.ID_Cliente " +
+            "WHERE 1=1 " + condicion +
+            " ORDER BY sc.Fecha_Solicitud DESC";
+        Connection conLocal = null;
+        try {
+            conLocal = cn.getConexion();
+            PreparedStatement ps = conLocal.prepareStatement(sql);
+            if (!condicion.isBlank()) ps.setString(1, filtroEstado);
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                Map<String, Object> row = new java.util.LinkedHashMap<>();
+                row.put("idCancelacion",   rs.getInt("ID_Cancelacion"));
+                row.put("idPedido",        rs.getInt("ID_Pedido"));
+                row.put("motivo",          rs.getString("Motivo"));
+                row.put("estado",          rs.getString("Estado"));
+                row.put("motivoRespuesta", rs.getString("Motivo_Respuesta"));
+                row.put("fechaSolicitud",  rs.getString("Fecha_Solicitud") != null
+                    ? rs.getString("Fecha_Solicitud").substring(0, 10) : "");
+                row.put("fechaRespuesta",  rs.getString("Fecha_Respuesta") != null
+                    ? rs.getString("Fecha_Respuesta").substring(0, 10) : null);
+                row.put("totalPago",       rs.getDouble("Total_Pago"));
+                row.put("estadoPedido",    rs.getInt("Estado_Pedido"));
+                row.put("cliente",         rs.getString("Nombres") + " " + rs.getString("Apellidos"));
+                row.put("correo",          rs.getString("Correo_Usu"));
+                row.put("telefono",        rs.getString("Telefono"));
+                lista.add(row);
+            }
+            rs.close(); ps.close();
+        } catch (Exception e) {
+            System.err.println("Error en obtenerSolicitudesCancelacion: " + e.getMessage());
+        } finally {
+            try { if (conLocal != null) conLocal.close(); } catch (Exception ignored) {}
+        }
+        return lista;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // RESPONDER SOLICITUD DE CANCELACIÓN (Admin)
+    // decision: "Aprobada" → pedido pasa a 3 (Cancelado)
+    // decision: "Rechazada" → pedido vuelve a 1 (Pendiente)
+    // ─────────────────────────────────────────────────────────────────────────
+    public boolean responderCancelacion(int idCancelacion, String decision, String motivoRespuesta) {
+        Connection conLocal = null;
+        try {
+            conLocal = cn.getConexion();
+            conLocal.setAutoCommit(false);
+
+            // Obtener idPedido de la solicitud (solo si está Pendiente)
+            PreparedStatement psVer = conLocal.prepareStatement(
+                "SELECT ID_Pedido FROM Solicitudes_Cancelacion " +
+                "WHERE ID_Cancelacion = ? AND Estado = 'Pendiente'");
+            psVer.setInt(1, idCancelacion);
+            ResultSet rsVer = psVer.executeQuery();
+            if (!rsVer.next()) { conLocal.rollback(); return false; }
+            int idPedido = rsVer.getInt("ID_Pedido");
+            rsVer.close(); psVer.close();
+
+            // Actualizar la solicitud
+            PreparedStatement psUpd = conLocal.prepareStatement(
+                "UPDATE Solicitudes_Cancelacion " +
+                "SET Estado = ?, Motivo_Respuesta = ?, Fecha_Respuesta = NOW() " +
+                "WHERE ID_Cancelacion = ?");
+            psUpd.setString(1, decision);
+            psUpd.setString(2, motivoRespuesta);
+            psUpd.setInt(3, idCancelacion);
+            psUpd.executeUpdate(); psUpd.close();
+
+            // Actualizar estado del pedido
+            int nuevoEstadoPedido = "Aprobada".equals(decision) ? 3 : 1;
+            PreparedStatement psUpd2 = conLocal.prepareStatement(
+                "UPDATE Pedidos_Cliente SET Estado_Pedido = ? WHERE ID_Pedido = ?");
+            psUpd2.setInt(1, nuevoEstadoPedido);
+            psUpd2.setInt(2, idPedido);
+            psUpd2.executeUpdate(); psUpd2.close();
+
+            // Si se aprueba: cancelar el pago Y restaurar el inventario
+// Si se aprueba: cancelar el pago Y restaurar el inventario
+if ("Aprobada".equals(decision)) {
+    // 1. Cancelar el pago
+    PreparedStatement psPago = conLocal.prepareStatement(
+        "UPDATE Pago_Pedido SET Estado_Pago = 3 WHERE ID_Pedido = ?");
+    psPago.setInt(1, idPedido);
+    psPago.executeUpdate(); psPago.close();
+
+    // 2. Obtener el ID_Carrito del pedido
+    PreparedStatement psCarrito = conLocal.prepareStatement(
+    "SELECT ID_Carrito, Fecha_Pedido FROM Pedidos_Cliente WHERE ID_Pedido = ?");
+psCarrito.setInt(1, idPedido);
+ResultSet rsCarrito = psCarrito.executeQuery();
+if (!rsCarrito.next()) { conLocal.rollback(); return false; }
+int    idCarrito   = rsCarrito.getInt("ID_Carrito");
+String fechaPedido = rsCarrito.getString("Fecha_Pedido");
+rsCarrito.close(); psCarrito.close();
+
+    // 3. Sumar cantidades agrupadas por producto (evita duplicados)
+    PreparedStatement psItems = conLocal.prepareStatement(
+    "SELECT ID_Producto, SUM(Cantidad_Producto) AS totalCantidad " +
+    "FROM Carrito_Detalle " +
+    "WHERE ID_Carrito = ? AND Estado_Carrito = 3 AND Fecha_Venta = ? " +
+    "GROUP BY ID_Producto");
+psItems.setInt(1, idCarrito);
+psItems.setString(2, fechaPedido);  // ← filtra solo los de ESTE pedido
+ResultSet rsItems = psItems.executeQuery();
+
+
+    while (rsItems.next()) {
+        int idProd   = rsItems.getInt("ID_Producto");
+        int cantidad = rsItems.getInt("totalCantidad");
+
+        // 4. Reingresar al inventario
+        PreparedStatement psRest = conLocal.prepareStatement(
+            "INSERT INTO Inventario (ID_Producto, StockInicial, CantidadAnadida) " +
+            "VALUES (?, 0, ?)");
+        psRest.setInt(1, idProd);
+        psRest.setInt(2, cantidad);
+        psRest.executeUpdate(); psRest.close();
+
+        // 5. Reactivar producto si estaba agotado
+        PreparedStatement psReact = conLocal.prepareStatement(
+            "UPDATE Productos SET ID_Estado = 1 " +
+            "WHERE ID_Producto = ? AND ID_Estado = 2");
+        psReact.setInt(1, idProd);
+        psReact.executeUpdate(); psReact.close();
+    }
+    rsItems.close(); psItems.close();
+}// Al rechazar: resetear el estado del proveedor a 4 (Pendiente/Preparando)
+// para que el botón "Iniciar preparación" vuelva a aparecer correctamente
+if ("Rechazada".equals(decision)) {
+    PreparedStatement psResetProv = conLocal.prepareStatement(
+        "UPDATE Pedido_Proveedor_Estado SET Estado_Item = 1 " +
+        "WHERE ID_Pedido = ?");
+    psResetProv.setInt(1, idPedido);
+    psResetProv.executeUpdate(); psResetProv.close();
+}
+
+            conLocal.commit();
+            return true;
+        } catch (Exception e) {
+            System.err.println("Error en responderCancelacion: " + e.getMessage());
+            try { if (conLocal != null) conLocal.rollback(); } catch (Exception ignored) {}
+            return false;
+        } finally {
+            try { if (conLocal != null) conLocal.close(); } catch (Exception ignored) {}
+        }
     }
 
     private void cerrarConexiones() {

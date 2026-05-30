@@ -29,6 +29,7 @@ function configurarNavegacion() {
             else if (seccion === 'pagos') renderSeccionPagos(); 
             else if (seccion === 'perfil') renderSeccionPerfil();
             else if (seccion === 'contacto') renderSeccionNosotros();
+            else if (seccion === 'solicitudes') renderSeccionSolicitudes();
             else document.getElementById('contenidoPrincipal').innerHTML =
                 `<p style="padding:40px;color:#999">Sección en construcción.</p>`;
         });
@@ -103,7 +104,6 @@ async function cargarMisProductos() {
         const res = await fetch(`${BASE_URL}/ObtenerMisProductosServlet`);
         const contentType = res.headers.get('content-type') || '';
         if (!contentType.includes('application/json')) {
-            const texto = await res.text();
             contenedor.innerHTML = `<p class="error-txt">Error del servidor (${res.status}).</p>`;
             return;
         }
@@ -129,7 +129,6 @@ function renderProductos(lista) {
     contador.textContent = `${lista.length} producto${lista.length !== 1 ? 's' : ''} encontrado${lista.length !== 1 ? 's' : ''}`;
     contenedor.innerHTML = lista.map(p => tarjetaProducto(p)).join('');
 
-    // Botones de acción en tarjetas
     contenedor.querySelectorAll('.btn-editar').forEach(btn => {
         btn.addEventListener('click', () => abrirModalEditar(Number(btn.dataset.id)));
     });
@@ -141,7 +140,6 @@ function renderProductos(lista) {
 // ── Tarjeta de producto ───────────────────────────────────────────────────────
 function tarjetaProducto(p) {
     const urlImg = (p.imagen && !['default.png', 'inicioHelado.png'].includes(p.imagen)) ? BASE_IMG + p.imagen : IMG_DEF;
-    console.log('[DEBUG imagen]', p.nombre, '|', p.imagen, '->', urlImg);
     const badgeClass = {
         'Disponible':    'badge--verde',
         'Agotado':       'badge--rojo',
@@ -247,7 +245,6 @@ function htmlModalCrear() {
 }
 
 function abrirModalCrear() {
-    // Limpiar campos antes de abrir
     ['inp-nombre','inp-precio','inp-stock','inp-descripcion','inp-unidad','inp-fechaVenc'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.value = '';
@@ -266,7 +263,6 @@ function abrirModalCrear() {
 }
 
 function configurarModalCrear() {
-    // Cerrar modal
     document.getElementById('modalCrear').addEventListener('click', e => {
         if (e.target.id === 'modalCrear' ||
             e.target.id === 'btnCerrarModalCrear' ||
@@ -275,7 +271,6 @@ function configurarModalCrear() {
         }
     });
 
-    // Preview imagen
     document.getElementById('inp-imagen').addEventListener('change', e => {
         const file = e.target.files[0];
         if (!file) return;
@@ -285,14 +280,12 @@ function configurarModalCrear() {
         document.getElementById('preview-wrap').style.display = 'block';
     });
 
-    // Limpiar clase error al escribir en cualquier campo del modal crear
     ['inp-nombre','inp-precio','inp-stock','inp-descripcion','inp-unidad','inp-fechaVenc','inp-relaCatSabor'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.addEventListener('input', () => el.classList.remove('input-error'));
         if (el) el.addEventListener('change', () => el.classList.remove('input-error'));
     });
 
-    // Guardar — listener único con { once: false } pero el botón se deshabilita durante el envío
     document.getElementById('btnGuardarProducto').addEventListener('click', enviarNuevoProducto);
 }
 
@@ -344,14 +337,12 @@ async function enviarNuevoProducto() {
     const idRelaCatSabor = document.getElementById('inp-relaCatSabor')?.value;
     const imagenFile     = document.getElementById('inp-imagen')?.files[0];
 
-    // ── Validación detallada por campo ──────────────────────────────────────
     const errores = validarCamposProducto({
         nombre, precio, stockInicial, descripcion, unidadMedida, fechaVenc, idRelaCatSabor
     }, 'crear');
 
     if (errores.length > 0) {
         mostrarFeedback('feedback-modal', 'error', errores[0]);
-        // Resaltar el primer campo con error
         resaltarCampoError(errores[0], 'crear');
         return;
     }
@@ -441,6 +432,7 @@ function htmlModalEditar() {
                     <option value="1">Activo</option>
                     <option value="3">Descontinuado</option>
                 </select>
+
                 <label>Nueva imagen (opcional)</label>
                 <div class="input-imagen-wrap">
                     <input type="file" id="edit-imagen"
@@ -479,7 +471,6 @@ function configurarModalEditar() {
         document.getElementById('edit-preview-wrap').style.display = 'block';
     });
 
-    // Limpiar clase error al escribir en cualquier campo del modal editar
     ['edit-nombre','edit-precio','edit-descripcion','edit-unidad','edit-fechaVenc','edit-relaCatSabor','edit-cantidadAniadida'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.addEventListener('input', () => el.classList.remove('input-error'));
@@ -497,12 +488,12 @@ function abrirModalEditar(idProducto) {
     const producto = todosLosProductos.find(p => p.idProducto === idProducto);
     if (!producto) return;
 
-    document.getElementById('edit-id').value               = producto.idProducto;
-    document.getElementById('edit-nombre').value           = producto.nombre;
-    document.getElementById('edit-precio').value           = producto.precio;
-    document.getElementById('edit-descripcion').value      = producto.descripcion ?? '';
-    document.getElementById('edit-unidad').value = producto.unidadMedida ?? '';
-    document.getElementById('edit-fechaVenc').value        = producto.fechaVencimiento ?? '';
+    document.getElementById('edit-id').value                = producto.idProducto;
+    document.getElementById('edit-nombre').value            = producto.nombre;
+    document.getElementById('edit-precio').value            = producto.precio;
+    document.getElementById('edit-descripcion').value       = producto.descripcion ?? '';
+    document.getElementById('edit-unidad').value            = producto.unidadMedida ?? '';
+    document.getElementById('edit-fechaVenc').value         = producto.fechaVencimiento ?? '';
     document.getElementById('edit-stockActual').textContent = producto.stock;
     document.getElementById('edit-cantidadAniadida').value  = 0;
     document.getElementById('edit-estado').value            = producto.idEstado;
@@ -515,25 +506,21 @@ function abrirModalEditar(idProducto) {
     if (fb) fb.style.display = 'none';
 
     document.getElementById('modalEditar').style.display = 'flex';
-
-    // Cargar categorías y preseleccionar la actual
     cargarCategoriasSaboresConSeleccion('edit-relaCatSabor', producto.idRelaCatSabor);
 }
 
 async function enviarEdicionProducto() {
-    const id              = document.getElementById('edit-id')?.value;
-    const nombre          = document.getElementById('edit-nombre')?.value.trim();
-    const precio          = document.getElementById('edit-precio')?.value.trim();
-    const descripcion     = document.getElementById('edit-descripcion')?.value.trim();
-    const unidadMedida    = document.getElementById('edit-unidad')?.value.trim();
-    const fechaVenc       = document.getElementById('edit-fechaVenc')?.value;
-    const idRelaCatSabor  = document.getElementById('edit-relaCatSabor')?.value;
+    const id               = document.getElementById('edit-id')?.value;
+    const nombre           = document.getElementById('edit-nombre')?.value.trim();
+    const precio           = document.getElementById('edit-precio')?.value.trim();
+    const descripcion      = document.getElementById('edit-descripcion')?.value.trim();
+    const unidadMedida     = document.getElementById('edit-unidad')?.value.trim();
+    const fechaVenc        = document.getElementById('edit-fechaVenc')?.value;
+    const idRelaCatSabor   = document.getElementById('edit-relaCatSabor')?.value;
     const cantidadAniadida = document.getElementById('edit-cantidadAniadida')?.value.trim() || '0';
-    const imagenFile      = document.getElementById('edit-imagen')?.files[0];
-    const estado = document.getElementById('edit-estado')?.value;
+    const imagenFile       = document.getElementById('edit-imagen')?.files[0];
+    const estado           = document.getElementById('edit-estado')?.value;
 
-
-    // ── Validación detallada por campo ──────────────────────────────────────
     const erroresEdit = validarCamposProducto({
         nombre, precio, descripcion, unidadMedida, fechaVenc, idRelaCatSabor, estado
     }, 'editar');
@@ -544,7 +531,6 @@ async function enviarEdicionProducto() {
         return;
     }
 
-    // Validar cantidadAniadida: solo números enteros >= 0
     const cantNum = parseInt(cantidadAniadida, 10);
     if (isNaN(cantNum) || cantNum < 0 || String(cantNum) !== cantidadAniadida) {
         mostrarFeedback('feedback-editar', 'error', 'La cantidad a añadir debe ser un número entero mayor o igual a 0.');
@@ -592,7 +578,6 @@ async function enviarEdicionProducto() {
 // ELIMINAR (soft delete)
 // ─────────────────────────────────────────────────────────────────────────────
 async function confirmarEliminar(idProducto, nombre) {
-    // Validar que el ID sea un número entero válido antes de cualquier cosa
     const id = parseInt(idProducto, 10);
     if (isNaN(id) || id <= 0) {
         alert('Error: ID de producto inválido. Recarga la página e intenta de nuevo.');
@@ -603,7 +588,6 @@ async function confirmarEliminar(idProducto, nombre) {
     if (!confirmado) return;
 
     try {
-        // Enviar como JSON para evitar problemas de parsing con FormData
         const res = await fetch(`${BASE_URL}/EliminarProductoServlet`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -628,20 +612,12 @@ async function confirmarEliminar(idProducto, nombre) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// VALIDACIÓN DE CAMPOS — usada en Crear y Editar
+// VALIDACIÓN DE CAMPOS
 // ─────────────────────────────────────────────────────────────────────────────
-
-/**
- * Valida los campos del formulario de producto.
- * @param {Object} campos - Valores de los campos a validar.
- * @param {'crear'|'editar'} modo - Para saber si stockInicial es obligatorio.
- * @returns {string[]} - Lista de mensajes de error (vacía si todo está OK).
- */
 function validarCamposProducto(campos, modo) {
     const errores = [];
     const { nombre, precio, stockInicial, descripcion, unidadMedida, fechaVenc, idRelaCatSabor } = campos;
 
-    // — Nombre: obligatorio, solo texto (letras, números, espacios, tildes, signos básicos)
     if (!nombre) {
         errores.push('El nombre del producto es obligatorio.');
     } else if (nombre.length < 2 || nombre.length > 100) {
@@ -650,7 +626,6 @@ function validarCamposProducto(campos, modo) {
         errores.push('El nombre solo puede contener letras, números y los caracteres: - . , ( )');
     }
 
-    // — Precio: obligatorio, número positivo
     if (!precio) {
         errores.push('El precio es obligatorio.');
     } else if (isNaN(Number(precio)) || Number(precio) <= 0) {
@@ -659,7 +634,6 @@ function validarCamposProducto(campos, modo) {
         errores.push('El precio solo puede contener dígitos y máximo 2 decimales (ej: 5000 o 5000.50).');
     }
 
-    // — Stock inicial: obligatorio solo al crear; entero >= 0
     if (modo === 'crear') {
         if (!stockInicial && stockInicial !== '0') {
             errores.push('El stock inicial es obligatorio.');
@@ -667,7 +641,7 @@ function validarCamposProducto(campos, modo) {
             errores.push('El stock inicial debe ser un número entero mayor o igual a 0.');
         }
     }
-    // — Estado: obligatorio solo al editar
+
     if (modo === 'editar') {
         const { estado } = campos;
         if (!estado) {
@@ -675,7 +649,6 @@ function validarCamposProducto(campos, modo) {
         }
     }
 
-    // — Descripción: obligatoria, mínimo 5 caracteres
     if (!descripcion) {
         errores.push('La descripción es obligatoria.');
     } else if (descripcion.length < 5) {
@@ -684,14 +657,12 @@ function validarCamposProducto(campos, modo) {
         errores.push('La descripción no puede superar los 500 caracteres.');
     }
 
-    // — Unidad de medida: obligatoria, solo texto
     if (!unidadMedida) {
         errores.push('La unidad de medida es obligatoria.');
     } else if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ0-9\s\-/]+$/.test(unidadMedida)) {
         errores.push('La unidad de medida solo puede contener letras, números, guiones y barras.');
     }
 
-    // — Fecha de vencimiento: obligatoria y debe ser futura
     if (!fechaVenc) {
         errores.push('La fecha de vencimiento es obligatoria.');
     } else {
@@ -703,7 +674,6 @@ function validarCamposProducto(campos, modo) {
         }
     }
 
-    // — Categoría y sabor: obligatoria
     if (!idRelaCatSabor) {
         errores.push('Debes seleccionar una categoría y sabor.');
     }
@@ -711,39 +681,29 @@ function validarCamposProducto(campos, modo) {
     return errores;
 }
 
-/**
- * Resalta visualmente el campo que tiene el primer error.
- * @param {string} mensajeError - Mensaje del error para identificar el campo.
- * @param {'crear'|'editar'} modo - Prefijo de los IDs de los campos.
- */
 function resaltarCampoError(mensajeError, modo) {
     const prefijo = modo === 'crear' ? 'inp' : 'edit';
-    // Limpiar resaltados previos
     const campos = ['nombre','precio','stock','descripcion','unidad','fechaVenc','relaCatSabor','cantidadAniadida'];
     campos.forEach(c => {
         const el = document.getElementById(`${prefijo}-${c}`);
         if (el) el.classList.remove('input-error');
     });
 
-    // Mapa de mensaje → ID de campo
     const mapa = [
-        ['nombre',         `${prefijo}-nombre`],
-        ['precio',         `${prefijo}-precio`],
-        ['stock inicial',  `${prefijo}-stock`],
-        ['descripción',    `${prefijo}-descripcion`],
-        ['unidad de medida', `${prefijo}-unidad`],
+        ['nombre',               `${prefijo}-nombre`],
+        ['precio',               `${prefijo}-precio`],
+        ['stock inicial',        `${prefijo}-stock`],
+        ['descripción',          `${prefijo}-descripcion`],
+        ['unidad de medida',     `${prefijo}-unidad`],
         ['fecha de vencimiento', `${prefijo}-fechaVenc`],
-        ['categoría',      `${prefijo}-relaCatSabor`],
+        ['categoría',            `${prefijo}-relaCatSabor`],
     ];
 
     const msgLower = mensajeError.toLowerCase();
     for (const [clave, idCampo] of mapa) {
         if (msgLower.includes(clave)) {
             const el = document.getElementById(idCampo);
-            if (el) {
-                el.classList.add('input-error');
-                el.focus();
-            }
+            if (el) { el.classList.add('input-error'); el.focus(); }
             break;
         }
     }
@@ -765,7 +725,7 @@ async function renderSeccionPagos() {
     const main = document.getElementById('contenidoPrincipal');
     main.innerHTML = `
         <div class="seccion-header">
-            <h2> Mis ventas</h2>
+            <h2>Mis ventas</h2>
         </div>
         <p class="cargando">Cargando ventas…</p>
     `;
@@ -789,13 +749,11 @@ function renderPagos(data) {
             <h2>Mis ventas</h2>
         </div>
 
-        <!-- Resumen total -->
         <div class="resumen-ganancias">
             <span class="resumen-ganancias__label">Total ganado (pedidos completados)</span>
             <span class="resumen-ganancias__valor">$${Number(totalGanado).toLocaleString('es-CO')}</span>
         </div>
 
-        <!-- Tabs -->
         <div class="ventas-tabs">
             <button class="ventas-tab ventas-tab--activo" data-tab="pendientes">
                 Por entregar <span class="badge-count">${pendientes.length}</span>
@@ -808,7 +766,6 @@ function renderPagos(data) {
         <div id="ventas-contenido"></div>
     `;
 
-    // Listeners tabs
     document.querySelectorAll('.ventas-tab').forEach(tab => {
         tab.addEventListener('click', () => {
             document.querySelectorAll('.ventas-tab').forEach(t => t.classList.remove('ventas-tab--activo'));
@@ -821,7 +778,6 @@ function renderPagos(data) {
         });
     });
 
-    // Mostrar pendientes por defecto
     renderListaPedidos(pendientes, 'pendientes');
 }
 
@@ -838,16 +794,44 @@ function renderListaPedidos(lista, tipo) {
     }
 
     contenedor.innerHTML = lista.map(p => {
-        // Badge de estado del proveedor
-        const badgeColor = p.estadoProveedor === 5 ? '#2ecc71' : p.estadoProveedor === 4 ? '#e67e22' : '#3498db';
-        const estadoLabel = p.nombreEstadoProveedor ?? 'Preparando';
+        // Estado 1=Pendiente (recién creado), 4=Preparando, 5=En bodega
+        const badgeColor = p.estadoProveedor === 5 ? '#2ecc71'
+                         : p.estadoProveedor === 4 ? '#f39c12'
+                         : '#3498db';   // 1 = Pendiente → azul
+        const estadoLabel = p.estadoProveedor === 1 ? 'Pendiente'
+                          : p.estadoProveedor === 4 ? 'Preparando'
+                          : p.estadoProveedor === 5 ? 'En bodega'
+                          : (p.nombreEstadoProveedor ?? 'Pendiente');
+
+        // Botón según estado actual del proveedor
+        let accionFooter = '';
+        if (tipo === 'pendientes') {
+            if (p.estadoProveedor === 1) {
+                // Aún no inicia preparación → botón para pasar a 4
+                accionFooter = `
+                    <button class="btn-entregar" data-id="${p.idPedido}" data-nuevo-estado="4">
+                        🚀 Iniciar preparación
+                    </button>`;
+            } else if (p.estadoProveedor === 4) {
+                // Ya preparando → botón para pasar a 5
+                accionFooter = `
+                    <button class="btn-entregar btn-entregar--bodega" data-id="${p.idPedido}" data-nuevo-estado="5">
+                        ✅ Marcar en bodega
+                    </button>`;
+            } else if (p.estadoProveedor === 5) {
+                // Ya en bodega → solo mensaje
+                accionFooter = `
+                    <span style="color:#2ecc71;font-weight:600;font-size:.85rem;">
+                        ✔ Listo en bodega — esperando al admin
+                    </span>`;
+            }
+        }
 
         return `
         <div class="pedido-card pedido-card--${tipo}" id="pedido-card-${p.idPedido}">
             <div class="pedido-card__header">
                 <span class="pedido-card__fecha">#${p.idPedido} · ${p.fecha}</span>
                 <span class="pedido-card__metodo">${p.metodoPago}</span>
-                <!-- Estado del proveedor visible -->
                 <span style="background:${badgeColor};color:#fff;padding:3px 10px;
                              border-radius:20px;font-size:.78rem;font-weight:600;">
                     ${estadoLabel}
@@ -870,29 +854,33 @@ function renderListaPedidos(lista, tipo) {
             </div>
             <div class="pedido-card__footer">
                 <span>Subtotal: <strong>$${Number(p.subtotalProveedor).toLocaleString('es-CO')}</strong></span>
-                ${tipo === 'pendientes' && p.estadoProveedor < 5 ? `
-                    <button class="btn-entregar" data-id="${p.idPedido}">
-                        ✅ Marcar en bodega
-                    </button>
-                ` : tipo === 'pendientes' && p.estadoProveedor === 5 ? `
-                    <span style="color:#2ecc71;font-weight:600;font-size:.85rem;">
-                        ✔ Entregado en bodega — esperando al admin
-                    </span>
-                ` : ''}
+                ${accionFooter}
             </div>
         </div>
-    `}).join('');
+        `;
+    }).join('');
 
-    // Listeners botones
+    // Capturar el nuevoEstado desde data-nuevo-estado antes del click
     if (tipo === 'pendientes') {
         contenedor.querySelectorAll('.btn-entregar').forEach(btn => {
-            btn.addEventListener('click', () => marcarEnBodega(Number(btn.dataset.id), btn));
+            const nuevoEstado = btn.dataset.nuevoEstado;
+            btn.addEventListener('click', () => marcarEstadoProveedor(Number(btn.dataset.id), btn, nuevoEstado));
         });
     }
 }
 
-async function marcarEnBodega(idPedido, btn) {
-    if (!confirm(`¿Confirmas que tus productos del pedido #${idPedido} están listos en bodega?`)) return;
+// ── Avanzar estado del proveedor: 1→4 (preparando) o 4→5 (en bodega) ─────────
+async function marcarEstadoProveedor(idPedido, btn, nuevoEstado) {
+    const mensajes = {
+        '4': `¿Confirmas que vas a iniciar la preparación del pedido #${idPedido}?`,
+        '5': `¿Confirmas que tus productos del pedido #${idPedido} están listos en bodega?`
+    };
+    const textosBtn = {
+        '4': '🚀 Iniciar preparación',
+        '5': '✅ Marcar en bodega'
+    };
+
+    if (!confirm(mensajes[nuevoEstado] ?? '¿Confirmar acción?')) return;
 
     btn.disabled = true;
     btn.textContent = 'Guardando…';
@@ -901,24 +889,24 @@ async function marcarEnBodega(idPedido, btn) {
         const res = await fetch(`${BASE_URL}/MarcarEntregadoServlet`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: `idPedido=${idPedido}&nuevoEstado=5`
+            body: `idPedido=${idPedido}&nuevoEstado=${nuevoEstado}`
         });
         const data = await res.json();
 
         if (data.ok) {
-            // Recargar la sección para reflejar el nuevo estado
             renderSeccionPagos();
         } else {
             alert(`Error: ${data.msg}`);
             btn.disabled = false;
-            btn.textContent = '✅ Marcar en bodega';
+            btn.textContent = textosBtn[nuevoEstado] ?? 'Reintentar';
         }
     } catch (err) {
         alert(`Error de conexión: ${err.message}`);
         btn.disabled = false;
-        btn.textContent = '✅ Marcar en bodega';
+        btn.textContent = textosBtn[nuevoEstado] ?? 'Reintentar';
     }
 }
+
 // ─────────────────────────────────────────────────────────────────────────────
 // SECCIÓN MI PERFIL
 // ─────────────────────────────────────────────────────────────────────────────
@@ -981,6 +969,7 @@ async function renderSeccionPerfil() {
         main.innerHTML = `<p class="error-txt">Error cargando perfil: ${e.message}</p>`;
     }
 }
+
 const REGLAS_PERFIL = {
     'prov-nombres': {
         required: true, requiredMessage: 'El nombre es obligatorio',
@@ -1031,7 +1020,6 @@ function configurarPerfilProveedor() {
     let modoEdicion = false;
     const btn = document.getElementById('btnActualizarPerfil');
 
-    // Agregar spans de error al DOM bajo cada input
     IDS.forEach(id => {
         const el = document.getElementById(id);
         if (!el) return;
@@ -1047,7 +1035,7 @@ function configurarPerfilProveedor() {
             const regla   = REGLAS_PERFIL[id];
             const errorEl = document.getElementById(regla.errorId);
             if (!el || !errorEl) return;
-            el.replaceWith(el.cloneNode(true)); // evitar duplicar listeners
+            el.replaceWith(el.cloneNode(true));
             const elFresh = document.getElementById(id);
             elFresh.addEventListener('input', () => {
                 if (elFresh.value.trim().length > 0) clearError(errorEl, elFresh);
@@ -1064,7 +1052,6 @@ function configurarPerfilProveedor() {
             return;
         }
 
-        // Validar todos con isValidInput
         let valido = true;
         IDS.forEach(id => {
             const el      = document.getElementById(id);
@@ -1123,9 +1110,7 @@ function renderSeccionNosotros() {
     const contenedor = document.getElementById('contenidoPrincipal');
     contenedor.innerHTML = `
         <section class="prov-nosotros">
-
             <h2 class="prov-contacto-titulo">Contáctanos</h2>
-
             <div class="prov-contacto">
                 <div class="prov-contacto__logo-contenedor">
                     <img src="${BASE_IMG}conejo.png" alt="Logo Kurmi" class="prov-contacto__logo">
@@ -1143,7 +1128,364 @@ function renderSeccionNosotros() {
                     </div>`).join('')}
                 </div>
             </div>
-
         </section>
     `;
+}
+
+// ── Estado local ──────────────────────────────────────────────────────────────
+let misSolicitudes = [];
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SECCIÓN MIS SOLICITUDES
+// ─────────────────────────────────────────────────────────────────────────────
+function renderSeccionSolicitudes() {
+    const main = document.getElementById('contenidoPrincipal');
+    main.innerHTML = `
+        <div class="seccion-header">
+            <h2>📋 Mis solicitudes</h2>
+            <button class="btn-primario" id="btnNuevaSolicitud">＋ Nueva solicitud</button>
+        </div>
+
+        <div class="filtros-bar">
+            <select id="filtroEstadoSolicitud" class="filtro-select">
+                <option value="">Todos los estados</option>
+                <option value="Pendiente">⏳ Pendiente</option>
+                <option value="Aprobado">✅ Aprobado</option>
+                <option value="Rechazado">❌ Rechazado</option>
+            </select>
+            <button class="btn-limpiar" id="btnLimpiarFiltroSol">✕ Limpiar</button>
+        </div>
+
+        <p class="contador-resultados" id="contadorSolicitudes"></p>
+
+        <div id="listaSolicitudes" class="solicitudes-lista">
+            <p class="cargando">Cargando solicitudes…</p>
+        </div>
+
+        <div id="modalCrearSolicitud" class="modal-overlay" style="display:none">
+            <div class="modal modal--solicitud">
+                <div class="modal__header">
+                    <h3>📋 Nueva solicitud de categoría / sabor</h3>
+                    <button class="modal__cerrar" id="cerrarModalSolicitud">✕</button>
+                </div>
+                <div class="modal__body">
+                    <p class="sol-modal__desc">
+                        ¿Necesitas una nueva categoría o sabor para tus productos?
+                        Envía una solicitud al administrador y él la revisará.
+                    </p>
+
+                    <label class="sol-label">Tipo de solicitud <span class="sol-required">*</span></label>
+                    <select id="sol-tipo" class="filtro-select" style="width:100%;margin-bottom:14px;">
+                        <option value="">— Selecciona el tipo —</option>
+                        <option value="Categoria">🏷 Solo categoría nueva</option>
+                        <option value="Sabor">🍦 Solo sabor nuevo</option>
+                        <option value="Ambos">🏷🍦 Categoría y sabor nuevos</option>
+                    </select>
+                    <span class="error-msg" id="error-sol-tipo"></span>
+
+                    <div id="sol-campo-cat" style="display:none">
+                        <label class="sol-label">Nombre de la categoría <span class="sol-required">*</span></label>
+                        <input type="text" id="sol-nombreCat" class="filtro-input"
+                               style="width:100%;margin-bottom:4px;"
+                               placeholder="Ej: Paletas artesanales" maxlength="100" />
+                        <span class="error-msg" id="error-sol-cat"></span>
+                    </div>
+
+                    <div id="sol-campo-sabor-existente" style="display:none">
+                        <label class="sol-label" style="margin-top:12px;display:block;">
+                            Relacionar con sabor existente <span class="sol-required">*</span>
+                        </label>
+                        <select id="sol-idSaborExistente" class="filtro-select" style="width:100%;margin-bottom:4px;">
+                            <option value="">— Selecciona un sabor —</option>
+                        </select>
+                        <span class="error-msg" id="error-sol-sabor-existente"></span>
+                    </div>
+
+                    <div id="sol-campo-sabor" style="display:none">
+                        <label class="sol-label" style="margin-top:12px;display:block;">
+                            Nombre del sabor <span class="sol-required">*</span>
+                        </label>
+                        <input type="text" id="sol-nombreSabor" class="filtro-input"
+                               style="width:100%;margin-bottom:4px;"
+                               placeholder="Ej: Maracuyá con chile" maxlength="100" />
+                        <span class="error-msg" id="error-sol-sabor"></span>
+                    </div>
+
+                    <div id="sol-campo-cat-existente" style="display:none">
+                        <label class="sol-label" style="margin-top:12px;display:block;">
+                            Relacionar con categoría existente <span class="sol-required">*</span>
+                        </label>
+                        <select id="sol-idCatExistente" class="filtro-select" style="width:100%;margin-bottom:4px;">
+                            <option value="">— Selecciona una categoría —</option>
+                        </select>
+                        <span class="error-msg" id="error-sol-cat-existente"></span>
+                    </div>
+
+                    <label class="sol-label" style="margin-top:14px;display:block;">
+                        Descripción adicional (opcional)
+                    </label>
+                    <textarea id="sol-descripcion" class="sol-textarea"
+                              placeholder="Describe brevemente por qué necesitas esta categoría o sabor…"
+                              maxlength="255" rows="3"></textarea>
+
+                    <div id="feedbackSolicitud"></div>
+                </div>
+                <div class="modal__footer">
+                    <button class="btn-secundario" id="cancelarModalSolicitud">Cancelar</button>
+                    <button class="btn-primario"   id="confirmarNuevaSolicitud">Enviar solicitud</button>
+                </div>
+            </div>
+        </div>
+    `;
+
+    document.getElementById('btnNuevaSolicitud').addEventListener('click', abrirModalSolicitud);
+    document.getElementById('cerrarModalSolicitud').addEventListener('click', cerrarModalSolicitud);
+    document.getElementById('cancelarModalSolicitud').addEventListener('click', cerrarModalSolicitud);
+    document.getElementById('confirmarNuevaSolicitud').addEventListener('click', enviarNuevaSolicitud);
+    document.getElementById('filtroEstadoSolicitud').addEventListener('change', aplicarFiltroSolicitudes);
+    document.getElementById('btnLimpiarFiltroSol').addEventListener('click', () => {
+        document.getElementById('filtroEstadoSolicitud').value = '';
+        renderListaSolicitudes(misSolicitudes);
+    });
+
+    document.getElementById('sol-tipo').addEventListener('change', async () => {
+        const tipo = document.getElementById('sol-tipo').value;
+        const esCat   = tipo === 'Categoria';
+        const esSabor = tipo === 'Sabor';
+        const esAmbos = tipo === 'Ambos';
+
+        document.getElementById('sol-campo-cat').style.display             = (esCat || esAmbos) ? 'block' : 'none';
+        document.getElementById('sol-campo-sabor').style.display           = (esSabor || esAmbos) ? 'block' : 'none';
+        document.getElementById('sol-campo-sabor-existente').style.display = esCat   ? 'block' : 'none';
+        document.getElementById('sol-campo-cat-existente').style.display   = esSabor ? 'block' : 'none';
+
+        if (esCat || esSabor) {
+            await cargarOpcionesExistentes();
+        }
+    });
+
+    cargarMisSolicitudes();
+}
+
+async function cargarOpcionesExistentes() {
+    try {
+        const res  = await fetch(`${BASE_URL}/ObtenerSaboresYCategoriasServlet`);
+        const data = await res.json();
+        if (!data.ok) return;
+
+        const selSabor = document.getElementById('sol-idSaborExistente');
+        if (selSabor) {
+            selSabor.innerHTML = '<option value="">— Selecciona un sabor —</option>' +
+                (data.sabores ?? []).map(s =>
+                    `<option value="${s.idSabor}">${s.nombreSabor}</option>`
+                ).join('');
+        }
+
+        const selCat = document.getElementById('sol-idCatExistente');
+        if (selCat) {
+            selCat.innerHTML = '<option value="">— Selecciona una categoría —</option>' +
+                (data.categorias ?? []).map(c =>
+                    `<option value="${c.idCategoria}">${c.nombreCategoria}</option>`
+                ).join('');
+        }
+    } catch (e) {
+        console.error('Error al cargar opciones existentes:', e);
+    }
+}
+
+async function cargarMisSolicitudes() {
+    const contenedor = document.getElementById('listaSolicitudes');
+    try {
+        const res = await fetch(`${BASE_URL}/SolicitudesServlet?accion=misSolicitudes`);
+        if (!res.ok) throw new Error(`Error ${res.status}`);
+        const data = await res.json();
+
+        if (!data.ok) {
+            contenedor.innerHTML = `<p class="error-txt">❌ ${data.error}</p>`;
+            return;
+        }
+
+        misSolicitudes = data.solicitudes ?? [];
+        renderListaSolicitudes(misSolicitudes);
+
+    } catch (e) {
+        contenedor.innerHTML = `<p class="error-txt">No se pudo conectar: ${e.message}</p>`;
+    }
+}
+
+function renderListaSolicitudes(lista) {
+    const contenedor = document.getElementById('listaSolicitudes');
+    const contador   = document.getElementById('contadorSolicitudes');
+
+    if (!lista.length) {
+        contador.textContent = '';
+        contenedor.innerHTML = `
+            <div class="sol-vacio">
+                <span class="sol-vacio__icono">📭</span>
+                <p>No tienes solicitudes aún.<br>
+                   <span style="font-size:.85rem;color:#999;">
+                     Pulsa <strong>+ Nueva solicitud</strong> para pedir una nueva categoría o sabor.
+                   </span>
+                </p>
+            </div>`;
+        return;
+    }
+
+    contador.textContent = `${lista.length} solicitud${lista.length !== 1 ? 'es' : ''} encontrada${lista.length !== 1 ? 's' : ''}`;
+    contenedor.innerHTML = lista.map(s => tarjetaSolicitudProveedor(s)).join('');
+}
+
+function tarjetaSolicitudProveedor(s) {
+    const badgeClass = {
+        'Pendiente': 'badge--amarillo',
+        'Aprobado':  'badge--verde',
+        'Rechazado': 'badge--rojo'
+    }[s.estado] ?? 'badge--gris';
+
+    const badgeIcon = {
+        'Pendiente': '⏳',
+        'Aprobado':  '✅',
+        'Rechazado': '❌'
+    }[s.estado] ?? '';
+
+    const tipoIcono = {
+        'Categoria': '🏷',
+        'Sabor':     '🍦',
+        'Ambos':     '🏷🍦'
+    }[s.tipo] ?? '📋';
+
+    const filaCateg    = s.nombreCat   ? `<p class="sol-card__fila"><span class="sol-card__etiq">Categoría nueva:</span> ${s.nombreCat}</p>`   : '';
+    const filaSabor    = s.nombreSabor ? `<p class="sol-card__fila"><span class="sol-card__etiq">Sabor nuevo:</span> ${s.nombreSabor}</p>`     : '';
+    const filaRelCat   = s.nombreCatExistente
+        ? `<p class="sol-card__fila"><span class="sol-card__etiq">Relacionar con categoría:</span> ${s.nombreCatExistente}</p>` : '';
+    const filaRelSabor = s.nombreSaborExistente
+        ? `<p class="sol-card__fila"><span class="sol-card__etiq">Relacionar con sabor:</span> ${s.nombreSaborExistente}</p>` : '';
+    const filaDesc     = s.descripcion ? `<p class="sol-card__fila"><span class="sol-card__etiq">Descripción:</span> ${s.descripcion}</p>` : '';
+    const filaMotivo   = (s.estado === 'Rechazado' && s.motivoRechazo)
+        ? `<div class="sol-card__rechazo"><span>💬 Motivo del rechazo:</span><p>${s.motivoRechazo}</p></div>` : '';
+    const filaRespuesta = s.fechaRespuesta
+        ? `<p class="sol-card__fecha">Respondida: ${s.fechaRespuesta}</p>` : '';
+
+    return `
+        <div class="sol-card sol-card--${s.estado.toLowerCase()}">
+            <div class="sol-card__header">
+                <div style="display:flex;align-items:center;gap:10px;">
+                    <span class="sol-card__tipo">${tipoIcono} ${s.tipo}</span>
+                    <span class="badge ${badgeClass}" style="position:static;">
+                        ${badgeIcon} ${s.estado}
+                    </span>
+                </div>
+                <span class="sol-card__fecha">Enviada: ${s.fechaSolicitud ?? '—'}</span>
+            </div>
+            <div class="sol-card__body">
+                ${filaCateg}${filaRelSabor}${filaSabor}${filaRelCat}${filaDesc}${filaMotivo}${filaRespuesta}
+            </div>
+        </div>
+    `;
+}
+
+function aplicarFiltroSolicitudes() {
+    const estado = document.getElementById('filtroEstadoSolicitud').value;
+    const filtradas = estado
+        ? misSolicitudes.filter(s => s.estado === estado)
+        : misSolicitudes;
+    renderListaSolicitudes(filtradas);
+}
+
+function abrirModalSolicitud() {
+    document.getElementById('sol-tipo').value          = '';
+    document.getElementById('sol-nombreCat').value     = '';
+    document.getElementById('sol-nombreSabor').value   = '';
+    document.getElementById('sol-descripcion').value   = '';
+    document.getElementById('sol-campo-cat').style.display   = 'none';
+    document.getElementById('sol-campo-sabor').style.display = 'none';
+    ['error-sol-tipo','error-sol-cat','error-sol-sabor',
+     'error-sol-cat-existente','error-sol-sabor-existente'].forEach(id => {
+        document.getElementById(id).textContent = '';
+    });
+    document.getElementById('sol-campo-sabor-existente').style.display = 'none';
+    document.getElementById('sol-campo-cat-existente').style.display   = 'none';
+    document.getElementById('feedbackSolicitud').innerHTML = '';
+    document.getElementById('modalCrearSolicitud').style.display = 'flex';
+}
+
+function cerrarModalSolicitud() {
+    document.getElementById('modalCrearSolicitud').style.display = 'none';
+}
+
+async function enviarNuevaSolicitud() {
+    const tipo        = document.getElementById('sol-tipo').value;
+    const nombreCat   = document.getElementById('sol-nombreCat').value.trim();
+    const nombreSabor = document.getElementById('sol-nombreSabor').value.trim();
+    const descripcion = document.getElementById('sol-descripcion').value.trim();
+    const feedback    = document.getElementById('feedbackSolicitud');
+    const btn         = document.getElementById('confirmarNuevaSolicitud');
+
+    let valido = true;
+
+    document.getElementById('error-sol-tipo').textContent  = '';
+    document.getElementById('error-sol-cat').textContent   = '';
+    document.getElementById('error-sol-sabor').textContent = '';
+    feedback.innerHTML = '';
+
+    if (!tipo) {
+        document.getElementById('error-sol-tipo').textContent = 'Selecciona el tipo de solicitud.';
+        valido = false;
+    }
+    if ((tipo === 'Categoria' || tipo === 'Ambos') && !nombreCat) {
+        document.getElementById('error-sol-cat').textContent = 'El nombre de la categoría es obligatorio.';
+        valido = false;
+    }
+    if ((tipo === 'Sabor' || tipo === 'Ambos') && !nombreSabor) {
+        document.getElementById('error-sol-sabor').textContent = 'El nombre del sabor es obligatorio.';
+        valido = false;
+    }
+    if (tipo === 'Categoria' && !document.getElementById('sol-idSaborExistente').value) {
+        document.getElementById('error-sol-sabor-existente').textContent = 'Selecciona el sabor existente a relacionar.';
+        valido = false;
+    }
+    if (tipo === 'Sabor' && !document.getElementById('sol-idCatExistente').value) {
+        document.getElementById('error-sol-cat-existente').textContent = 'Selecciona la categoría existente a relacionar.';
+        valido = false;
+    }
+    if (!valido) return;
+
+    btn.disabled         = true;
+    feedback.className   = 'feedback feedback--cargando';
+    feedback.textContent = '⏳ Enviando solicitud…';
+
+    try {
+        const res = await fetch(`${BASE_URL}/SolicitudesServlet`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({
+                accion:          'crearSolicitud',
+                tipo,
+                nombreCat,
+                nombreSabor,
+                descripcion,
+                idCatExistente:   document.getElementById('sol-idCatExistente')?.value   ?? '',
+                idSaborExistente: document.getElementById('sol-idSaborExistente')?.value ?? ''
+            }).toString()
+        });
+
+        const data = await res.json();
+
+        if (data.ok) {
+            feedback.className   = 'feedback feedback--ok';
+            feedback.textContent = '✅ Solicitud enviada correctamente al administrador.';
+            setTimeout(() => {
+                cerrarModalSolicitud();
+                cargarMisSolicitudes();
+            }, 1200);
+        } else {
+            feedback.className   = 'feedback feedback--error';
+            feedback.textContent = `❌ ${data.error ?? 'No se pudo enviar la solicitud.'}`;
+        }
+    } catch (e) {
+        feedback.className   = 'feedback feedback--error';
+        feedback.textContent = `❌ Error de conexión: ${e.message}`;
+    } finally {
+        btn.disabled = false;
+    }
 }
