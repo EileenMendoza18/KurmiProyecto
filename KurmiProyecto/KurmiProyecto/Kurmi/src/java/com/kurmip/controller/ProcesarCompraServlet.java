@@ -2,97 +2,99 @@ package com.kurmip.controller;
 
 import com.kurmip.model.dao.PedidoDAO;
 import com.kurmip.model.dto.PedidoDTO;
-import com.kurmip.model.dto.UsuarioDTO; 
+import com.kurmip.model.dto.UsuarioDTO;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
-import jakarta.servlet.http.HttpServlet;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import jakarta.servlet.http.HttpSession;
+import jakarta.servlet.http.*;
 import java.io.IOException;
 
+/**
+ * ProcesarCompraServlet — genera el pedido a partir del carrito activo.
+ *
+ * POST /ProcesarCompraServlet
+ *   Params obligatorios: nombre, direccion, telefono, idMetodo, totalPago
+ *   Params opcionales:   idCarrito, esRecompra, fechaPedidoOriginal, idProducto
+ */
 @WebServlet(name = "ProcesarCompraServlet", urlPatterns = {"/ProcesarCompraServlet"})
 public class ProcesarCompraServlet extends HttpServlet {
+
+    private static final String BASE_PAGO = "/CLIENT/html/formularioPago.html";
 
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
 
-        HttpSession session = request.getSession();
-        UsuarioDTO usuarioLogueado = (UsuarioDTO) session.getAttribute("usuarioLogueado");
+        // ── Verificar sesión ──────────────────────────────────────────────────
+        HttpSession session = request.getSession(false);
+        UsuarioDTO usuarioLogueado = (session != null)
+                ? (UsuarioDTO) session.getAttribute("usuarioLogueado") : null;
 
         if (usuarioLogueado == null) {
             response.sendRedirect(request.getContextPath() + "/CLIENT/html/inicioSesion.html");
             return;
         }
 
-        String idProd   = request.getParameter("idProducto");
-        String nomProd  = request.getParameter("nombreProducto");
-        String precProd = request.getParameter("precioProducto");
+        // ── Parámetros de compra directa (para fallback en URL de error) ──────
+        String idProd   = param(request, "idProducto");
+        String nomProd  = param(request, "nombreProducto");
+        String precProd = param(request, "precioProducto");
 
-        String fallbackParams = "";
-        if (idProd != null && !idProd.isEmpty()) {
-            fallbackParams = "&id=" + idProd + "&nombre=" + nomProd + "&precio=" + precProd;
+        String fallbackParams = (idProd != null)
+                ? "&id=" + idProd + "&nombre=" + nomProd + "&precio=" + precProd : "";
+
+        // ── Verificar parámetros obligatorios antes de parsear ────────────────
+        String pNombre    = param(request, "nombre");
+        String pDireccion = param(request, "direccion");
+        String pTelefono  = param(request, "telefono");
+        String pMetodo    = param(request, "idMetodo");
+        String pTotal     = param(request, "totalPago");
+
+        if (pNombre == null || pDireccion == null || pTelefono == null
+                || pMetodo == null || pTotal == null) {
+            response.sendRedirect(request.getContextPath() + BASE_PAGO + "?status=invalid_data" + fallbackParams);
+            return;
         }
 
         try {
-            String nombreReceptor = request.getParameter("nombre").trim();
-            String direccion      = request.getParameter("direccion").trim();
-            String telefono       = request.getParameter("telefono").trim();
-            int    idMetodoPago   = Integer.parseInt(request.getParameter("idMetodo"));
-            double totalPago      = Double.parseDouble(request.getParameter("totalPago"));
-            int    idUsuario      = usuarioLogueado.getId();
+            int    idMetodoPago = Integer.parseInt(pMetodo);
+            double totalPago    = Double.parseDouble(pTotal);
+            int    idUsuario    = usuarioLogueado.getId();
 
             PedidoDTO nuevoPedido = new PedidoDTO();
             nuevoPedido.setIdUsuario(idUsuario);
-            nuevoPedido.setNombreReceptor(nombreReceptor);
-            nuevoPedido.setDireccion(direccion);
-            nuevoPedido.setTelefono(telefono);
+            nuevoPedido.setNombreReceptor(pNombre.trim());
+            nuevoPedido.setDireccion(pDireccion.trim());
+            nuevoPedido.setTelefono(pTelefono.trim());
             nuevoPedido.setIdMetodo(idMetodoPago);
             nuevoPedido.setTotal(totalPago);
 
-            // ── Detectar si viene una RECOMPRA (bandera explícita desde formularioPago.js) ──
-            String flagRecompra   = request.getParameter("esRecompra");
-            boolean esRecompra    = "true".equals(flagRecompra);
+            // ── Detectar flujo: recompra vs compra normal ─────────────────────
+            boolean esRecompra = "true".equals(param(request, "esRecompra"));
+            String  idCarParam = param(request, "idCarrito");
+
+            if (idCarParam != null) {
+                nuevoPedido.setIdCarrito(Integer.parseInt(idCarParam));
+            }
 
             if (esRecompra) {
-                // RECOMPRA: usar el carrito original del pedido cancelado.
-                // El DAO NO insertará filas en Carrito_Detalle; solo crea el pedido+pago
-                // y cruza los productos por Fecha_Venta = fechaPedidoOriginal.
-                String idCarParam = request.getParameter("idCarrito");
-                if (idCarParam != null && !idCarParam.isEmpty()) {
-                    nuevoPedido.setIdCarrito(Integer.parseInt(idCarParam));
-                }
-                String fechaOriginal = request.getParameter("fechaPedidoOriginal");
+                String fechaOriginal = param(request, "fechaPedidoOriginal");
                 nuevoPedido.setFechaPedidoOriginal(fechaOriginal != null ? fechaOriginal : "");
-            } else {
-                // COMPRA NORMAL DESDE CARRITO: usar el carrito activo del usuario
-                String idCarParam = request.getParameter("idCarrito");
-                if (idCarParam != null && !idCarParam.isEmpty()) {
-                    nuevoPedido.setIdCarrito(Integer.parseInt(idCarParam));
-                }
-            }
-            // ── COMPRA DIRECTA: si viene un idProducto, marcar ese ítem como Seleccionado (5) ──
-            if (!esRecompra && idProd != null && !idProd.isEmpty()) {
-                PedidoDAO pedidoDAO2 = new PedidoDAO();
-                pedidoDAO2.marcarItemComoSeleccionado(
-                    Integer.parseInt(idProd),
-                    usuarioLogueado.getId()
-                );
+            } else if (idProd != null) {
+                // ── Compra directa: marcar el ítem como seleccionado ──────────
+                new PedidoDAO().marcarItemComoSeleccionado(Integer.parseInt(idProd), idUsuario);
             }
 
-            PedidoDAO pedidoDAO = new PedidoDAO();
-            boolean compraExitosa = pedidoDAO.registrarCompraCompleta(nuevoPedido);
+            boolean compraExitosa = new PedidoDAO().registrarCompraCompleta(nuevoPedido);
 
             if (compraExitosa) {
-                response.sendRedirect(request.getContextPath() + "/CLIENT/html/formularioPago.html?status=success");
+                response.sendRedirect(request.getContextPath() + BASE_PAGO + "?status=success");
             } else {
-                response.sendRedirect(request.getContextPath() + "/CLIENT/html/formularioPago.html?status=error_db" + fallbackParams);
+                response.sendRedirect(request.getContextPath() + BASE_PAGO + "?status=error_db" + fallbackParams);
             }
 
-        } catch (NumberFormatException | NullPointerException e) {
-            System.err.println("Error de conversión en Servlet: " + e.getMessage());
-            response.sendRedirect(request.getContextPath() + "/CLIENT/html/formularioPago.html?status=invalid_data" + fallbackParams);
+        } catch (NumberFormatException e) {
+            System.err.println("Error de conversión en ProcesarCompraServlet: " + e.getMessage());
+            response.sendRedirect(request.getContextPath() + BASE_PAGO + "?status=invalid_data" + fallbackParams);
         }
     }
 
@@ -100,5 +102,13 @@ public class ProcesarCompraServlet extends HttpServlet {
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
         response.sendRedirect(request.getContextPath() + "/CLIENT/html/carrito.html");
+    }
+
+    // ── Helpers privados ──────────────────────────────────────────────────────
+
+    /** Retorna null si el parámetro es nulo o vacío, su valor trim() en caso contrario. */
+    private String param(HttpServletRequest req, String name) {
+        String v = req.getParameter(name);
+        return (v == null || v.isBlank()) ? null : v.trim();
     }
 }

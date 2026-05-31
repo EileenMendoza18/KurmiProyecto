@@ -2,7 +2,6 @@ package com.kurmip.model.dao;
 
 import com.kurmip.db.Conexion;
 import java.sql.*;
-import java.text.SimpleDateFormat;
 import java.util.*;
 
 /**
@@ -97,7 +96,12 @@ public class DevolucionDAO {
         String sql =
             "SELECT d.ID_Devolucion, d.ID_Pedido, d.Motivo, d.Imagen_Prueba, " +
             "       d.Estado, d.Motivo_Respuesta, d.Fecha_Solicitud, d.Fecha_Respuesta, " +
-            "       p.Fecha_Pedido, p.Total_Pago " +
+            "       p.Fecha_Pedido, p.Total_Pago, " +
+            "       (SELECT pr.Imagen_Producto " +
+            "        FROM Carrito_Detalle cd " +
+            "        JOIN Productos pr ON cd.ID_Producto = pr.ID_Producto " +
+            "        WHERE cd.ID_Carrito = p.ID_Carrito AND cd.Estado_Carrito != 2 " +
+            "        ORDER BY cd.ID_DetalleCarrito ASC LIMIT 1) AS ImagenPrimera " +
             "FROM Solicitudes_Devolucion d " +
             "JOIN Pedidos_Cliente p ON d.ID_Pedido = p.ID_Pedido " +
             "WHERE d.ID_Cliente = ? " +
@@ -125,7 +129,12 @@ public class DevolucionDAO {
             "SELECT d.ID_Devolucion, d.ID_Pedido, d.Motivo, d.Imagen_Prueba, " +
             "       d.Estado, d.Motivo_Respuesta, d.Fecha_Solicitud, d.Fecha_Respuesta, " +
             "       p.Fecha_Pedido, p.Total_Pago, " +
-            "       CONCAT(u.Nombres, ' ', u.Apellidos) AS NombreCliente " +
+            "       CONCAT(u.Nombres, ' ', u.Apellidos) AS NombreCliente, " +
+            "       (SELECT pr.Imagen_Producto " +
+            "        FROM Carrito_Detalle cd " +
+            "        JOIN Productos pr ON cd.ID_Producto = pr.ID_Producto " +
+            "        WHERE cd.ID_Carrito = p.ID_Carrito AND cd.Estado_Carrito != 2 " +
+            "        ORDER BY cd.ID_DetalleCarrito ASC LIMIT 1) AS ImagenPrimera " +
             "FROM Solicitudes_Devolucion d " +
             "JOIN Pedidos_Cliente p ON d.ID_Pedido = p.ID_Pedido " +
             "JOIN Usuario u ON d.ID_Cliente = u.UsuarioID "
@@ -167,21 +176,32 @@ public class DevolucionDAO {
         String sqlDev  = "UPDATE Solicitudes_Devolucion " +
                          "SET Estado = ?, Motivo_Respuesta = ?, Fecha_Respuesta = NOW() " +
                          "WHERE ID_Devolucion = ? AND Estado = 'Pendiente'";
-        // Traer idPedido
-        String sqlGet  = "SELECT ID_Pedido FROM Solicitudes_Devolucion WHERE ID_Devolucion = ?";
+        // Traer idPedido e idCarrito juntos
+        String sqlGet  = "SELECT d.ID_Pedido, p.ID_Carrito " +
+                         "FROM Solicitudes_Devolucion d " +
+                         "JOIN Pedidos_Cliente p ON d.ID_Pedido = p.ID_Pedido " +
+                         "WHERE d.ID_Devolucion = ?";
         // Cambiar estado del pedido: 9 si aprobada, 8 si rechazada
         String sqlPed  = "UPDATE Pedidos_Cliente SET Estado_Pedido = ? WHERE ID_Pedido = ?";
+        // Productos y cantidades compradas (estado 3 = vendido)
+        String sqlProds = "SELECT ID_Producto, Cantidad_Producto " +
+                          "FROM Carrito_Detalle " +
+                          "WHERE ID_Carrito = ? AND Estado_Carrito = 3";
 
         try {
             con = cn.getConexion();
             con.setAutoCommit(false);
 
-            // Obtener idPedido
-            int idPedido = -1;
+            // Obtener idPedido e idCarrito
+            int idPedido  = -1;
+            int idCarrito = -1;
             try (PreparedStatement psGet = con.prepareStatement(sqlGet)) {
                 psGet.setInt(1, idDevolucion);
                 try (ResultSet rsGet = psGet.executeQuery()) {
-                    if (rsGet.next()) idPedido = rsGet.getInt("ID_Pedido");
+                    if (rsGet.next()) {
+                        idPedido  = rsGet.getInt("ID_Pedido");
+                        idCarrito = rsGet.getInt("ID_Carrito");
+                    }
                 }
             }
             if (idPedido == -1) { con.rollback(); return false; }
@@ -200,6 +220,36 @@ public class DevolucionDAO {
                 psPed.setInt(1, estadoPedido);
                 psPed.setInt(2, idPedido);
                 psPed.executeUpdate();
+            }
+
+            // Si se aprueba: devolver stock al inventario y reactivar productos agotados
+            if ("Aprobada".equals(nuevoEstado) && idCarrito != -1) {
+                try (PreparedStatement psProds = con.prepareStatement(sqlProds)) {
+                    psProds.setInt(1, idCarrito);
+                    try (ResultSet rsProds = psProds.executeQuery()) {
+                        while (rsProds.next()) {
+                            int idProd   = rsProds.getInt("ID_Producto");
+                            int cantidad = rsProds.getInt("Cantidad_Producto");
+
+                            // Reingresar al inventario (mismo patrón inverso al de compra)
+                            try (PreparedStatement psInv = con.prepareStatement(
+                                    "INSERT INTO Inventario (ID_Producto, StockInicial, CantidadAnadida) " +
+                                    "VALUES (?, 0, ?)")) {
+                                psInv.setInt(1, idProd);
+                                psInv.setInt(2, cantidad); // +cantidad = devolucion
+                                psInv.executeUpdate();
+                            }
+
+                            // Si estaba agotado (estado 2), reactivarlo a disponible (1)
+                            try (PreparedStatement psReact = con.prepareStatement(
+                                    "UPDATE Productos SET ID_Estado = 1 " +
+                                    "WHERE ID_Producto = ? AND ID_Estado = 2")) {
+                                psReact.setInt(1, idProd);
+                                psReact.executeUpdate();
+                            }
+                        }
+                    }
+                }
             }
 
             con.commit();
@@ -237,24 +287,20 @@ public class DevolucionDAO {
         fila.put("idPedido",        rs.getInt("ID_Pedido"));
         fila.put("motivo",          rs.getString("Motivo"));
         fila.put("imagenPrueba",    rs.getString("Imagen_Prueba"));
+        // imagenPrimera: imagen del primer producto del pedido (para la tarjeta cliente)
+        String imgPrimera = rs.getString("ImagenPrimera");
+        fila.put("imagenPrimera", (imgPrimera != null && !imgPrimera.isBlank()) ? imgPrimera : "inicioHelado.png");
         fila.put("estado",          rs.getString("Estado"));
         fila.put("motivoRespuesta", rs.getString("Motivo_Respuesta"));
-        fila.put("fechaSolicitud",  formatFecha(rs.getTimestamp("Fecha_Solicitud")));
-        fila.put("fechaRespuesta",  formatFecha(rs.getTimestamp("Fecha_Respuesta")));
-        fila.put("fechaPedido",     formatFecha(rs.getTimestamp("Fecha_Pedido")));
+        fila.put("fechaSolicitud",  DAOUtil.formatFecha(rs.getTimestamp("Fecha_Solicitud")));
+        fila.put("fechaRespuesta",  DAOUtil.formatFecha(rs.getTimestamp("Fecha_Respuesta")));
+        fila.put("fechaPedido",     DAOUtil.formatFecha(rs.getTimestamp("Fecha_Pedido")));
         fila.put("totalPago",       rs.getDouble("Total_Pago"));
         if (conCliente) fila.put("nombreCliente", rs.getString("NombreCliente"));
         return fila;
     }
 
-    private String formatFecha(Timestamp ts) {
-        if (ts == null) return null;
-        return new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(ts);
-    }
-
     private void cerrar() {
-        try { if (rs  != null) rs.close();  } catch (Exception ignored) {}
-        try { if (ps  != null) ps.close();  } catch (Exception ignored) {}
-        try { if (con != null) con.close(); } catch (Exception ignored) {}
+        DAOUtil.cerrar(rs, ps, con);
     }
 }

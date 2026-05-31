@@ -7,7 +7,6 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.Statement;
 import java.sql.Timestamp;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -240,20 +239,14 @@ public class SolicitudDAO {
         dto.setNombreSabor(rs.getString("Nombre_Sabor"));
         dto.setDescripcion(rs.getString("Descripcion"));
         dto.setEstado(rs.getString("Estado"));
-        dto.setFechaSolicitud(formatFecha(rs.getTimestamp("Fecha_Solicitud")));
-        dto.setFechaRespuesta(formatFecha(rs.getTimestamp("Fecha_Respuesta")));
+        dto.setFechaSolicitud(DAOUtil.formatFecha(rs.getTimestamp("Fecha_Solicitud")));
+        dto.setFechaRespuesta(DAOUtil.formatFecha(rs.getTimestamp("Fecha_Respuesta")));
         dto.setMotivoRechazo(rs.getString("Motivo_Rechazo"));
         if (conProveedor) {
             dto.setIdProveedor(rs.getInt("ID_Proveedor"));
             dto.setNombreProveedor(rs.getString("NombreProveedor"));
         }
         return dto;
-    }
-
-    /** Convierte un Timestamp a String legible; devuelve null si el timestamp es null. */
-    private String formatFecha(Timestamp ts) {
-        if (ts == null) return null;
-        return new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(ts);
     }
 
     public int insertarCategoria(String nombre, String descripcion) {
@@ -306,10 +299,8 @@ public boolean insertarRelacion(int idCategoria, int idSabor) {
         return s == null || s.trim().isEmpty();
     }
 
-    /** Cierra recursos JDBC en orden seguro. */
+    /** Cierra recursos JDBC en orden seguro. Delega en DAOUtil. */
     private void cerrar() {
-        try { if (rs  != null) rs.close();  } catch (Exception ignored) {}
-        try { if (ps  != null) ps.close();  } catch (Exception ignored) {}
-        try { if (con != null) con.close(); } catch (Exception ignored) {}
+        DAOUtil.cerrar(rs, ps, con);
     }
 }

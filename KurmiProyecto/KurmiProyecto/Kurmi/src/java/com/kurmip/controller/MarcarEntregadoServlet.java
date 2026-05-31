@@ -3,6 +3,7 @@ package com.kurmip.controller;
 import com.google.gson.Gson;
 import com.kurmip.model.dao.PedidoDAO;
 import com.kurmip.model.dto.UsuarioDTO;
+import com.kurmip.util.AuthHelper;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.*;
@@ -31,20 +32,11 @@ public class MarcarEntregadoServlet extends HttpServlet {
         response.setContentType("application/json;charset=UTF-8");
         Map<String, Object> result = new HashMap<>();
 
-        // ── Verificar sesión ───────────────────────────────────────────────────
-        HttpSession session = request.getSession(false);
-        if (session == null || session.getAttribute("usuarioLogueado") == null) {
-            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            result.put("ok", false);
-            result.put("msg", "No autorizado");
-            response.getWriter().write(gson.toJson(result));
-            return;
-        }
+        UsuarioDTO usuario = AuthHelper.obtenerUsuario(request, response);
+        if (usuario == null) return;
 
-        UsuarioDTO usuario = (UsuarioDTO) session.getAttribute("usuarioLogueado");
         int idProveedor = usuario.getId();
 
-        // ── Leer parámetros ────────────────────────────────────────────────────
         String idPedidoParam    = request.getParameter("idPedido");
         String nuevoEstadoParam = request.getParameter("nuevoEstado");
 
@@ -59,7 +51,6 @@ public class MarcarEntregadoServlet extends HttpServlet {
         try {
             int idPedido = Integer.parseInt(idPedidoParam.trim());
 
-            // nuevoEstado es OBLIGATORIO — el frontend debe mandarlo explícitamente
             if (nuevoEstadoParam == null || nuevoEstadoParam.isBlank()) {
                 response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
                 result.put("ok", false);
@@ -69,7 +60,6 @@ public class MarcarEntregadoServlet extends HttpServlet {
             }
             int nuevoEstado = Integer.parseInt(nuevoEstadoParam.trim());
 
-            // El proveedor solo puede manejar estados 4 (Preparando) y 5 (En bodega)
             if (nuevoEstado != 4 && nuevoEstado != 5) {
                 response.setStatus(HttpServletResponse.SC_FORBIDDEN);
                 result.put("ok", false);

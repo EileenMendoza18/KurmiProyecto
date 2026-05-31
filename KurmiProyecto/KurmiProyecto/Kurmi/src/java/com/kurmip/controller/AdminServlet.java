@@ -5,12 +5,12 @@ import com.kurmip.model.dao.PedidoDAO;
 import com.kurmip.model.dao.ProductoDAO;
 import com.kurmip.model.dao.UsuarioDAO;
 import com.kurmip.model.dto.UsuarioDTO;
+import com.kurmip.util.AuthHelper;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.HashMap;
@@ -20,19 +20,10 @@ import java.util.Map;
 /**
  * AdminServlet — Punto único para operaciones exclusivas del administrador.
  *
- * Fusiona:
- *   - CambiarEstadoProductoAdminServlet → POST ?accion=cambiarEstadoProducto
- *   - CambiarEstadoUsuarioAdminServlet  → POST ?accion=cambiarEstadoUsuario
- *   - ObtenerClientesAdminServlet       → GET  ?accion=clientes
- *   - VentasTotalesAdminServlet         → GET  ?accion=ventasTotales
- *
- * Todos los métodos verifican que el usuario en sesión sea Administrador.
- *
- * Ejemplos de uso en el frontend:
- *   fetch(`${BASE_URL}/AdminServlet?accion=ventasTotales`)
- *   fetch(`${BASE_URL}/AdminServlet?accion=clientes`)
- *   fetch(`${BASE_URL}/AdminServlet`, { method:'POST', body: 'accion=cambiarEstadoProducto&idProducto=5&idEstado=2' })
- *   fetch(`${BASE_URL}/AdminServlet`, { method:'POST', body: 'accion=cambiarEstadoUsuario&idUsuario=3&idEstado=1' })
+ * GET  ?accion=ventasTotales  → { totalVentas, totalPedidos, pedidosEntregados, pedidosPendientes }
+ * GET  ?accion=clientes       → List<UsuarioDTO> con todos los usuarios del sistema
+ * POST ?accion=cambiarEstadoProducto  → idProducto, idEstado (1=Disponible 2=Agotado 3=Descontinuado)
+ * POST ?accion=cambiarEstadoUsuario   → idUsuario, idEstado  (1=Activo 2=Inactivo 3=Pendiente)
  */
 @WebServlet(name = "AdminServlet", urlPatterns = {"/AdminServlet"})
 public class AdminServlet extends HttpServlet {
@@ -47,7 +38,7 @@ public class AdminServlet extends HttpServlet {
 
         response.setContentType("application/json;charset=UTF-8");
 
-        UsuarioDTO admin = verificarAdmin(request, response);
+        UsuarioDTO admin = AuthHelper.verificarAdmin(request, response);
         if (admin == null) return;
 
         String accion = request.getParameter("accion");
@@ -60,19 +51,11 @@ public class AdminServlet extends HttpServlet {
         try (PrintWriter out = response.getWriter()) {
             switch (accion) {
 
-                // -----------------------------------------------------------------
-                // Antes: VentasTotalesAdminServlet
-                // Devuelve: { totalVentas, totalPedidos, pedidosEntregados, pedidosPendientes }
-                // -----------------------------------------------------------------
                 case "ventasTotales" -> {
                     Map<String, Object> resultado = pedidoDAO.obtenerVentasTotalesAdmin();
                     out.print(gson.toJson(resultado));
                 }
 
-                // -----------------------------------------------------------------
-                // Antes: ObtenerClientesAdminServlet
-                // Devuelve: List<UsuarioDTO> con todos los usuarios del sistema
-                // -----------------------------------------------------------------
                 case "clientes" -> {
                     UsuarioDAO dao = new UsuarioDAO();
                     List<UsuarioDTO> usuarios = dao.obtenerTodosLosUsuarios();
@@ -99,7 +82,7 @@ public class AdminServlet extends HttpServlet {
         response.setContentType("application/json;charset=UTF-8");
         Map<String, Object> resp = new HashMap<>();
 
-        UsuarioDTO admin = verificarAdmin(request, response);
+        UsuarioDTO admin = AuthHelper.verificarAdmin(request, response);
         if (admin == null) return;
 
         String accion = request.getParameter("accion");
@@ -114,10 +97,6 @@ public class AdminServlet extends HttpServlet {
         try (PrintWriter out = response.getWriter()) {
             switch (accion) {
 
-                // -----------------------------------------------------------------
-                // Antes: CambiarEstadoProductoAdminServlet
-                // Params: idProducto (int), idEstado (int) 1=Disponible 2=Agotado 3=Descontinuado
-                // -----------------------------------------------------------------
                 case "cambiarEstadoProducto" -> {
                     String idProductoStr = request.getParameter("idProducto");
                     String idEstadoStr   = request.getParameter("idEstado");
@@ -139,10 +118,6 @@ public class AdminServlet extends HttpServlet {
                     out.print(gson.toJson(resp));
                 }
 
-                // -----------------------------------------------------------------
-                // Antes: CambiarEstadoUsuarioAdminServlet
-                // Params: idUsuario (int), idEstado (int) 1=Activo 2=Inactivo 3=Pendiente
-                // -----------------------------------------------------------------
                 case "cambiarEstadoUsuario" -> {
                     String idUsuarioStr = request.getParameter("idUsuario");
                     String idEstadoStr  = request.getParameter("idEstado");
@@ -182,24 +157,6 @@ public class AdminServlet extends HttpServlet {
     }
 
     // ── Utilidades ────────────────────────────────────────────────────────────
-
-    /** Verifica sesión activa con rol Administrador. Responde 401/403 si no pasa. */
-    private UsuarioDTO verificarAdmin(HttpServletRequest request,
-                                      HttpServletResponse response) throws IOException {
-        HttpSession session = request.getSession(false);
-        if (session == null || session.getAttribute("usuarioLogueado") == null) {
-            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            response.getWriter().print("{\"ok\":false,\"error\":\"No hay sesión activa\"}");
-            return null;
-        }
-        UsuarioDTO usuario = (UsuarioDTO) session.getAttribute("usuarioLogueado");
-        if (!"Administrador".equals(usuario.getRolNombre())) {
-            response.setStatus(HttpServletResponse.SC_FORBIDDEN);
-            response.getWriter().print("{\"ok\":false,\"error\":\"Acceso denegado\"}");
-            return null;
-        }
-        return usuario;
-    }
 
     private boolean isBlank(String s) { return s == null || s.isBlank(); }
 

@@ -669,10 +669,13 @@ function crearTarjetaDevolucion(dev) {
 
     const card = document.createElement('div');
     card.className = 'pedido__card dev__solicitud-card';
+    card.style.cursor = 'pointer';
 
     const BASE_IMG = '/KurmiProyect/RESOURCES/img/';
-    const imgSrc   = dev.imagenPrueba
-        ? BASE_IMG + 'devoluciones/' + dev.imagenPrueba
+
+    // Bug fix 1: mostrar imagen del primer producto del pedido, no imagenPrueba
+    const imgSrc = (dev.imagenPrimera && dev.imagenPrimera !== 'inicioHelado.png')
+        ? BASE_IMG + dev.imagenPrimera
         : '../../RESOURCES/img/inicioHelado.png';
 
     card.innerHTML = `
@@ -700,6 +703,20 @@ function crearTarjetaDevolucion(dev) {
             </p>
         </div>
     `;
+
+    // Bug fix 2: click abre el modal con los productos del pedido original
+    card.addEventListener('click', async () => {
+        try {
+            const res = await fetch('/KurmiProyect/PedidosServlet?estado=9');
+            if (!res.ok) return;
+            const pedidos = await res.json();
+            const pedido  = pedidos.find(p => p.idPedido === dev.idPedido);
+            if (pedido) abrirModal(pedido, '9');
+        } catch (e) {
+            console.error('Error al abrir detalle de devolución:', e);
+        }
+    });
+
     return card;
 }
 

@@ -3,6 +3,7 @@ package com.kurmip.controller;
 import com.google.gson.Gson;
 import com.kurmip.model.dao.PedidoDAO;
 import com.kurmip.model.dto.UsuarioDTO;
+import com.kurmip.util.AuthHelper;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.*;
@@ -24,30 +25,16 @@ public class CancelacionesAdminServlet extends HttpServlet {
     private final PedidoDAO pedidoDAO = new PedidoDAO();
     private final Gson gson = new Gson();
 
-    private boolean verificarAdmin(HttpServletRequest req, HttpServletResponse res)
-            throws IOException {
-        HttpSession session = req.getSession(false);
-        if (session == null || session.getAttribute("usuarioLogueado") == null) {
-            res.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            res.getWriter().write("{\"error\":\"No autorizado\"}");
-            return false;
-        }
-        UsuarioDTO usuario = (UsuarioDTO) session.getAttribute("usuarioLogueado");
-        if (usuario.getIdRol() != 2) {
-            res.setStatus(HttpServletResponse.SC_FORBIDDEN);
-            res.getWriter().write("{\"error\":\"Solo el administrador puede acceder\"}");
-            return false;
-        }
-        return true;
-    }
-
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-        response.setContentType("application/json;charset=UTF-8");
-        if (!verificarAdmin(request, response)) return;
 
-        String filtro = request.getParameter("filtro"); // Pendiente | Aprobada | Rechazada | null=todas
+        response.setContentType("application/json;charset=UTF-8");
+
+        UsuarioDTO admin = AuthHelper.verificarAdmin(request, response);
+        if (admin == null) return;
+
+        String filtro = request.getParameter("filtro");
         List<Map<String, Object>> lista = pedidoDAO.obtenerSolicitudesCancelacion(filtro);
         response.getWriter().write(gson.toJson(lista));
     }
@@ -55,13 +42,16 @@ public class CancelacionesAdminServlet extends HttpServlet {
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
+
         response.setContentType("application/json;charset=UTF-8");
-        if (!verificarAdmin(request, response)) return;
+
+        UsuarioDTO admin = AuthHelper.verificarAdmin(request, response);
+        if (admin == null) return;
 
         Map<String, Object> result = new HashMap<>();
-        String idParam       = request.getParameter("idCancelacion");
-        String decision      = request.getParameter("decision");
-        String motivoResp    = request.getParameter("motivoRespuesta");
+        String idParam    = request.getParameter("idCancelacion");
+        String decision   = request.getParameter("decision");
+        String motivoResp = request.getParameter("motivoRespuesta");
 
         if (idParam == null || decision == null || idParam.isBlank() || decision.isBlank()) {
             response.setStatus(HttpServletResponse.SC_BAD_REQUEST);

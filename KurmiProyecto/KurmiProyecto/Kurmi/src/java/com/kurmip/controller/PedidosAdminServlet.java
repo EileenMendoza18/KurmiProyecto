@@ -3,6 +3,7 @@ package com.kurmip.controller;
 import com.google.gson.Gson;
 import com.kurmip.model.dao.PedidoDAO;
 import com.kurmip.model.dto.UsuarioDTO;
+import com.kurmip.util.AuthHelper;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.*;
@@ -17,40 +18,25 @@ public class PedidosAdminServlet extends HttpServlet {
     private final PedidoDAO pedidoDAO = new PedidoDAO();
     private final Gson gson = new Gson();
 
-    private boolean verificarAdmin(HttpServletRequest request, HttpServletResponse response)
-            throws IOException {
-        HttpSession session = request.getSession(false);
-        if (session == null || session.getAttribute("usuarioLogueado") == null) {
-            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            response.getWriter().write("{\"error\":\"No autorizado\"}");
-            return false;
-        }
-        UsuarioDTO usuario = (UsuarioDTO) session.getAttribute("usuarioLogueado");
-        if (usuario.getIdRol() != 2) {
-            response.setStatus(HttpServletResponse.SC_FORBIDDEN);
-            response.getWriter().write("{\"error\":\"Solo el administrador puede acceder\"}");
-            return false;
-        }
-        return true;
-    }
-
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
 
         response.setContentType("application/json;charset=UTF-8");
-        if (!verificarAdmin(request, response)) return;
+
+        UsuarioDTO admin = AuthHelper.verificarAdmin(request, response);
+        if (admin == null) return;
 
         String filtro = request.getParameter("filtro");
         int filtroEstado;
         if ("entregados".equalsIgnoreCase(filtro)) {
-            filtroEstado = 8;   // Entregado = 8
+            filtroEstado = 8;
         } else if ("cancelados".equalsIgnoreCase(filtro)) {
-            filtroEstado = 3;   // Cancelado = 3
+            filtroEstado = 3;
         } else if ("todos".equalsIgnoreCase(filtro)) {
             filtroEstado = -1;
         } else {
-            filtroEstado = 0;   // activos por defecto
+            filtroEstado = 0;
         }
 
         List<Map<String, Object>> pedidos = pedidoDAO.obtenerPedidosAdminAgrupados(filtroEstado);
@@ -62,7 +48,9 @@ public class PedidosAdminServlet extends HttpServlet {
             throws ServletException, IOException {
 
         response.setContentType("application/json;charset=UTF-8");
-        if (!verificarAdmin(request, response)) return;
+
+        UsuarioDTO admin = AuthHelper.verificarAdmin(request, response);
+        if (admin == null) return;
 
         Map<String, Object> result = new HashMap<>();
 
@@ -82,7 +70,6 @@ public class PedidosAdminServlet extends HttpServlet {
             int idPedido    = Integer.parseInt(idPedidoParam.trim());
             int nuevoEstado = Integer.parseInt(nuevoEstadoParam.trim());
 
-            // Admin maneja estados 5 al 9
             if (nuevoEstado < 4 || nuevoEstado > 9) {
                 response.setStatus(HttpServletResponse.SC_FORBIDDEN);
                 result.put("ok", false);
