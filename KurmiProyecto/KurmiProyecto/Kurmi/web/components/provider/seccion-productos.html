@@ -1,0 +1,136 @@
+<div class="seccion-header">
+    <h2>Mis productos</h2>
+    <button class="btn-primario" id="btnNuevoProducto">＋ Nuevo producto</button>
+</div>
+
+<div class="filtros-bar">
+    <input type="text" id="filtroNombre" class="filtro-input" placeholder="Buscar por nombre…" />
+    <select id="filtroEstado" class="filtro-select">
+        <option value="">Todos los estados</option>
+        <option value="Disponible">Disponible</option>
+        <option value="Agotado">Agotado</option>
+        <option value="Descontinuado">Descontinuado</option>
+    </select>
+    <button class="btn-limpiar" id="btnLimpiarFiltros">✕ Limpiar</button>
+</div>
+
+<p class="contador-resultados" id="contadorResultados"></p>
+
+<div id="listaProductos" class="grid-productos">
+    <p class="cargando">Cargando tus productos…</p>
+</div>
+
+<!-- Modal CREAR -->
+<div id="modalCrear" class="modal-overlay" style="display:none">
+    <div class="modal">
+        <div class="modal__header">
+            <h3>➕ Nuevo producto</h3>
+            <button class="modal__cerrar" id="btnCerrarModalCrear">✕</button>
+        </div>
+        <div class="modal__body">
+            <label>Nombre del producto *</label>
+            <input type="text" id="inp-nombre" placeholder="Ej: Helado de mango" />
+
+            <label>Precio ($) *</label>
+            <input type="number" id="inp-precio" placeholder="Ej: 5000" min="0" step="100" />
+
+            <label>Stock inicial *</label>
+            <input type="number" id="inp-stock" placeholder="Ej: 20" min="0" step="1" />
+
+            <label>Descripción *</label>
+            <textarea id="inp-descripcion" placeholder="Describe el producto…" rows="3"></textarea>
+
+            <label>Unidad de medida *</label>
+            <input type="text" id="inp-unidad" placeholder="Ej: Porción, Bola, Unidad" />
+
+            <label>Fecha de vencimiento *</label>
+            <input type="date" id="inp-fechaVenc" />
+
+            <label>Categoría y sabor *</label>
+            <select id="inp-relaCatSabor">
+                <option value="">Cargando…</option>
+            </select>
+
+            <label>Imagen del producto</label>
+            <div class="input-imagen-wrap">
+                <input type="file" id="inp-imagen"
+                       accept="image/jpeg,image/png,image/webp,image/gif" />
+                <div id="preview-wrap" style="display:none">
+                    <img id="preview-img" src="" alt="Vista previa" class="preview-img" />
+                    <span id="preview-info" class="preview-info"></span>
+                </div>
+            </div>
+
+            <div id="feedback-modal" class="feedback" style="display:none"></div>
+        </div>
+        <div class="modal__footer">
+            <button class="btn-secundario" id="btnCancelarModalCrear">Cancelar</button>
+            <button class="btn-primario"   id="btnGuardarProducto">Guardar producto</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal EDITAR -->
+<div id="modalEditar" class="modal-overlay" style="display:none">
+    <div class="modal">
+        <div class="modal__header">
+            <h3>✏️ Editar producto</h3>
+            <button class="modal__cerrar" id="btnCerrarModalEditar">✕</button>
+        </div>
+        <div class="modal__body">
+            <input type="hidden" id="edit-id" />
+
+            <label>Nombre del producto *</label>
+            <input type="text" id="edit-nombre" placeholder="Ej: Helado de mango" />
+
+            <label>Precio ($) *</label>
+            <input type="number" id="edit-precio" placeholder="Ej: 5000" min="0" step="100" />
+
+            <label>Descripción *</label>
+            <textarea id="edit-descripcion" placeholder="Describe el producto…" rows="3"></textarea>
+
+            <label>Unidad de medida *</label>
+            <input type="text" id="edit-unidad" placeholder="Ej: Porción, Bola, Unidad" />
+
+            <label>Fecha de vencimiento *</label>
+            <input type="date" id="edit-fechaVenc" />
+
+            <label>Categoría y sabor *</label>
+            <select id="edit-relaCatSabor">
+                <option value="">Cargando…</option>
+            </select>
+
+            <div class="stock-info-box">
+                <p>📦 Stock actual: <strong id="edit-stockActual">—</strong></p>
+            </div>
+
+            <label>Cantidad a añadir al stock</label>
+            <input type="number" id="edit-cantidadAniadida"
+                   placeholder="Ej: 10 (déjalo en 0 si no cambias stock)"
+                   min="0" step="1" value="0" />
+            <small class="hint-text">El stock final será: stock actual + cantidad añadida</small>
+
+            <label>Estado del producto *</label>
+            <select id="edit-estado">
+                <option value="1">Activo</option>
+                <option value="3">Descontinuado</option>
+            </select>
+
+            <label>Nueva imagen (opcional)</label>
+            <div class="input-imagen-wrap">
+                <input type="file" id="edit-imagen"
+                       accept="image/jpeg,image/png,image/webp,image/gif" />
+                <div id="edit-preview-wrap" style="display:none">
+                    <img id="edit-preview-img" src="" alt="Vista previa" class="preview-img" />
+                    <span id="edit-preview-info" class="preview-info"></span>
+                </div>
+            </div>
+
+            <div id="feedback-editar" class="feedback" style="display:none"></div>
+        </div>
+        <div class="modal__footer">
+            <button class="btn-secundario" id="btnCancelarModalEditar">Cancelar</button>
+            <button class="btn-primario"   id="btnGuardarEdicion">Guardar cambios</button>
+        </div>
+    </div>
+</div>

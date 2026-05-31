@@ -1,0 +1,96 @@
+<div class="seccion-header">
+    <h2>📋 Mis solicitudes</h2>
+    <button class="btn-primario" id="btnNuevaSolicitud">＋ Nueva solicitud</button>
+</div>
+
+<div class="filtros-bar">
+    <select id="filtroEstadoSolicitud" class="filtro-select">
+        <option value="">Todos los estados</option>
+        <option value="Pendiente">⏳ Pendiente</option>
+        <option value="Aprobado">✅ Aprobado</option>
+        <option value="Rechazado">❌ Rechazado</option>
+    </select>
+    <button class="btn-limpiar" id="btnLimpiarFiltroSol">✕ Limpiar</button>
+</div>
+
+<p class="contador-resultados" id="contadorSolicitudes"></p>
+
+<div id="listaSolicitudes" class="solicitudes-lista">
+    <p class="cargando">Cargando solicitudes…</p>
+</div>
+
+<!-- Modal nueva solicitud -->
+<div id="modalCrearSolicitud" class="modal-overlay" style="display:none">
+    <div class="modal modal--solicitud">
+        <div class="modal__header">
+            <h3>📋 Nueva solicitud de categoría / sabor</h3>
+            <button class="modal__cerrar" id="cerrarModalSolicitud">✕</button>
+        </div>
+        <div class="modal__body">
+            <p class="sol-modal__desc">
+                ¿Necesitas una nueva categoría o sabor para tus productos?
+                Envía una solicitud al administrador y él la revisará.
+            </p>
+
+            <label class="sol-label">Tipo de solicitud <span class="sol-required">*</span></label>
+            <select id="sol-tipo" class="filtro-select" style="width:100%;margin-bottom:14px;">
+                <option value="">— Selecciona el tipo —</option>
+                <option value="Categoria">🏷 Solo categoría nueva</option>
+                <option value="Sabor">🍦 Solo sabor nuevo</option>
+                <option value="Ambos">🏷🍦 Categoría y sabor nuevos</option>
+            </select>
+            <span class="error-msg" id="error-sol-tipo"></span>
+
+            <div id="sol-campo-cat" style="display:none">
+                <label class="sol-label">Nombre de la categoría <span class="sol-required">*</span></label>
+                <input type="text" id="sol-nombreCat" class="filtro-input"
+                       style="width:100%;margin-bottom:4px;"
+                       placeholder="Ej: Paletas artesanales" maxlength="100" />
+                <span class="error-msg" id="error-sol-cat"></span>
+            </div>
+
+            <div id="sol-campo-sabor-existente" style="display:none">
+                <label class="sol-label" style="margin-top:12px;display:block;">
+                    Relacionar con sabor existente <span class="sol-required">*</span>
+                </label>
+                <select id="sol-idSaborExistente" class="filtro-select" style="width:100%;margin-bottom:4px;">
+                    <option value="">— Selecciona un sabor —</option>
+                </select>
+                <span class="error-msg" id="error-sol-sabor-existente"></span>
+            </div>
+
+            <div id="sol-campo-sabor" style="display:none">
+                <label class="sol-label" style="margin-top:12px;display:block;">
+                    Nombre del sabor <span class="sol-required">*</span>
+                </label>
+                <input type="text" id="sol-nombreSabor" class="filtro-input"
+                       style="width:100%;margin-bottom:4px;"
+                       placeholder="Ej: Maracuyá con chile" maxlength="100" />
+                <span class="error-msg" id="error-sol-sabor"></span>
+            </div>
+
+            <div id="sol-campo-cat-existente" style="display:none">
+                <label class="sol-label" style="margin-top:12px;display:block;">
+                    Relacionar con categoría existente <span class="sol-required">*</span>
+                </label>
+                <select id="sol-idCatExistente" class="filtro-select" style="width:100%;margin-bottom:4px;">
+                    <option value="">— Selecciona una categoría —</option>
+                </select>
+                <span class="error-msg" id="error-sol-cat-existente"></span>
+            </div>
+
+            <label class="sol-label" style="margin-top:14px;display:block;">
+                Descripción adicional (opcional)
+            </label>
+            <textarea id="sol-descripcion" class="sol-textarea"
+                      placeholder="Describe brevemente por qué necesitas esta categoría o sabor…"
+                      maxlength="255" rows="3"></textarea>
+
+            <div id="feedbackSolicitud"></div>
+        </div>
+        <div class="modal__footer">
+            <button class="btn-secundario" id="cancelarModalSolicitud">Cancelar</button>
+            <button class="btn-primario"   id="confirmarNuevaSolicitud">Enviar solicitud</button>
+        </div>
+    </div>
+</div>

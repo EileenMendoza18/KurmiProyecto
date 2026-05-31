@@ -1,0 +1,165 @@
+/* ============================================================
+   Modal Detalle Producto
+   Antes estaban inyectados desde index.js con inyectarEstilosModal()
+   ============================================================ */
+
+.modal-detalle-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(74, 59, 83, 0.55);
+    backdrop-filter: blur(3px);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    animation: fadeInOverlay .18s ease;
+}
+
+@keyframes fadeInOverlay {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+
+.modal-detalle {
+    background: #fff;
+    border-radius: 20px;
+    max-width: 520px;
+    width: 100%;
+    box-shadow: 0 12px 48px rgba(74, 59, 83, .22);
+    overflow: hidden;
+    animation: slideUpModal .22s ease;
+    display: flex;
+    flex-direction: column;
+}
+
+@keyframes slideUpModal {
+    from { transform: translateY(28px); opacity: 0; }
+    to   { transform: translateY(0);    opacity: 1; }
+}
+
+.modal-detalle__img-wrap {
+    position: relative;
+    width: 100%;
+    height: 220px;
+    background: #F4EEFF;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.modal-detalle__img-wrap img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.modal-detalle__cerrar {
+    position: absolute;
+    top: 12px;
+    right: 14px;
+    background: rgba(255, 255, 255, .85);
+    border: none;
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    font-size: 1rem;
+    cursor: pointer;
+    color: #4A3B53;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, .15);
+    transition: background .15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-detalle__cerrar:hover { background: #fff; }
+
+.modal-detalle__body {
+    padding: 24px 28px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.modal-detalle__nombre {
+    font-size: 1.35rem;
+    font-weight: 700;
+    color: #4A3B53;
+    margin: 0;
+}
+
+.modal-detalle__precio {
+    font-size: 1.45rem;
+    font-weight: 800;
+    color: #7C4DFF;
+    margin: 0;
+}
+
+.modal-detalle__desc {
+    font-size: .9rem;
+    color: #666;
+    line-height: 1.5;
+    margin: 0;
+}
+
+.modal-detalle__grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px 16px;
+    margin-top: 4px;
+}
+
+.modal-detalle__campo {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.modal-detalle__label {
+    font-size: .72rem;
+    font-weight: 700;
+    color: #a68fc0;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+}
+
+.modal-detalle__valor {
+    font-size: .88rem;
+    color: #333;
+    font-weight: 500;
+}
+
+.modal-detalle__footer {
+    padding: 0 28px 24px;
+    display: flex;
+    gap: 10px;
+}
+
+.modal-detalle__btn-comprar {
+    flex: 1;
+    padding: 12px;
+    background: #7C4DFF;
+    color: #fff;
+    border: none;
+    border-radius: 12px;
+    font-size: .95rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background .15s;
+}
+
+.modal-detalle__btn-comprar:hover { background: #6a3de8; }
+
+.modal-detalle__btn-carrito {
+    padding: 12px 16px;
+    background: #F4EEFF;
+    color: #7C4DFF;
+    border: 2px solid #7C4DFF;
+    border-radius: 12px;
+    font-size: .95rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background .15s;
+}
+
+.modal-detalle__btn-carrito:hover { background: #e8d8ff; }

@@ -270,3 +270,35 @@ main.tienda-main {
     border-color: #B1B2FF;
     box-shadow: 0 0 0 3px rgba(177,178,255,0.25);
 }
+/* ── Bloques de categoría generados por JS ─────────────────────────────────── */
+/* Antes: seccion.style.marginBottom = '40px' en index.js */
+.categoria-bloque {
+    margin-bottom: 40px;
+}
+
+/* Antes: titulo.style.cssText = 'font-size:1.6rem;...' en crearBloqueCategoria() */
+.categoria-titulo {
+    font-size: 1.6rem;
+    color: #4A3B53;
+    margin-bottom: 20px;
+    font-weight: 600;
+}
+
+/* Variante compacta para resultados de búsqueda/filtro */
+/* Antes: titulo.style.cssText = 'font-size:1.4rem;...' en renderizarPorCategorias() */
+.categoria-titulo--filtro {
+    font-size: 1.4rem;
+    color: #4A3B53;
+    margin-bottom: 20px;
+    font-weight: 600;
+}
+
+/* Antes: tarjetaClonada.style.cursor = 'pointer' en mapearDatosTarjeta() */
+.products .tarjeta {
+    cursor: pointer;
+}
+
+/* Antes: nuevaCat.style.cursor = 'pointer' en cargarCategorias() */
+.tarjetas_categorias {
+    cursor: pointer;
+}

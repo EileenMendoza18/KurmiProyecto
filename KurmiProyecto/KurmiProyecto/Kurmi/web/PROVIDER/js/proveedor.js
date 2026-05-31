@@ -1,15 +1,18 @@
 import { isValidInput, clearError } from '../../helpers/index.js';
 
-
 /**
  * proveedor.js — Panel del proveedor Kurmi
+ * Los HTMLs de cada sección viven en /components/provider/*.html
+ * y se cargan con fetchComponent (DOM externo, sin strings incrustadas).
  */
 
-const BASE_URL = '/KurmiProyect';
-const BASE_IMG = `${BASE_URL}/RESOURCES/img/`;
-const IMG_DEF  = `${BASE_URL}/RESOURCES/img/inicioHelado.png`;
+const BASE_URL  = '/KurmiProyect';
+const BASE_IMG  = `${BASE_URL}/RESOURCES/img/`;
+const IMG_DEF   = `${BASE_URL}/RESOURCES/img/inicioHelado.png`;
+const COMP_PATH = `${BASE_URL}/components/provider`;
 
 let todosLosProductos = [];
+let misSolicitudes    = [];
 
 // ── Arranque ──────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
@@ -24,12 +27,13 @@ function configurarNavegacion() {
         btn.addEventListener('click', () => {
             document.querySelectorAll('.nav__btn').forEach(b => b.classList.remove('nav__btn--activo'));
             btn.classList.add('nav__btn--activo');
+
             const seccion = btn.dataset.seccion;
-            if (seccion === 'productos') renderSeccionProductos();
-            else if (seccion === 'pagos') renderSeccionPagos(); 
-            else if (seccion === 'perfil') renderSeccionPerfil();
-            else if (seccion === 'contacto') renderSeccionNosotros();
-            else if (seccion === 'solicitudes') renderSeccionSolicitudes();
+            if      (seccion === 'productos')   renderSeccionProductos();
+            else if (seccion === 'pagos')        renderSeccionPagos();
+            else if (seccion === 'perfil')       renderSeccionPerfil();
+            else if (seccion === 'contacto')     renderSeccionNosotros();
+            else if (seccion === 'solicitudes')  renderSeccionSolicitudes();
             else document.getElementById('contenidoPrincipal').innerHTML =
                 `<p style="padding:40px;color:#999">Sección en construcción.</p>`;
         });
@@ -48,48 +52,26 @@ async function cargarNombreProveedor() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// UTILIDAD: inyectar componente HTML en el main y devolver el contenedor
+// ─────────────────────────────────────────────────────────────────────────────
+async function cargarSeccion(nombreArchivo) {
+    const main = document.getElementById('contenidoPrincipal');
+    main.innerHTML = '<p class="cargando">Cargando…</p>';
+    const res  = await fetch(`${COMP_PATH}/${nombreArchivo}`);
+    const html = await res.text();
+    main.innerHTML = html;
+    return main;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // SECCIÓN MIS PRODUCTOS
 // ─────────────────────────────────────────────────────────────────────────────
-function renderSeccionProductos() {
-    const main = document.getElementById('contenidoPrincipal');
-    main.innerHTML = `
-        <div class="seccion-header">
-            <h2>Mis productos</h2>
-            <button class="btn-primario" id="btnNuevoProducto">＋ Nuevo producto</button>
-        </div>
-
-        <div class="filtros-bar">
-            <input type="text" id="filtroNombre" class="filtro-input" placeholder="Buscar por nombre…" />
-            <select id="filtroEstado" class="filtro-select">
-                <option value="">Todos los estados</option>
-                <option value="Disponible">Disponible</option>
-                <option value="Agotado">Agotado</option>
-                <option value="Descontinuado">Descontinuado</option>
-            </select>
-            <button class="btn-limpiar" id="btnLimpiarFiltros">✕ Limpiar</button>
-        </div>
-
-        <p class="contador-resultados" id="contadorResultados"></p>
-
-        <div id="listaProductos" class="grid-productos">
-            <p class="cargando">Cargando tus productos…</p>
-        </div>
-
-        <!-- Modal CREAR -->
-        <div id="modalCrear" class="modal-overlay" style="display:none">
-            ${htmlModalCrear()}
-        </div>
-
-        <!-- Modal EDITAR -->
-        <div id="modalEditar" class="modal-overlay" style="display:none">
-            ${htmlModalEditar()}
-        </div>
-    `;
+async function renderSeccionProductos() {
+    await cargarSeccion('seccion-productos.html');
 
     document.getElementById('filtroNombre').addEventListener('input',  aplicarFiltros);
     document.getElementById('filtroEstado').addEventListener('change', aplicarFiltros);
     document.getElementById('btnLimpiarFiltros').addEventListener('click', limpiarFiltros);
-
     document.getElementById('btnNuevoProducto').addEventListener('click', abrirModalCrear);
 
     configurarModalCrear();
@@ -137,9 +119,12 @@ function renderProductos(lista) {
     });
 }
 
-// ── Tarjeta de producto ───────────────────────────────────────────────────────
+// ── Tarjeta de producto (solo datos, estructura en memoria corta) ─────────────
 function tarjetaProducto(p) {
-    const urlImg = (p.imagen && !['default.png', 'inicioHelado.png'].includes(p.imagen)) ? BASE_IMG + p.imagen : IMG_DEF;
+    const urlImg = (p.imagen && !['default.png', 'inicioHelado.png'].includes(p.imagen))
+        ? BASE_IMG + p.imagen
+        : IMG_DEF;
+
     const badgeClass = {
         'Disponible':    'badge--verde',
         'Agotado':       'badge--rojo',
@@ -161,12 +146,8 @@ function tarjetaProducto(p) {
                 <p  class="tarjeta-prov__stock">Stock: <strong>${p.stock}</strong></p>
             </div>
             <div class="tarjeta-prov__acciones">
-                <button class="btn-editar" data-id="${p.idProducto}" data-nombre="${p.nombre}" title="Editar producto">
-                    Editar
-                </button>
-                <button class="btn-eliminar" data-id="${p.idProducto}" data-nombre="${p.nombre}" title="Desactivar producto">
-                    Eliminar
-                </button>
+                <button class="btn-editar"   data-id="${p.idProducto}" data-nombre="${p.nombre}" title="Editar producto">Editar</button>
+                <button class="btn-eliminar" data-id="${p.idProducto}" data-nombre="${p.nombre}" title="Desactivar producto">Eliminar</button>
             </div>
         </div>
     `;
@@ -191,59 +172,8 @@ function limpiarFiltros() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// MODAL CREAR PRODUCTO
+// MODAL CREAR PRODUCTO  (HTML viene de seccion-productos.html)
 // ─────────────────────────────────────────────────────────────────────────────
-function htmlModalCrear() {
-    return `
-        <div class="modal">
-            <div class="modal__header">
-                <h3>➕ Nuevo producto</h3>
-                <button class="modal__cerrar" id="btnCerrarModalCrear">✕</button>
-            </div>
-            <div class="modal__body">
-                <label>Nombre del producto *</label>
-                <input type="text" id="inp-nombre" placeholder="Ej: Helado de mango" />
-
-                <label>Precio ($) *</label>
-                <input type="number" id="inp-precio" placeholder="Ej: 5000" min="0" step="100" />
-
-                <label>Stock inicial *</label>
-                <input type="number" id="inp-stock" placeholder="Ej: 20" min="0" step="1" />
-
-                <label>Descripción *</label>
-                <textarea id="inp-descripcion" placeholder="Describe el producto…" rows="3"></textarea>
-
-                <label>Unidad de medida *</label>
-                <input type="text" id="inp-unidad" placeholder="Ej: Porción, Bola, Unidad" />
-
-                <label>Fecha de vencimiento *</label>
-                <input type="date" id="inp-fechaVenc" />
-
-                <label>Categoría y sabor *</label>
-                <select id="inp-relaCatSabor">
-                    <option value="">Cargando…</option>
-                </select>
-
-                <label>Imagen del producto</label>
-                <div class="input-imagen-wrap">
-                    <input type="file" id="inp-imagen"
-                           accept="image/jpeg,image/png,image/webp,image/gif" />
-                    <div id="preview-wrap" style="display:none">
-                        <img id="preview-img" src="" alt="Vista previa" class="preview-img" />
-                        <span id="preview-info" class="preview-info"></span>
-                    </div>
-                </div>
-
-                <div id="feedback-modal" class="feedback" style="display:none"></div>
-            </div>
-            <div class="modal__footer">
-                <button class="btn-secundario" id="btnCancelarModalCrear">Cancelar</button>
-                <button class="btn-primario"   id="btnGuardarProducto">Guardar producto</button>
-            </div>
-        </div>
-    `;
-}
-
 function abrirModalCrear() {
     ['inp-nombre','inp-precio','inp-stock','inp-descripcion','inp-unidad','inp-fechaVenc'].forEach(id => {
         const el = document.getElementById(id);
@@ -264,9 +194,7 @@ function abrirModalCrear() {
 
 function configurarModalCrear() {
     document.getElementById('modalCrear').addEventListener('click', e => {
-        if (e.target.id === 'modalCrear' ||
-            e.target.id === 'btnCerrarModalCrear' ||
-            e.target.id === 'btnCancelarModalCrear') {
+        if (['modalCrear','btnCerrarModalCrear','btnCancelarModalCrear'].includes(e.target.id)) {
             cerrarModalCrear();
         }
     });
@@ -275,14 +203,13 @@ function configurarModalCrear() {
         const file = e.target.files[0];
         if (!file) return;
         document.getElementById('preview-img').src = URL.createObjectURL(file);
-        document.getElementById('preview-info').textContent =
-            `${file.name} · ${(file.size / 1024).toFixed(1)} KB`;
+        document.getElementById('preview-info').textContent = `${file.name} · ${(file.size / 1024).toFixed(1)} KB`;
         document.getElementById('preview-wrap').style.display = 'block';
     });
 
     ['inp-nombre','inp-precio','inp-stock','inp-descripcion','inp-unidad','inp-fechaVenc','inp-relaCatSabor'].forEach(id => {
         const el = document.getElementById(id);
-        if (el) el.addEventListener('input', () => el.classList.remove('input-error'));
+        if (el) el.addEventListener('input',  () => el.classList.remove('input-error'));
         if (el) el.addEventListener('change', () => el.classList.remove('input-error'));
     });
 
@@ -293,172 +220,12 @@ function cerrarModalCrear() {
     document.getElementById('modalCrear').style.display = 'none';
 }
 
-async function cargarCategoriasSabores(selectId) {
-    try {
-        const res  = await fetch(`${BASE_URL}/CatalogoServlet?accion=relaciones`);
-        const data = await res.json();
-        const sel  = document.getElementById(selectId);
-        if (!sel) return;
-        sel.innerHTML = `<option value="">-- Selecciona --</option>` +
-            data.map(r =>
-                `<option value="${r.idRelaCatSabor}">${r.nombreCategoria} · ${r.nombreSabor}</option>`
-            ).join('');
-    } catch (_) {
-        const sel = document.getElementById(selectId);
-        if (sel) sel.innerHTML = `<option value="">Error cargando opciones</option>`;
-    }
-}
-
-async function cargarCategoriasSaboresConSeleccion(selectId, valorSeleccionado) {
-    try {
-        const res  = await fetch(`${BASE_URL}/CatalogoServlet?accion=relaciones`);
-        const data = await res.json();
-        const sel  = document.getElementById(selectId);
-        if (!sel) return;
-        sel.innerHTML = `<option value="">-- Selecciona --</option>` +
-            data.map(r =>
-                `<option value="${r.idRelaCatSabor}" ${r.idRelaCatSabor == valorSeleccionado ? 'selected' : ''}>
-                    ${r.nombreCategoria} · ${r.nombreSabor}
-                </option>`
-            ).join('');
-    } catch (_) {
-        const sel = document.getElementById(selectId);
-        if (sel) sel.innerHTML = `<option value="">Error cargando opciones</option>`;
-    }
-}
-
-async function enviarNuevoProducto() {
-    const nombre         = document.getElementById('inp-nombre')?.value.trim();
-    const precio         = document.getElementById('inp-precio')?.value.trim();
-    const stockInicial   = document.getElementById('inp-stock')?.value.trim();
-    const descripcion    = document.getElementById('inp-descripcion')?.value.trim();
-    const unidadMedida   = document.getElementById('inp-unidad')?.value.trim();
-    const fechaVenc      = document.getElementById('inp-fechaVenc')?.value;
-    const idRelaCatSabor = document.getElementById('inp-relaCatSabor')?.value;
-    const imagenFile     = document.getElementById('inp-imagen')?.files[0];
-
-    const errores = validarCamposProducto({
-        nombre, precio, stockInicial, descripcion, unidadMedida, fechaVenc, idRelaCatSabor
-    }, 'crear');
-
-    if (errores.length > 0) {
-        mostrarFeedback('feedback-modal', 'error', errores[0]);
-        resaltarCampoError(errores[0], 'crear');
-        return;
-    }
-
-    if (imagenFile && imagenFile.size > 5 * 1024 * 1024) {
-        mostrarFeedback('feedback-modal', 'error', 'La imagen no puede superar 5 MB.');
-        return;
-    }
-
-    const btn = document.getElementById('btnGuardarProducto');
-    btn.disabled = true;
-    mostrarFeedback('feedback-modal', 'cargando', 'Guardando producto…');
-
-    const fd = new FormData();
-    fd.append('nombre',         nombre);
-    fd.append('precio',         precio);
-    fd.append('stockInicial',   stockInicial);
-    fd.append('descripcion',    descripcion);
-    fd.append('unidadMedida',   unidadMedida);
-    fd.append('fechaVenc',      fechaVenc);
-    fd.append('idRelaCatSabor', idRelaCatSabor);
-    fd.append('accion',         'crear');
-    if (imagenFile) fd.append('imagen', imagenFile);
-
-    try {
-        const res  = await fetch(`${BASE_URL}/GestionProductoServlet`, { method: 'POST', body: fd });
-        const data = await res.json();
-
-        if (data.ok) {
-            mostrarFeedback('feedback-modal', 'ok', `✅ ${data.mensaje}`);
-            setTimeout(() => {
-                cerrarModalCrear();
-                cargarMisProductos();
-            }, 1200);
-        } else {
-            mostrarFeedback('feedback-modal', 'error', `❌ ${data.error}`);
-        }
-    } catch (err) {
-        mostrarFeedback('feedback-modal', 'error', `❌ Error de conexión: ${err.message}`);
-    } finally {
-        btn.disabled = false;
-    }
-}
-
 // ─────────────────────────────────────────────────────────────────────────────
-// MODAL EDITAR PRODUCTO
+// MODAL EDITAR PRODUCTO  (HTML viene de seccion-productos.html)
 // ─────────────────────────────────────────────────────────────────────────────
-function htmlModalEditar() {
-    return `
-        <div class="modal">
-            <div class="modal__header">
-                <h3>✏️ Editar producto</h3>
-                <button class="modal__cerrar" id="btnCerrarModalEditar">✕</button>
-            </div>
-            <div class="modal__body">
-                <input type="hidden" id="edit-id" />
-
-                <label>Nombre del producto *</label>
-                <input type="text" id="edit-nombre" placeholder="Ej: Helado de mango" />
-
-                <label>Precio ($) *</label>
-                <input type="number" id="edit-precio" placeholder="Ej: 5000" min="0" step="100" />
-
-                <label>Descripción *</label>
-                <textarea id="edit-descripcion" placeholder="Describe el producto…" rows="3"></textarea>
-
-                <label>Unidad de medida *</label>
-                <input type="text" id="edit-unidad" placeholder="Ej: Porción, Bola, Unidad" />
-
-                <label>Fecha de vencimiento *</label>
-                <input type="date" id="edit-fechaVenc" />
-
-                <label>Categoría y sabor *</label>
-                <select id="edit-relaCatSabor">
-                    <option value="">Cargando…</option>
-                </select>
-
-                <div class="stock-info-box">
-                    <p>📦 Stock actual: <strong id="edit-stockActual">—</strong></p>
-                </div>
-
-                <label>Cantidad a añadir al stock</label>
-                <input type="number" id="edit-cantidadAniadida" placeholder="Ej: 10 (déjalo en 0 si no cambias stock)" min="0" step="1" value="0" />
-                <small class="hint-text">El stock final será: stock actual + cantidad añadida</small>
-
-                <label>Estado del producto *</label>
-                <select id="edit-estado">
-                    <option value="1">Activo</option>
-                    <option value="3">Descontinuado</option>
-                </select>
-
-                <label>Nueva imagen (opcional)</label>
-                <div class="input-imagen-wrap">
-                    <input type="file" id="edit-imagen"
-                           accept="image/jpeg,image/png,image/webp,image/gif" />
-                    <div id="edit-preview-wrap" style="display:none">
-                        <img id="edit-preview-img" src="" alt="Vista previa" class="preview-img" />
-                        <span id="edit-preview-info" class="preview-info"></span>
-                    </div>
-                </div>
-
-                <div id="feedback-editar" class="feedback" style="display:none"></div>
-            </div>
-            <div class="modal__footer">
-                <button class="btn-secundario" id="btnCancelarModalEditar">Cancelar</button>
-                <button class="btn-primario"   id="btnGuardarEdicion">Guardar cambios</button>
-            </div>
-        </div>
-    `;
-}
-
 function configurarModalEditar() {
     document.getElementById('modalEditar').addEventListener('click', e => {
-        if (e.target.id === 'modalEditar' ||
-            e.target.id === 'btnCerrarModalEditar' ||
-            e.target.id === 'btnCancelarModalEditar') {
+        if (['modalEditar','btnCerrarModalEditar','btnCancelarModalEditar'].includes(e.target.id)) {
             cerrarModalEditar();
         }
     });
@@ -467,14 +234,13 @@ function configurarModalEditar() {
         const file = e.target.files[0];
         if (!file) return;
         document.getElementById('edit-preview-img').src = URL.createObjectURL(file);
-        document.getElementById('edit-preview-info').textContent =
-            `${file.name} · ${(file.size / 1024).toFixed(1)} KB`;
+        document.getElementById('edit-preview-info').textContent = `${file.name} · ${(file.size / 1024).toFixed(1)} KB`;
         document.getElementById('edit-preview-wrap').style.display = 'block';
     });
 
     ['edit-nombre','edit-precio','edit-descripcion','edit-unidad','edit-fechaVenc','edit-relaCatSabor','edit-cantidadAniadida'].forEach(id => {
         const el = document.getElementById(id);
-        if (el) el.addEventListener('input', () => el.classList.remove('input-error'));
+        if (el) el.addEventListener('input',  () => el.classList.remove('input-error'));
         if (el) el.addEventListener('change', () => el.classList.remove('input-error'));
     });
 
@@ -510,6 +276,93 @@ function abrirModalEditar(idProducto) {
     cargarCategoriasSaboresConSeleccion('edit-relaCatSabor', producto.idRelaCatSabor);
 }
 
+// ── Categorías y sabores ──────────────────────────────────────────────────────
+async function cargarCategoriasSabores(selectId) {
+    try {
+        const res  = await fetch(`${BASE_URL}/CatalogoServlet?accion=relaciones`);
+        const data = await res.json();
+        const sel  = document.getElementById(selectId);
+        if (!sel) return;
+        sel.innerHTML = `<option value="">-- Selecciona --</option>` +
+            data.map(r => `<option value="${r.idRelaCatSabor}">${r.nombreCategoria} · ${r.nombreSabor}</option>`).join('');
+    } catch (_) {
+        const sel = document.getElementById(selectId);
+        if (sel) sel.innerHTML = `<option value="">Error cargando opciones</option>`;
+    }
+}
+
+async function cargarCategoriasSaboresConSeleccion(selectId, valorSeleccionado) {
+    try {
+        const res  = await fetch(`${BASE_URL}/CatalogoServlet?accion=relaciones`);
+        const data = await res.json();
+        const sel  = document.getElementById(selectId);
+        if (!sel) return;
+        sel.innerHTML = `<option value="">-- Selecciona --</option>` +
+            data.map(r =>
+                `<option value="${r.idRelaCatSabor}" ${r.idRelaCatSabor == valorSeleccionado ? 'selected' : ''}>
+                    ${r.nombreCategoria} · ${r.nombreSabor}
+                </option>`
+            ).join('');
+    } catch (_) {
+        const sel = document.getElementById(selectId);
+        if (sel) sel.innerHTML = `<option value="">Error cargando opciones</option>`;
+    }
+}
+
+// ── Enviar nuevo producto ─────────────────────────────────────────────────────
+async function enviarNuevoProducto() {
+    const nombre         = document.getElementById('inp-nombre')?.value.trim();
+    const precio         = document.getElementById('inp-precio')?.value.trim();
+    const stockInicial   = document.getElementById('inp-stock')?.value.trim();
+    const descripcion    = document.getElementById('inp-descripcion')?.value.trim();
+    const unidadMedida   = document.getElementById('inp-unidad')?.value.trim();
+    const fechaVenc      = document.getElementById('inp-fechaVenc')?.value;
+    const idRelaCatSabor = document.getElementById('inp-relaCatSabor')?.value;
+    const imagenFile     = document.getElementById('inp-imagen')?.files[0];
+
+    const errores = validarCamposProducto({ nombre, precio, stockInicial, descripcion, unidadMedida, fechaVenc, idRelaCatSabor }, 'crear');
+    if (errores.length > 0) {
+        mostrarFeedback('feedback-modal', 'error', errores[0]);
+        resaltarCampoError(errores[0], 'crear');
+        return;
+    }
+    if (imagenFile && imagenFile.size > 5 * 1024 * 1024) {
+        mostrarFeedback('feedback-modal', 'error', 'La imagen no puede superar 5 MB.');
+        return;
+    }
+
+    const btn = document.getElementById('btnGuardarProducto');
+    btn.disabled = true;
+    mostrarFeedback('feedback-modal', 'cargando', 'Guardando producto…');
+
+    const fd = new FormData();
+    fd.append('nombre',         nombre);
+    fd.append('precio',         precio);
+    fd.append('stockInicial',   stockInicial);
+    fd.append('descripcion',    descripcion);
+    fd.append('unidadMedida',   unidadMedida);
+    fd.append('fechaVenc',      fechaVenc);
+    fd.append('idRelaCatSabor', idRelaCatSabor);
+    fd.append('accion',         'crear');
+    if (imagenFile) fd.append('imagen', imagenFile);
+
+    try {
+        const res  = await fetch(`${BASE_URL}/GestionProductoServlet`, { method: 'POST', body: fd });
+        const data = await res.json();
+        if (data.ok) {
+            mostrarFeedback('feedback-modal', 'ok', `✅ ${data.mensaje}`);
+            setTimeout(() => { cerrarModalCrear(); cargarMisProductos(); }, 1200);
+        } else {
+            mostrarFeedback('feedback-modal', 'error', `❌ ${data.error}`);
+        }
+    } catch (err) {
+        mostrarFeedback('feedback-modal', 'error', `❌ Error de conexión: ${err.message}`);
+    } finally {
+        btn.disabled = false;
+    }
+}
+
+// ── Enviar edición de producto ────────────────────────────────────────────────
 async function enviarEdicionProducto() {
     const id               = document.getElementById('edit-id')?.value;
     const nombre           = document.getElementById('edit-nombre')?.value.trim();
@@ -522,10 +375,7 @@ async function enviarEdicionProducto() {
     const imagenFile       = document.getElementById('edit-imagen')?.files[0];
     const estado           = document.getElementById('edit-estado')?.value;
 
-    const erroresEdit = validarCamposProducto({
-        nombre, precio, descripcion, unidadMedida, fechaVenc, idRelaCatSabor, estado
-    }, 'editar');
-
+    const erroresEdit = validarCamposProducto({ nombre, precio, descripcion, unidadMedida, fechaVenc, idRelaCatSabor, estado }, 'editar');
     if (erroresEdit.length > 0) {
         mostrarFeedback('feedback-editar', 'error', erroresEdit[0]);
         resaltarCampoError(erroresEdit[0], 'editar');
@@ -553,19 +403,15 @@ async function enviarEdicionProducto() {
     fd.append('idRelaCatSabor',   idRelaCatSabor);
     fd.append('cantidadAniadida', cantidadAniadida);
     fd.append('accion',           'editar');
+    fd.append('estado',           estado);
     if (imagenFile) fd.append('imagen', imagenFile);
-    fd.append('estado', estado);
 
     try {
         const res  = await fetch(`${BASE_URL}/GestionProductoServlet`, { method: 'POST', body: fd });
         const data = await res.json();
-
         if (data.ok) {
             mostrarFeedback('feedback-editar', 'ok', `✅ ${data.mensaje}`);
-            setTimeout(() => {
-                cerrarModalEditar();
-                cargarMisProductos();
-            }, 1200);
+            setTimeout(() => { cerrarModalEditar(); cargarMisProductos(); }, 1200);
         } else {
             mostrarFeedback('feedback-editar', 'error', `❌ ${data.error}`);
         }
@@ -585,29 +431,22 @@ async function confirmarEliminar(idProducto, nombre) {
         alert('Error: ID de producto inválido. Recarga la página e intenta de nuevo.');
         return;
     }
-
-    const confirmado = confirm(`¿Deseas desactivar el producto "${nombre}"?\n\nEl producto no se eliminará de la base de datos, solo quedará inactivo.`);
-    if (!confirmado) return;
+    if (!confirm(`¿Deseas desactivar el producto "${nombre}"?\n\nEl producto no se eliminará de la base de datos, solo quedará inactivo.`)) return;
 
     try {
-        const res = await fetch(`${BASE_URL}/GestionProductoServlet`, {
+        const res  = await fetch(`${BASE_URL}/GestionProductoServlet`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body: `accion=eliminar&idProducto=${encodeURIComponent(id)}`
         });
-
         if (!res.ok) {
             const data = await res.json().catch(() => ({}));
             alert(`Error del servidor (${res.status}): ${data.error ?? 'No se pudo desactivar el producto'}`);
             return;
         }
-
         const data = await res.json();
-        if (data.ok) {
-            cargarMisProductos();
-        } else {
-            alert(`Error: ${data.error}`);
-        }
+        if (data.ok) cargarMisProductos();
+        else alert(`Error: ${data.error}`);
     } catch (err) {
         alert(`Error de conexión: ${err.message}`);
     }
@@ -646,9 +485,7 @@ function validarCamposProducto(campos, modo) {
 
     if (modo === 'editar') {
         const { estado } = campos;
-        if (!estado) {
-            errores.push('El estado del producto es obligatorio.');
-        }
+        if (!estado) errores.push('El estado del producto es obligatorio.');
     }
 
     if (!descripcion) {
@@ -671,25 +508,18 @@ function validarCamposProducto(campos, modo) {
         const hoy = new Date();
         hoy.setHours(0, 0, 0, 0);
         const fechaSeleccionada = new Date(fechaVenc + 'T00:00:00');
-        if (fechaSeleccionada <= hoy) {
-            errores.push('La fecha de vencimiento debe ser posterior a hoy.');
-        }
+        if (fechaSeleccionada <= hoy) errores.push('La fecha de vencimiento debe ser posterior a hoy.');
     }
 
-    if (!idRelaCatSabor) {
-        errores.push('Debes seleccionar una categoría y sabor.');
-    }
+    if (!idRelaCatSabor) errores.push('Debes seleccionar una categoría y sabor.');
 
     return errores;
 }
 
 function resaltarCampoError(mensajeError, modo) {
     const prefijo = modo === 'crear' ? 'inp' : 'edit';
-    const campos = ['nombre','precio','stock','descripcion','unidad','fechaVenc','relaCatSabor','cantidadAniadida'];
-    campos.forEach(c => {
-        const el = document.getElementById(`${prefijo}-${c}`);
-        if (el) el.classList.remove('input-error');
-    });
+    const campos  = ['nombre','precio','stock','descripcion','unidad','fechaVenc','relaCatSabor','cantidadAniadida'];
+    campos.forEach(c => document.getElementById(`${prefijo}-${c}`)?.classList.remove('input-error'));
 
     const mapa = [
         ['nombre',               `${prefijo}-nombre`],
@@ -724,13 +554,7 @@ function mostrarFeedback(elId, tipo, texto) {
 // SECCIÓN MIS PAGOS / VENTAS
 // ─────────────────────────────────────────────────────────────────────────────
 async function renderSeccionPagos() {
-    const main = document.getElementById('contenidoPrincipal');
-    main.innerHTML = `
-        <div class="seccion-header">
-            <h2>Mis ventas</h2>
-        </div>
-        <p class="cargando">Cargando ventas…</p>
-    `;
+    await cargarSeccion('seccion-pagos.html');
 
     try {
         const res = await fetch(`${BASE_URL}/VentasProveedorServlet`);
@@ -738,19 +562,18 @@ async function renderSeccionPagos() {
         const data = await res.json();
         renderPagos(data);
     } catch (e) {
-        main.innerHTML = `<p class="error-txt">No se pudo cargar: ${e.message}</p>`;
+        document.getElementById('pagos-cargando').textContent = `No se pudo cargar: ${e.message}`;
     }
 }
 
 function renderPagos(data) {
-    const main = document.getElementById('contenidoPrincipal');
+    const wrapper = document.getElementById('pagos-wrapper');
+    const cargando = document.getElementById('pagos-cargando');
+    if (cargando) cargando.style.display = 'none';
+
     const { pendientes, entregados, cancelados, totalGanado } = data;
 
-    main.innerHTML = `
-        <div class="seccion-header">
-            <h2>Mis ventas</h2>
-        </div>
-
+    wrapper.innerHTML = `
         <div class="resumen-ganancias">
             <span class="resumen-ganancias__label">Total ganado (pedidos completados)</span>
             <span class="resumen-ganancias__valor">$${Number(totalGanado).toLocaleString('es-CO')}</span>
@@ -772,7 +595,7 @@ function renderPagos(data) {
         tab.addEventListener('click', () => {
             document.querySelectorAll('.ventas-tab').forEach(t => t.classList.remove('ventas-tab--activo'));
             tab.classList.add('ventas-tab--activo');
-            const tipo = tab.dataset.tab;
+            const tipo  = tab.dataset.tab;
             const lista = tipo === 'pendientes' ? pendientes
                         : tipo === 'entregados' ? entregados
                         : cancelados;
@@ -796,36 +619,22 @@ function renderListaPedidos(lista, tipo) {
     }
 
     contenedor.innerHTML = lista.map(p => {
-        // Estado 1=Pendiente (recién creado), 4=Preparando, 5=En bodega
         const badgeColor = p.estadoProveedor === 5 ? '#2ecc71'
                          : p.estadoProveedor === 4 ? '#f39c12'
-                         : '#3498db';   // 1 = Pendiente → azul
+                         : '#3498db';
         const estadoLabel = p.estadoProveedor === 1 ? 'Pendiente'
                           : p.estadoProveedor === 4 ? 'Preparando'
                           : p.estadoProveedor === 5 ? 'En bodega'
                           : (p.nombreEstadoProveedor ?? 'Pendiente');
 
-        // Botón según estado actual del proveedor
         let accionFooter = '';
         if (tipo === 'pendientes') {
             if (p.estadoProveedor === 1) {
-                // Aún no inicia preparación → botón para pasar a 4
-                accionFooter = `
-                    <button class="btn-entregar" data-id="${p.idPedido}" data-nuevo-estado="4">
-                        🚀 Iniciar preparación
-                    </button>`;
+                accionFooter = `<button class="btn-entregar" data-id="${p.idPedido}" data-nuevo-estado="4">🚀 Iniciar preparación</button>`;
             } else if (p.estadoProveedor === 4) {
-                // Ya preparando → botón para pasar a 5
-                accionFooter = `
-                    <button class="btn-entregar btn-entregar--bodega" data-id="${p.idPedido}" data-nuevo-estado="5">
-                        ✅ Marcar en bodega
-                    </button>`;
+                accionFooter = `<button class="btn-entregar btn-entregar--bodega" data-id="${p.idPedido}" data-nuevo-estado="5">✅ Marcar en bodega</button>`;
             } else if (p.estadoProveedor === 5) {
-                // Ya en bodega → solo mensaje
-                accionFooter = `
-                    <span style="color:#2ecc71;font-weight:600;font-size:.85rem;">
-                        ✔ Listo en bodega — esperando al admin
-                    </span>`;
+                accionFooter = `<span style="color:#2ecc71;font-weight:600;font-size:.85rem;">✔ Listo en bodega — esperando al admin</span>`;
             }
         }
 
@@ -834,8 +643,7 @@ function renderListaPedidos(lista, tipo) {
             <div class="pedido-card__header">
                 <span class="pedido-card__fecha">#${p.idPedido} · ${p.fecha}</span>
                 <span class="pedido-card__metodo">${p.metodoPago}</span>
-                <span style="background:${badgeColor};color:#fff;padding:3px 10px;
-                             border-radius:20px;font-size:.78rem;font-weight:600;">
+                <span style="background:${badgeColor};color:#fff;padding:3px 10px;border-radius:20px;font-size:.78rem;font-weight:600;">
                     ${estadoLabel}
                 </span>
             </div>
@@ -845,8 +653,7 @@ function renderListaPedidos(lista, tipo) {
             <div class="pedido-card__items">
                 ${p.items.map(i => `
                     <div class="pedido-item">
-                        <img src="${BASE_IMG}${i.imagen}" onerror="this.src='${IMG_DEF}'"
-                             class="pedido-item__img" alt="${i.nombre}" />
+                        <img src="${BASE_IMG}${i.imagen}" onerror="this.src='${IMG_DEF}'" class="pedido-item__img" alt="${i.nombre}" />
                         <span class="pedido-item__nombre">${i.nombre}</span>
                         <span class="pedido-item__cant">x${i.cantidad}</span>
                         <span class="pedido-item__precio-unit">$${Number(i.precio).toLocaleString('es-CO')} c/u</span>
@@ -858,16 +665,13 @@ function renderListaPedidos(lista, tipo) {
                 <span>Subtotal: <strong>$${Number(p.subtotalProveedor).toLocaleString('es-CO')}</strong></span>
                 ${accionFooter}
                 <button class="btn-factura-prov" data-id="${p.idPedido}"
-                        style="padding:6px 16px;background:#7C4DFF;color:#fff;border:none;
-                               border-radius:20px;font-size:.82rem;font-weight:600;cursor:pointer;">
+                        style="padding:6px 16px;background:#7C4DFF;color:#fff;border:none;border-radius:20px;font-size:.82rem;font-weight:600;cursor:pointer;">
                     🧾 Ver factura
                 </button>
             </div>
-        </div>
-        `;
+        </div>`;
     }).join('');
 
-    // Capturar el nuevoEstado desde data-nuevo-estado antes del click
     if (tipo === 'pendientes') {
         contenedor.querySelectorAll('.btn-entregar').forEach(btn => {
             const nuevoEstado = btn.dataset.nuevoEstado;
@@ -875,166 +679,86 @@ function renderListaPedidos(lista, tipo) {
         });
     }
 
-    // Listeners botones factura
     contenedor.querySelectorAll('.btn-factura-prov').forEach(btn => {
         const idPedido = Number(btn.dataset.id);
-        const pedido = lista.find(p => p.idPedido === idPedido);
+        const pedido   = lista.find(p => p.idPedido === idPedido);
         if (pedido) btn.addEventListener('click', () => generarFacturaProv(pedido));
     });
 }
 
-// ── Factura proveedor ─────────────────────────────────────────────────────────
-function generarFacturaProv(p) {
+// ── Factura proveedor — reutiliza plantillaFactura.html ───────────────────────
+async function generarFacturaProv(p) {
     const estadoLabel = p.estadoProveedor === 1 ? 'Pendiente'
                       : p.estadoProveedor === 4 ? 'Preparando'
                       : p.estadoProveedor === 5 ? 'En bodega'
                       : (p.nombreEstadoProveedor ?? 'Pendiente');
-    const badgeBg  = p.estadoProveedor === 5 ? '#2ecc71'
-                   : p.estadoProveedor === 4 ? '#f39c12'
-                   : '#3498db';
-    const fecha    = p.fecha      || '—';
-    const metodo   = p.metodoPago || 'No registrado';
-    const receptor = p.receptor   || '—';
-    const direccion= p.direccion  || '—';
-    const telefono = p.telefono   || '—';
-    const subtotal = Number(p.subtotalProveedor).toLocaleString('es-CO');
+    const badgeBg     = p.estadoProveedor === 5 ? '#2ecc71'
+                      : p.estadoProveedor === 4 ? '#f39c12'
+                      : '#3498db';
 
-    const filas = (p.items || []).map(i => `
-        <tr>
-            <td>${i.nombre || '—'}</td>
-            <td style="text-align:center">${i.cantidad}</td>
-            <td style="text-align:right">$${Number(i.precio || 0).toLocaleString('es-CO')}</td>
-            <td style="text-align:right">$${Number(i.subtotal || 0).toLocaleString('es-CO')}</td>
-        </tr>
-    `).join('');
-
-    const html = `<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <title>Factura Pedido #${p.idPedido} — Kurmi</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Segoe UI', Arial, sans-serif; color: #2d2d2d; background: #fff; padding: 40px; }
-        .factura { max-width: 720px; margin: 0 auto; }
-        .factura__header { display: flex; justify-content: space-between; align-items: flex-start;
-            margin-bottom: 32px; padding-bottom: 20px; border-bottom: 3px solid #7C4DFF; }
-        .factura__marca h1 { font-size: 2rem; color: #7C4DFF; font-weight: 800; letter-spacing: -1px; }
-        .factura__marca p  { font-size: .82rem; color: #888; margin-top: 2px; }
-        .factura__num      { text-align: right; }
-        .factura__num h2   { font-size: 1.1rem; font-weight: 700; color: #463877; }
-        .factura__num p    { font-size: .82rem; color: #888; margin-top: 2px; }
-        .estado-badge { display: inline-block; padding: 4px 14px; border-radius: 20px;
-            font-size: .78rem; font-weight: 700; background: ${badgeBg}; color: #fff; margin-top: 4px; }
-        .factura__info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 28px; }
-        .info-bloque h3 { font-size: .72rem; font-weight: 700; color: #a68fc0;
-            text-transform: uppercase; letter-spacing: .06em; margin-bottom: 8px; }
-        .info-bloque p  { font-size: .88rem; color: #333; line-height: 1.6; }
-        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-        thead tr { background: #F4EEFF; }
-        thead th { text-align: left; padding: 10px 12px; font-size: .78rem; font-weight: 700;
-            color: #463877; text-transform: uppercase; letter-spacing: .04em; }
-        tbody tr { border-bottom: 1px solid #f0ecff; }
-        tbody td { padding: 10px 12px; font-size: .88rem; color: #333; }
-        tbody tr:hover { background: #faf8ff; }
-        .factura__total { display: flex; justify-content: flex-end; margin-top: 8px; }
-        .total-box { background: #F4EEFF; border-radius: 12px; padding: 14px 24px;
-            text-align: right; min-width: 200px; }
-        .total-box p      { font-size: .82rem; color: #888; margin-bottom: 4px; }
-        .total-box strong { font-size: 1.4rem; color: #7C4DFF; font-weight: 800; }
-        .factura__footer  { margin-top: 40px; padding-top: 16px; border-top: 1px solid #e8e0f7;
-            text-align: center; font-size: .75rem; color: #aaa; }
-        .btn-imprimir { display: block; margin: 0 auto 32px; padding: 12px 32px;
-            background: #7C4DFF; color: #fff; border: none; border-radius: 30px;
-            font-size: .95rem; font-weight: 700; cursor: pointer; }
-        .btn-imprimir:hover { background: #6a3de8; }
-        @media print { .btn-imprimir { display: none !important; } body { padding: 20px; } }
-    </style>
-</head>
-<body>
-<div class="factura">
-    <button class="btn-imprimir" onclick="window.print()">⬇ Descargar / Imprimir factura</button>
-    <div class="factura__header">
-        <div class="factura__marca"><h1>Kurmi</h1><p>Tu jardín de deseos</p></div>
-        <div class="factura__num">
-            <h2>Factura #${p.idPedido}</h2>
-            <p>Fecha: ${fecha}</p>
-            <span class="estado-badge">${estadoLabel}</span>
-        </div>
-    </div>
-    <div class="factura__info-grid">
-        <div class="info-bloque">
-            <h3>Datos de entrega</h3>
-            <p><strong>Receptor:</strong> ${receptor}</p>
-            <p><strong>Dirección:</strong> ${direccion}</p>
-            <p><strong>Teléfono:</strong> ${telefono}</p>
-        </div>
-        <div class="info-bloque">
-            <h3>Pago</h3>
-            <p><strong>Método:</strong> ${metodo}</p>
-            <p><strong>Fecha:</strong> ${fecha}</p>
-        </div>
-    </div>
-    <table>
-        <thead>
-            <tr>
-                <th>Producto</th>
-                <th style="text-align:center">Cant.</th>
-                <th style="text-align:right">Precio unit.</th>
-                <th style="text-align:right">Subtotal</th>
-            </tr>
-        </thead>
-        <tbody>${filas}</tbody>
-    </table>
-    <div class="factura__total">
-        <div class="total-box"><p>Subtotal de tus productos</p><strong>$${subtotal}</strong></div>
-    </div>
-    <div class="factura__footer">
-        <p>Kurmi — Gracias por tu compra 💜 &nbsp;·&nbsp; Este documento es tu comprobante de pago.</p>
-    </div>
-</div>
-</body>
-</html>`;
+    const response = await fetch(`${BASE_URL}/components/plantillaFactura.html`);
+    const htmlBase = await response.text();
 
     const ventana = window.open('', '_blank', 'width=800,height=700');
-    ventana.document.write(html);
+    ventana.document.write(htmlBase);
     ventana.document.close();
+
+    const doc = ventana.document;
+
+    doc.querySelector('#factNumero').textContent     = `Factura #${p.idPedido}`;
+    doc.querySelector('#factFecha').textContent      = `Fecha: ${p.fecha      || '—'}`;
+    doc.querySelector('#factFechaPago').textContent  = p.fecha       || '—';
+    doc.querySelector('#factMetodo').textContent     = p.metodoPago  || 'No registrado';
+    doc.querySelector('#factReceptor').textContent   = p.receptor    || '—';
+    doc.querySelector('#factDireccion').textContent  = p.direccion   || '—';
+    doc.querySelector('#factTelefono').textContent   = p.telefono    || '—';
+    doc.querySelector('#factTotal').textContent      = `$${Number(p.subtotalProveedor).toLocaleString('es-CO')}`;
+    doc.querySelector('#factTotalLabel').textContent = 'Subtotal de tus productos';
+
+    const badge = doc.querySelector('#factEstado');
+    badge.textContent      = estadoLabel;
+    badge.style.background = badgeBg;
+    badge.style.color      = '#fff';
+
+    const tbody = doc.querySelector('#factFilasProductos');
+    (p.items || []).forEach(i => {
+        const tr = doc.createElement('tr');
+        tr.innerHTML = `
+            <td>${i.nombre   || '—'}</td>
+            <td style="text-align:center">${i.cantidad}</td>
+            <td style="text-align:right">$${Number(i.precio   || 0).toLocaleString('es-CO')}</td>
+            <td style="text-align:right">$${Number(i.subtotal || 0).toLocaleString('es-CO')}</td>
+        `;
+        tbody.appendChild(tr);
+    });
 }
 
-// ── Avanzar estado del proveedor: 1→4 (preparando) o 4→5 (en bodega) ─────────
+// ── Avanzar estado del proveedor ──────────────────────────────────────────────
 async function marcarEstadoProveedor(idPedido, btn, nuevoEstado) {
-    const mensajes = {
-        '4': `¿Confirmas que vas a iniciar la preparación del pedido #${idPedido}?`,
-        '5': `¿Confirmas que tus productos del pedido #${idPedido} están listos en bodega?`
-    };
-    const textosBtn = {
-        '4': '🚀 Iniciar preparación',
-        '5': '✅ Marcar en bodega'
-    };
+    const mensajes  = { '4': `¿Confirmas que vas a iniciar la preparación del pedido #${idPedido}?`, '5': `¿Confirmas que tus productos del pedido #${idPedido} están listos en bodega?` };
+    const textosBtn = { '4': '🚀 Iniciar preparación', '5': '✅ Marcar en bodega' };
 
     if (!confirm(mensajes[nuevoEstado] ?? '¿Confirmar acción?')) return;
 
-    btn.disabled = true;
+    btn.disabled    = true;
     btn.textContent = 'Guardando…';
 
     try {
-        const res = await fetch(`${BASE_URL}/MarcarEntregadoServlet`, {
+        const res  = await fetch(`${BASE_URL}/MarcarEntregadoServlet`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body: `idPedido=${idPedido}&nuevoEstado=${nuevoEstado}`
         });
         const data = await res.json();
-
-        if (data.ok) {
-            renderSeccionPagos();
-        } else {
+        if (data.ok) renderSeccionPagos();
+        else {
             alert(`Error: ${data.msg}`);
-            btn.disabled = false;
+            btn.disabled    = false;
             btn.textContent = textosBtn[nuevoEstado] ?? 'Reintentar';
         }
     } catch (err) {
         alert(`Error de conexión: ${err.message}`);
-        btn.disabled = false;
+        btn.disabled    = false;
         btn.textContent = textosBtn[nuevoEstado] ?? 'Reintentar';
     }
 }
@@ -1043,62 +767,25 @@ async function marcarEstadoProveedor(idPedido, btn, nuevoEstado) {
 // SECCIÓN MI PERFIL
 // ─────────────────────────────────────────────────────────────────────────────
 async function renderSeccionPerfil() {
-    const main = document.getElementById('contenidoPrincipal');
-    main.innerHTML = `<p class="cargando">Cargando perfil…</p>`;
+    await cargarSeccion('seccion-perfil.html');
 
     try {
         const res = await fetch(`${BASE_URL}/PerfilServlet`);
         if (res.status === 401) { window.location.replace(`${BASE_URL}/inicioSesion.html`); return; }
         const u = await res.json();
 
-        main.innerHTML = `
-            <div class="seccion-header">
-                <h2>Mi perfil</h2>
-            </div>
-
-            <div class="perfil-card">
-                <div class="perfil-card__fila">
-                    <div class="perfil-campo">
-                        <label>Nombres</label>
-                        <input id="prov-nombres" type="text" value="${u.nombres || ''}" readonly />
-                    </div>
-                    <div class="perfil-campo">
-                        <label>Apellidos</label>
-                        <input id="prov-apellidos" type="text" value="${u.apellidos || ''}" readonly />
-                    </div>
-                </div>
-                <div class="perfil-card__fila">
-                    <div class="perfil-campo">
-                        <label>Teléfono</label>
-                        <input id="prov-telefono" type="text" value="${u.telefono || ''}" readonly />
-                    </div>
-                    <div class="perfil-campo">
-                        <label>Correo electrónico</label>
-                        <input id="prov-correo" type="text" value="${u.correo || ''}" readonly />
-                    </div>
-                </div>
-                <div class="perfil-card__fila">
-                    <div class="perfil-campo">
-                        <label>Fecha de nacimiento</label>
-                        <input id="prov-fecha" type="date" value="${u.fechaNacimiento || ''}" readonly />
-                    </div>
-                    <div class="perfil-campo">
-                        <label>Dirección</label>
-                        <input id="prov-direccion" type="text" value="${u.direccion || ''}" readonly />
-                    </div>
-                </div>
-
-                <div class="perfil-card__acciones">
-                    <button class="btn-primario" id="btnActualizarPerfil">Actualizar datos</button>
-                    <button class="btn-cerrar-sesion" id="btnCerrarSesionProv">Cerrar sesión</button>
-                </div>
-            </div>
-        `;
+        // Rellenar campos con datos del servidor
+        document.getElementById('prov-nombres').value    = u.nombres          || '';
+        document.getElementById('prov-apellidos').value  = u.apellidos         || '';
+        document.getElementById('prov-telefono').value   = u.telefono          || '';
+        document.getElementById('prov-correo').value     = u.correo            || '';
+        document.getElementById('prov-fecha').value      = u.fechaNacimiento   || '';
+        document.getElementById('prov-direccion').value  = u.direccion         || '';
 
         configurarPerfilProveedor();
-
     } catch (e) {
-        main.innerHTML = `<p class="error-txt">Error cargando perfil: ${e.message}</p>`;
+        document.getElementById('contenidoPrincipal').innerHTML =
+            `<p class="error-txt">Error cargando perfil: ${e.message}</p>`;
     }
 }
 
@@ -1152,25 +839,17 @@ function configurarPerfilProveedor() {
     let modoEdicion = false;
     const btn = document.getElementById('btnActualizarPerfil');
 
-    IDS.forEach(id => {
-        const el = document.getElementById(id);
-        if (!el) return;
-        const span = document.createElement('span');
-        span.id = REGLAS_PERFIL[id].errorId;
-        span.className = 'error-msg';
-        el.parentNode.appendChild(span);
-    });
-
     function asignarLimpiezaEnVivo() {
         IDS.forEach(id => {
-            const el      = document.getElementById(id);
             const regla   = REGLAS_PERFIL[id];
             const errorEl = document.getElementById(regla.errorId);
+            const el      = document.getElementById(id);
             if (!el || !errorEl) return;
             el.replaceWith(el.cloneNode(true));
-            const elFresh = document.getElementById(id);
-            elFresh.addEventListener('input', () => {
-                if (elFresh.value.trim().length > 0) clearError(errorEl, elFresh);
+            document.getElementById(id).addEventListener('input', () => {
+                if (document.getElementById(id).value.trim().length > 0) {
+                    clearError(errorEl, document.getElementById(id));
+                }
             });
         });
     }
@@ -1213,8 +892,10 @@ function configurarPerfilProveedor() {
             if (msg === 'OK') {
                 IDS.forEach(id => {
                     document.getElementById(id)?.setAttribute('readonly', true);
-                    clearError(document.getElementById(REGLAS_PERFIL[id].errorId),
-                               document.getElementById(id));
+                    clearError(
+                        document.getElementById(REGLAS_PERFIL[id].errorId),
+                        document.getElementById(id)
+                    );
                 });
                 btn.textContent = 'Actualizar datos';
                 modoEdicion = false;
@@ -1238,137 +919,15 @@ function configurarPerfilProveedor() {
 // ─────────────────────────────────────────────────────────────────────────────
 // SECCIÓN NOSOTROS / CONTÁCTANOS
 // ─────────────────────────────────────────────────────────────────────────────
-function renderSeccionNosotros() {
-    const contenedor = document.getElementById('contenidoPrincipal');
-    contenedor.innerHTML = `
-        <section class="prov-nosotros">
-            <h2 class="prov-contacto-titulo">Contáctanos</h2>
-            <div class="prov-contacto">
-                <div class="prov-contacto__logo-contenedor">
-                    <img src="${BASE_IMG}conejo.png" alt="Logo Kurmi" class="prov-contacto__logo">
-                </div>
-                <div class="prov-contacto__lista-cards">
-                    ${['Eileen Sofia','Eileen Sofia','Eileen Sofia','Eileen Sofia','Eileen Sofia'].map(nombre => `
-                    <div class="prov-card">
-                        <div class="prov-card__img">
-                            <img src="${BASE_IMG}twiter.png" alt="X">
-                        </div>
-                        <div class="prov-card__info">
-                            <p class="prov-card__nombre">${nombre}</p>
-                            <p class="prov-card__correo">EileenSofia.30@twiter.com</p>
-                        </div>
-                    </div>`).join('')}
-                </div>
-            </div>
-        </section>
-    `;
+async function renderSeccionNosotros() {
+    await cargarSeccion('seccion-nosotros.html');
 }
-
-// ── Estado local ──────────────────────────────────────────────────────────────
-let misSolicitudes = [];
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SECCIÓN MIS SOLICITUDES
 // ─────────────────────────────────────────────────────────────────────────────
-function renderSeccionSolicitudes() {
-    const main = document.getElementById('contenidoPrincipal');
-    main.innerHTML = `
-        <div class="seccion-header">
-            <h2>📋 Mis solicitudes</h2>
-            <button class="btn-primario" id="btnNuevaSolicitud">＋ Nueva solicitud</button>
-        </div>
-
-        <div class="filtros-bar">
-            <select id="filtroEstadoSolicitud" class="filtro-select">
-                <option value="">Todos los estados</option>
-                <option value="Pendiente">⏳ Pendiente</option>
-                <option value="Aprobado">✅ Aprobado</option>
-                <option value="Rechazado">❌ Rechazado</option>
-            </select>
-            <button class="btn-limpiar" id="btnLimpiarFiltroSol">✕ Limpiar</button>
-        </div>
-
-        <p class="contador-resultados" id="contadorSolicitudes"></p>
-
-        <div id="listaSolicitudes" class="solicitudes-lista">
-            <p class="cargando">Cargando solicitudes…</p>
-        </div>
-
-        <div id="modalCrearSolicitud" class="modal-overlay" style="display:none">
-            <div class="modal modal--solicitud">
-                <div class="modal__header">
-                    <h3>📋 Nueva solicitud de categoría / sabor</h3>
-                    <button class="modal__cerrar" id="cerrarModalSolicitud">✕</button>
-                </div>
-                <div class="modal__body">
-                    <p class="sol-modal__desc">
-                        ¿Necesitas una nueva categoría o sabor para tus productos?
-                        Envía una solicitud al administrador y él la revisará.
-                    </p>
-
-                    <label class="sol-label">Tipo de solicitud <span class="sol-required">*</span></label>
-                    <select id="sol-tipo" class="filtro-select" style="width:100%;margin-bottom:14px;">
-                        <option value="">— Selecciona el tipo —</option>
-                        <option value="Categoria">🏷 Solo categoría nueva</option>
-                        <option value="Sabor">🍦 Solo sabor nuevo</option>
-                        <option value="Ambos">🏷🍦 Categoría y sabor nuevos</option>
-                    </select>
-                    <span class="error-msg" id="error-sol-tipo"></span>
-
-                    <div id="sol-campo-cat" style="display:none">
-                        <label class="sol-label">Nombre de la categoría <span class="sol-required">*</span></label>
-                        <input type="text" id="sol-nombreCat" class="filtro-input"
-                               style="width:100%;margin-bottom:4px;"
-                               placeholder="Ej: Paletas artesanales" maxlength="100" />
-                        <span class="error-msg" id="error-sol-cat"></span>
-                    </div>
-
-                    <div id="sol-campo-sabor-existente" style="display:none">
-                        <label class="sol-label" style="margin-top:12px;display:block;">
-                            Relacionar con sabor existente <span class="sol-required">*</span>
-                        </label>
-                        <select id="sol-idSaborExistente" class="filtro-select" style="width:100%;margin-bottom:4px;">
-                            <option value="">— Selecciona un sabor —</option>
-                        </select>
-                        <span class="error-msg" id="error-sol-sabor-existente"></span>
-                    </div>
-
-                    <div id="sol-campo-sabor" style="display:none">
-                        <label class="sol-label" style="margin-top:12px;display:block;">
-                            Nombre del sabor <span class="sol-required">*</span>
-                        </label>
-                        <input type="text" id="sol-nombreSabor" class="filtro-input"
-                               style="width:100%;margin-bottom:4px;"
-                               placeholder="Ej: Maracuyá con chile" maxlength="100" />
-                        <span class="error-msg" id="error-sol-sabor"></span>
-                    </div>
-
-                    <div id="sol-campo-cat-existente" style="display:none">
-                        <label class="sol-label" style="margin-top:12px;display:block;">
-                            Relacionar con categoría existente <span class="sol-required">*</span>
-                        </label>
-                        <select id="sol-idCatExistente" class="filtro-select" style="width:100%;margin-bottom:4px;">
-                            <option value="">— Selecciona una categoría —</option>
-                        </select>
-                        <span class="error-msg" id="error-sol-cat-existente"></span>
-                    </div>
-
-                    <label class="sol-label" style="margin-top:14px;display:block;">
-                        Descripción adicional (opcional)
-                    </label>
-                    <textarea id="sol-descripcion" class="sol-textarea"
-                              placeholder="Describe brevemente por qué necesitas esta categoría o sabor…"
-                              maxlength="255" rows="3"></textarea>
-
-                    <div id="feedbackSolicitud"></div>
-                </div>
-                <div class="modal__footer">
-                    <button class="btn-secundario" id="cancelarModalSolicitud">Cancelar</button>
-                    <button class="btn-primario"   id="confirmarNuevaSolicitud">Enviar solicitud</button>
-                </div>
-            </div>
-        </div>
-    `;
+async function renderSeccionSolicitudes() {
+    await cargarSeccion('seccion-solicitudes.html');
 
     document.getElementById('btnNuevaSolicitud').addEventListener('click', abrirModalSolicitud);
     document.getElementById('cerrarModalSolicitud').addEventListener('click', cerrarModalSolicitud);
@@ -1381,7 +940,7 @@ function renderSeccionSolicitudes() {
     });
 
     document.getElementById('sol-tipo').addEventListener('change', async () => {
-        const tipo = document.getElementById('sol-tipo').value;
+        const tipo    = document.getElementById('sol-tipo').value;
         const esCat   = tipo === 'Categoria';
         const esSabor = tipo === 'Sabor';
         const esAmbos = tipo === 'Ambos';
@@ -1391,9 +950,7 @@ function renderSeccionSolicitudes() {
         document.getElementById('sol-campo-sabor-existente').style.display = esCat   ? 'block' : 'none';
         document.getElementById('sol-campo-cat-existente').style.display   = esSabor ? 'block' : 'none';
 
-        if (esCat || esSabor) {
-            await cargarOpcionesExistentes();
-        }
+        if (esCat || esSabor) await cargarOpcionesExistentes();
     });
 
     cargarMisSolicitudes();
@@ -1408,17 +965,13 @@ async function cargarOpcionesExistentes() {
         const selSabor = document.getElementById('sol-idSaborExistente');
         if (selSabor) {
             selSabor.innerHTML = '<option value="">— Selecciona un sabor —</option>' +
-                (data.sabores ?? []).map(s =>
-                    `<option value="${s.idSabor}">${s.nombreSabor}</option>`
-                ).join('');
+                (data.sabores ?? []).map(s => `<option value="${s.idSabor}">${s.nombreSabor}</option>`).join('');
         }
 
         const selCat = document.getElementById('sol-idCatExistente');
         if (selCat) {
             selCat.innerHTML = '<option value="">— Selecciona una categoría —</option>' +
-                (data.categorias ?? []).map(c =>
-                    `<option value="${c.idCategoria}">${c.nombreCategoria}</option>`
-                ).join('');
+                (data.categorias ?? []).map(c => `<option value="${c.idCategoria}">${c.nombreCategoria}</option>`).join('');
         }
     } catch (e) {
         console.error('Error al cargar opciones existentes:', e);
@@ -1431,15 +984,12 @@ async function cargarMisSolicitudes() {
         const res = await fetch(`${BASE_URL}/SolicitudesServlet?accion=misSolicitudes`);
         if (!res.ok) throw new Error(`Error ${res.status}`);
         const data = await res.json();
-
         if (!data.ok) {
             contenedor.innerHTML = `<p class="error-txt">❌ ${data.error}</p>`;
             return;
         }
-
         misSolicitudes = data.solicitudes ?? [];
         renderListaSolicitudes(misSolicitudes);
-
     } catch (e) {
         contenedor.innerHTML = `<p class="error-txt">No se pudo conectar: ${e.message}</p>`;
     }
@@ -1468,32 +1018,16 @@ function renderListaSolicitudes(lista) {
 }
 
 function tarjetaSolicitudProveedor(s) {
-    const badgeClass = {
-        'Pendiente': 'badge--amarillo',
-        'Aprobado':  'badge--verde',
-        'Rechazado': 'badge--rojo'
-    }[s.estado] ?? 'badge--gris';
+    const badgeClass = { 'Pendiente': 'badge--amarillo', 'Aprobado': 'badge--verde', 'Rechazado': 'badge--rojo' }[s.estado] ?? 'badge--gris';
+    const badgeIcon  = { 'Pendiente': '⏳', 'Aprobado': '✅', 'Rechazado': '❌' }[s.estado] ?? '';
+    const tipoIcono  = { 'Categoria': '🏷', 'Sabor': '🍦', 'Ambos': '🏷🍦' }[s.tipo] ?? '📋';
 
-    const badgeIcon = {
-        'Pendiente': '⏳',
-        'Aprobado':  '✅',
-        'Rechazado': '❌'
-    }[s.estado] ?? '';
-
-    const tipoIcono = {
-        'Categoria': '🏷',
-        'Sabor':     '🍦',
-        'Ambos':     '🏷🍦'
-    }[s.tipo] ?? '📋';
-
-    const filaCateg    = s.nombreCat   ? `<p class="sol-card__fila"><span class="sol-card__etiq">Categoría nueva:</span> ${s.nombreCat}</p>`   : '';
-    const filaSabor    = s.nombreSabor ? `<p class="sol-card__fila"><span class="sol-card__etiq">Sabor nuevo:</span> ${s.nombreSabor}</p>`     : '';
-    const filaRelCat   = s.nombreCatExistente
-        ? `<p class="sol-card__fila"><span class="sol-card__etiq">Relacionar con categoría:</span> ${s.nombreCatExistente}</p>` : '';
-    const filaRelSabor = s.nombreSaborExistente
-        ? `<p class="sol-card__fila"><span class="sol-card__etiq">Relacionar con sabor:</span> ${s.nombreSaborExistente}</p>` : '';
-    const filaDesc     = s.descripcion ? `<p class="sol-card__fila"><span class="sol-card__etiq">Descripción:</span> ${s.descripcion}</p>` : '';
-    const filaMotivo   = (s.estado === 'Rechazado' && s.motivoRechazo)
+    const filaCateg     = s.nombreCat            ? `<p class="sol-card__fila"><span class="sol-card__etiq">Categoría nueva:</span> ${s.nombreCat}</p>`                 : '';
+    const filaSabor     = s.nombreSabor          ? `<p class="sol-card__fila"><span class="sol-card__etiq">Sabor nuevo:</span> ${s.nombreSabor}</p>`                   : '';
+    const filaRelCat    = s.nombreCatExistente   ? `<p class="sol-card__fila"><span class="sol-card__etiq">Relacionar con categoría:</span> ${s.nombreCatExistente}</p>` : '';
+    const filaRelSabor  = s.nombreSaborExistente ? `<p class="sol-card__fila"><span class="sol-card__etiq">Relacionar con sabor:</span> ${s.nombreSaborExistente}</p>`  : '';
+    const filaDesc      = s.descripcion          ? `<p class="sol-card__fila"><span class="sol-card__etiq">Descripción:</span> ${s.descripcion}</p>`                    : '';
+    const filaMotivo    = (s.estado === 'Rechazado' && s.motivoRechazo)
         ? `<div class="sol-card__rechazo"><span>💬 Motivo del rechazo:</span><p>${s.motivoRechazo}</p></div>` : '';
     const filaRespuesta = s.fechaRespuesta
         ? `<p class="sol-card__fecha">Respondida: ${s.fechaRespuesta}</p>` : '';
@@ -1503,9 +1037,7 @@ function tarjetaSolicitudProveedor(s) {
             <div class="sol-card__header">
                 <div style="display:flex;align-items:center;gap:10px;">
                     <span class="sol-card__tipo">${tipoIcono} ${s.tipo}</span>
-                    <span class="badge ${badgeClass}" style="position:static;">
-                        ${badgeIcon} ${s.estado}
-                    </span>
+                    <span class="badge ${badgeClass}" style="position:static;">${badgeIcon} ${s.estado}</span>
                 </div>
                 <span class="sol-card__fecha">Enviada: ${s.fechaSolicitud ?? '—'}</span>
             </div>
@@ -1517,26 +1049,22 @@ function tarjetaSolicitudProveedor(s) {
 }
 
 function aplicarFiltroSolicitudes() {
-    const estado = document.getElementById('filtroEstadoSolicitud').value;
-    const filtradas = estado
-        ? misSolicitudes.filter(s => s.estado === estado)
-        : misSolicitudes;
+    const estado   = document.getElementById('filtroEstadoSolicitud').value;
+    const filtradas = estado ? misSolicitudes.filter(s => s.estado === estado) : misSolicitudes;
     renderListaSolicitudes(filtradas);
 }
 
 function abrirModalSolicitud() {
-    document.getElementById('sol-tipo').value          = '';
-    document.getElementById('sol-nombreCat').value     = '';
-    document.getElementById('sol-nombreSabor').value   = '';
-    document.getElementById('sol-descripcion').value   = '';
-    document.getElementById('sol-campo-cat').style.display   = 'none';
-    document.getElementById('sol-campo-sabor').style.display = 'none';
-    ['error-sol-tipo','error-sol-cat','error-sol-sabor',
-     'error-sol-cat-existente','error-sol-sabor-existente'].forEach(id => {
+    document.getElementById('sol-tipo').value        = '';
+    document.getElementById('sol-nombreCat').value   = '';
+    document.getElementById('sol-nombreSabor').value = '';
+    document.getElementById('sol-descripcion').value = '';
+    ['sol-campo-cat','sol-campo-sabor','sol-campo-sabor-existente','sol-campo-cat-existente'].forEach(id => {
+        document.getElementById(id).style.display = 'none';
+    });
+    ['error-sol-tipo','error-sol-cat','error-sol-sabor','error-sol-cat-existente','error-sol-sabor-existente'].forEach(id => {
         document.getElementById(id).textContent = '';
     });
-    document.getElementById('sol-campo-sabor-existente').style.display = 'none';
-    document.getElementById('sol-campo-cat-existente').style.display   = 'none';
     document.getElementById('feedbackSolicitud').innerHTML = '';
     document.getElementById('modalCrearSolicitud').style.display = 'flex';
 }
@@ -1554,24 +1082,14 @@ async function enviarNuevaSolicitud() {
     const btn         = document.getElementById('confirmarNuevaSolicitud');
 
     let valido = true;
-
-    document.getElementById('error-sol-tipo').textContent  = '';
-    document.getElementById('error-sol-cat').textContent   = '';
-    document.getElementById('error-sol-sabor').textContent = '';
+    ['error-sol-tipo','error-sol-cat','error-sol-sabor'].forEach(id => {
+        document.getElementById(id).textContent = '';
+    });
     feedback.innerHTML = '';
 
-    if (!tipo) {
-        document.getElementById('error-sol-tipo').textContent = 'Selecciona el tipo de solicitud.';
-        valido = false;
-    }
-    if ((tipo === 'Categoria' || tipo === 'Ambos') && !nombreCat) {
-        document.getElementById('error-sol-cat').textContent = 'El nombre de la categoría es obligatorio.';
-        valido = false;
-    }
-    if ((tipo === 'Sabor' || tipo === 'Ambos') && !nombreSabor) {
-        document.getElementById('error-sol-sabor').textContent = 'El nombre del sabor es obligatorio.';
-        valido = false;
-    }
+    if (!tipo)                                              { document.getElementById('error-sol-tipo').textContent  = 'Selecciona el tipo de solicitud.'; valido = false; }
+    if ((tipo === 'Categoria' || tipo === 'Ambos') && !nombreCat)   { document.getElementById('error-sol-cat').textContent   = 'El nombre de la categoría es obligatorio.'; valido = false; }
+    if ((tipo === 'Sabor'     || tipo === 'Ambos') && !nombreSabor) { document.getElementById('error-sol-sabor').textContent = 'El nombre del sabor es obligatorio.'; valido = false; }
     if (tipo === 'Categoria' && !document.getElementById('sol-idSaborExistente').value) {
         document.getElementById('error-sol-sabor-existente').textContent = 'Selecciona el sabor existente a relacionar.';
         valido = false;
@@ -1600,16 +1118,12 @@ async function enviarNuevaSolicitud() {
                 idSaborExistente: document.getElementById('sol-idSaborExistente')?.value ?? ''
             }).toString()
         });
-
         const data = await res.json();
 
         if (data.ok) {
             feedback.className   = 'feedback feedback--ok';
             feedback.textContent = '✅ Solicitud enviada correctamente al administrador.';
-            setTimeout(() => {
-                cerrarModalSolicitud();
-                cargarMisSolicitudes();
-            }, 1200);
+            setTimeout(() => { cerrarModalSolicitud(); cargarMisSolicitudes(); }, 1200);
         } else {
             feedback.className   = 'feedback feedback--error';
             feedback.textContent = `❌ ${data.error ?? 'No se pudo enviar la solicitud.'}`;

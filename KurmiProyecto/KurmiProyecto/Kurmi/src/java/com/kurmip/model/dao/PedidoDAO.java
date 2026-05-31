@@ -238,6 +238,7 @@ public class PedidoDAO {
 
         String sqlPedidos =
             "SELECT p.ID_Pedido, p.ID_Carrito, p.Fecha_Pedido, p.Total_Pago, p.Estado_Pedido, " +
+            "p.Nombre_Receptor, p.Direccion_Envio, p.Telefono_Envio, " +
             "mp.Nombre_Metodo AS metodoPago " +
             "FROM Pedidos_Cliente p " +
             "LEFT JOIN Pago_Pedido pp ON pp.ID_Pedido = p.ID_Pedido " +
@@ -294,6 +295,7 @@ public class PedidoDAO {
 
         String sqlPedidos =
             "SELECT p.ID_Pedido, p.ID_Carrito, p.Fecha_Pedido, p.Total_Pago, p.Estado_Pedido, " +
+            "p.Nombre_Receptor, p.Direccion_Envio, p.Telefono_Envio, " +
             "mp.Nombre_Metodo AS metodoPago " +
             "FROM Pedidos_Cliente p " +
             "LEFT JOIN Pago_Pedido pp ON pp.ID_Pedido = p.ID_Pedido " +
@@ -387,6 +389,9 @@ public class PedidoDAO {
         pedido.put("totalProductos", totalUnidades);
         pedido.put("metodoPago",     rs.getString("metodoPago") != null
                                      ? rs.getString("metodoPago") : "No registrado");
+        pedido.put("receptor",       rs.getString("Nombre_Receptor"));
+        pedido.put("direccion",      rs.getString("Direccion_Envio"));
+        pedido.put("telefono",       rs.getString("Telefono_Envio"));
         pedido.put("imagenPrimera",  imagenPrimera);
         pedido.put("estadoPedido",   estadoPed);
         pedido.put("nombreEstado",   etiquetaEstado(estadoPed));

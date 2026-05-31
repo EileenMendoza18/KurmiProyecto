@@ -588,3 +588,20 @@
     opacity: 1;
     transform: translateX(-50%) translateY(0);
 }
+/* ── Elementos generados dinámicamente por JS ──────────────────────────────── */
+
+/* Antes: spanTotal.style.cssText = 'font-weight:700;color:#463877;margin-right:auto;font-size:1rem;' */
+.pedido__modal-total {
+    font-weight: 700;
+    color: #463877;
+    margin-right: auto;
+    font-size: 1rem;
+}
+
+/* Antes: selectMetodo.style.cssText = 'padding:6px 10px;...' (recompra) */
+#selectMetodoRecompra {
+    padding: 6px 10px;
+    border-radius: 8px;
+    border: 1px solid #c4b5e8;
+    font-size: 0.9rem;
+}
