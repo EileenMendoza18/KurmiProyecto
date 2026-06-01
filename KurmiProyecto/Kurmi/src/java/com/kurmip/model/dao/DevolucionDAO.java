@@ -34,14 +34,16 @@ public class DevolucionDAO {
      * @return ID generado por la BD, o -1 si hubo un error.
      */
     public int insertar(int idPedido, int idCliente, String motivo, String imagenPrueba) {
+        // SQL 1: Inserta un nuevo registro en la tabla 'Solicitudes_Devolucion' mapeando los valores obligatorios de la solicitud de un cliente.
         String sqlInsert = "INSERT INTO Solicitudes_Devolucion " +
                            "(ID_Pedido, ID_Cliente, Motivo, Imagen_Prueba) " +
                            "VALUES (?, ?, ?, ?)";
+        // SQL 2: Modifica de forma masiva el estado de la tabla 'Pedidos_Cliente' forzándolo al valor 10 ("Devolución Solicitada") para el ID de pedido correspondiente.
         String sqlEstado = "UPDATE Pedidos_Cliente SET Estado_Pedido = 10 WHERE ID_Pedido = ?";
         try {
             con = cn.getConexion();
-            con.setAutoCommit(false);
-
+            con.setAutoCommit(false); // INICIO DE TRANSACCIÓN: Bloquea los cambios automáticos para asegurar que ambos queries se completen con éxito de manera atómica.
+            
             ps = con.prepareStatement(sqlInsert, Statement.RETURN_GENERATED_KEYS);
             ps.setInt   (1, idPedido);
             ps.setInt   (2, idCliente);
@@ -49,7 +51,7 @@ public class DevolucionDAO {
             ps.setString(4, (imagenPrueba == null || imagenPrueba.isBlank()) ? null : imagenPrueba);
             ps.executeUpdate();
 
-            rs = ps.getGeneratedKeys();
+            rs = ps.getGeneratedKeys();// Extrae la llave primaria auto-incremental generada por el INSERT anterior.
             int idGenerado = -1;
             if (rs.next()) idGenerado = rs.getInt(1);
 
@@ -59,12 +61,12 @@ public class DevolucionDAO {
                 psE.executeUpdate();
             }
 
-            con.commit();
+            con.commit();// CONFIRMACIÓN: Guarda de forma permanente en la base de datos la inserción y el cambio de estado del pedido.
             return idGenerado;
 
         } catch (Exception e) {
             System.err.println("DevolucionDAO.insertar → " + e.getMessage());
-            try { if (con != null) con.rollback(); } catch (Exception ignored) {}
+            try { if (con != null) con.rollback(); } catch (Exception ignored) {}// deshace todos los cambios si alguna de las operaciones falló.
         } finally {
             cerrar();
         }
@@ -73,6 +75,8 @@ public class DevolucionDAO {
 
 
     public boolean existeParaPedido(int idPedido) {
+        // SQL: Cuenta cuántos registros de solicitud existen asociados a un pedido específico utilizando COUNT(*).
+        // Sirve como regla de validación en la capa de negocio para prevenir que un usuario cree dos solicitudes de devolución sobre el mismo pedido.
         String sql = "SELECT COUNT(*) FROM Solicitudes_Devolucion WHERE ID_Pedido = ?";
         try {
             con = cn.getConexion();
@@ -88,6 +92,11 @@ public class DevolucionDAO {
 
     public List<Map<String, Object>> obtenerPorCliente(int idCliente) {
         List<Map<String, Object>> lista = new ArrayList<>();
+        // SQL: Extrae campos descriptivos de las solicitudes del cliente (d) y del pedido original (p) mediante un JOIN.
+        // SUBCONSULTA COMPLEJA: Ejecuta un SELECT interno correlacionado que busca en la tabla intermedia 'Carrito_Detalle' (cd), 
+        // la une con 'Productos' (pr) usando el ID del carrito guardado en el pedido, descarta los eliminados (cd.Estado_Carrito != 2), 
+        // ordena los artículos cronológicamente por su ID y extrae mediante 'LIMIT 1' únicamente la URL de la primera foto para usarla como miniatura visual.
+        // Ordena los resultados mostrando primero las solicitudes más recientes (ORDER BY d.Fecha_Solicitud DESC).
         String sql =
             "SELECT d.ID_Devolucion, d.ID_Pedido, d.Motivo, d.Imagen_Prueba, " +
             "       d.Estado, d.Motivo_Respuesta, d.Fecha_Solicitud, d.Fecha_Respuesta, " +
@@ -118,6 +127,8 @@ public class DevolucionDAO {
    
     public List<Map<String, Object>> obtenerTodas(String filtroEstado) {
         List<Map<String, Object>> lista = new ArrayList<>();
+        // SQL DINÁMICO BASE: Une 'Solicitudes_Devolucion' (d), 'Pedidos_Cliente' (p) y la tabla de usuarios globales 'Usuario' (u) 
+        // concatenando mediante CONCAT() los nombres y apellidos del comprador. Reutiliza la subconsulta para extraer la miniatura de imagen.
         StringBuilder sql = new StringBuilder(
             "SELECT d.ID_Devolucion, d.ID_Pedido, d.Motivo, d.Imagen_Prueba, " +
             "       d.Estado, d.Motivo_Respuesta, d.Fecha_Solicitud, d.Fecha_Respuesta, " +
@@ -132,14 +143,18 @@ public class DevolucionDAO {
             "JOIN Pedidos_Cliente p ON d.ID_Pedido = p.ID_Pedido " +
             "JOIN Usuario u ON d.ID_Cliente = u.UsuarioID "
         );
+        // EVALUACIÓN CONDICIONAL: Si el administrador seleccionó un filtro en la interfaz, inyecta la cláusula WHERE correspondiente en el string.
         if (filtroEstado != null && !filtroEstado.isBlank()) {
             sql.append("WHERE d.Estado = ? ");
         }
+        // ORDENAMIENTO POR GRUPO DE NEGOCIO: Utiliza la función nativa FIELD() para priorizar las filas cuyo estado sea 'Pendiente',
+        // enviando al final las 'Aprobada' y 'Rechazada', ordenando internamente cada bloque por fecha de creación descendente.
         sql.append("ORDER BY FIELD(d.Estado,'Pendiente','Aprobada','Rechazada'), d.Fecha_Solicitud DESC");
 
         try {
             con = cn.getConexion();
             ps  = con.prepareStatement(sql.toString());
+            // Vinculación dinámica: Asigna el parámetro de filtrado únicamente si el bloque WHERE condicional fue construido previamente.
             if (filtroEstado != null && !filtroEstado.isBlank()) {
                 ps.setString(1, filtroEstado.trim());
             }
@@ -163,16 +178,22 @@ public class DevolucionDAO {
      * @return true si se actualizó correctamente
      */
     public boolean responder(int idDevolucion, String nuevoEstado, String motivoRespuesta) {
+        // SQL 1: Actualiza el estado, la respuesta del administrador y estampa el tiempo exacto con NOW() en la solicitud. 
+        // Incluye un filtro de seguridad crítico: 'AND Estado = 'Pendiente'' para evitar re-procesar una solicitud ya cerrada.
         String sqlDev  = "UPDATE Solicitudes_Devolucion " +
                          "SET Estado = ?, Motivo_Respuesta = ?, Fecha_Respuesta = NOW() " +
                          "WHERE ID_Devolucion = ? AND Estado = 'Pendiente'";
         // Traer idPedido e idCarrito juntos
+        // SQL 2: Consulta de control para obtener el ID_Pedido y el ID_Carrito mapeados internamente, necesarios para rastrear los productos físicos.
         String sqlGet  = "SELECT d.ID_Pedido, p.ID_Carrito " +
                          "FROM Solicitudes_Devolucion d " +
                          "JOIN Pedidos_Cliente p ON d.ID_Pedido = p.ID_Pedido " +
                          "WHERE d.ID_Devolucion = ?";
+        // SQL 3: Actualiza el estado logístico del Pedido del Cliente (9 si se aprueba, vuelve a 8 si se rechaza).
         // Cambiar estado del pedido: 9 si aprobada, 8 si rechazada
         String sqlPed  = "UPDATE Pedidos_Cliente SET Estado_Pedido = ? WHERE ID_Pedido = ?";
+        
+        // SQL 4: Extrae los códigos de producto y las cantidades físicas compradas en el lote del carrito asociado (Estado_Carrito = 3 significa 'vendido/comprado').
         // Productos y cantidades compradas (estado 3 = vendido)
         String sqlProds = "SELECT ID_Producto, Cantidad_Producto " +
                           "FROM Carrito_Detalle " +
@@ -180,7 +201,7 @@ public class DevolucionDAO {
 
         try {
             con = cn.getConexion();
-            con.setAutoCommit(false);
+            con.setAutoCommit(false); // CONTROL TRANSACCIONAL COMPLEJO: Abre el entorno seguro de base de datos.
 
             // Obtener idPedido e idCarrito
             int idPedido  = -1;
@@ -223,6 +244,8 @@ public class DevolucionDAO {
 
                             // Reingresar al inventario (mismo patrón inverso al de compra)
                             try (PreparedStatement psInv = con.prepareStatement(
+                                    // SQL 5 (Bucle): Re-ingresa las cantidades al inventario generando una fila con StockInicial en cero 
+                                    // e inyectando las unidades en la columna CantidadAnadida (Cálculo inverso a la venta).
                                     "INSERT INTO Inventario (ID_Producto, StockInicial, CantidadAnadida) " +
                                     "VALUES (?, 0, ?)")) {
                                 psInv.setInt(1, idProd);
@@ -231,6 +254,8 @@ public class DevolucionDAO {
                             }
 
                             // Si estaba agotado (estado 2), reactivarlo a disponible (1)
+                            // SQL 6 (Bucle): Si el producto había quedado marcado como Agotado por el sistema (ID_Estado = 2), 
+                            // lo actualiza automáticamente de nuevo a Disponible (ID_Estado = 1) al recibir este stock reingresado
                             try (PreparedStatement psReact = con.prepareStatement(
                                     "UPDATE Productos SET ID_Estado = 1 " +
                                     "WHERE ID_Producto = ? AND ID_Estado = 2")) {
@@ -256,6 +281,8 @@ public class DevolucionDAO {
     // CONTAR PENDIENTES — Para badge en el menú del admin
     // =========================================================================
     public int contarPendientes() {
+        // SQL: Cuenta mediante la función agregada COUNT(*) el total de filas cuyo valor en la columna Estado sea estrictamente igual a 'Pendiente'.
+        // Se ejecuta repetitivamente para pintar contadores dinámicos o notificaciones visuales (badges) en el menú del administrador.
         String sql = "SELECT COUNT(*) FROM Solicitudes_Devolucion WHERE Estado = 'Pendiente'";
         try {
             con = cn.getConexion();
