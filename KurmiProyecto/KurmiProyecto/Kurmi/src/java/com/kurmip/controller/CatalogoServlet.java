@@ -47,7 +47,6 @@ public class CatalogoServlet extends HttpServlet {
             switch (accion) {
 
                 // -----------------------------------------------------------------
-                // Antes: ObtenerCategoriasServlet
                 // Devuelve: List<String> con los nombres de las categorías
                 // -----------------------------------------------------------------
                 case "categorias" -> {
@@ -55,7 +54,6 @@ public class CatalogoServlet extends HttpServlet {
                 }
 
                 // -----------------------------------------------------------------
-                // Antes: ObtenerRelacionesCatSaborServlet
                 // Devuelve: List<{idRelaCatSabor, nombreCategoria, nombreSabor}>
                 // -----------------------------------------------------------------
                 case "relaciones" -> {
@@ -63,7 +61,6 @@ public class CatalogoServlet extends HttpServlet {
                 }
 
                 // -----------------------------------------------------------------
-                // Antes: ObtenerSaboresYCategoriasServlet
                 // Devuelve: { ok: true, categorias: [{id, nombre}], sabores: [{id, nombre}] }
                 // -----------------------------------------------------------------
                 case "saboresYCategorias" -> {

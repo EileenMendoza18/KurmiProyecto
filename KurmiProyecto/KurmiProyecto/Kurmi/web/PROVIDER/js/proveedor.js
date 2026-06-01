@@ -812,7 +812,7 @@ function renderListaPedidos(lista, tipo) {
                 // Aún no inicia preparación → botón para pasar a 4
                 accionFooter = `
                     <button class="btn-entregar" data-id="${p.idPedido}" data-nuevo-estado="4">
-                        🚀 Iniciar preparación
+                        Iniciar preparación
                     </button>`;
             } else if (p.estadoProveedor === 4) {
                 // Ya preparando → botón para pasar a 5
@@ -1008,8 +1008,8 @@ async function marcarEstadoProveedor(idPedido, btn, nuevoEstado) {
         '5': `¿Confirmas que tus productos del pedido #${idPedido} están listos en bodega?`
     };
     const textosBtn = {
-        '4': '🚀 Iniciar preparación',
-        '5': '✅ Marcar en bodega'
+        '4': 'Iniciar preparación',
+        '5': 'Marcar en bodega'
     };
 
     if (!confirm(mensajes[nuevoEstado] ?? '¿Confirmar acción?')) return;

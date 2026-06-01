@@ -71,9 +71,7 @@ public class DevolucionDAO {
         return -1;
     }
 
-    // =========================================================================
-    // VERIFICAR — ¿Ya existe una solicitud para este pedido?
-    // =========================================================================
+
     public boolean existeParaPedido(int idPedido) {
         String sql = "SELECT COUNT(*) FROM Solicitudes_Devolucion WHERE ID_Pedido = ?";
         try {
@@ -88,9 +86,6 @@ public class DevolucionDAO {
         return false;
     }
 
-    // =========================================================================
-    // OBTENER POR CLIENTE — Vista del cliente (sus propias devoluciones)
-    // =========================================================================
     public List<Map<String, Object>> obtenerPorCliente(int idCliente) {
         List<Map<String, Object>> lista = new ArrayList<>();
         String sql =
@@ -120,9 +115,7 @@ public class DevolucionDAO {
         return lista;
     }
 
-    // =========================================================================
-    // OBTENER TODAS — Panel del administrador
-    // =========================================================================
+   
     public List<Map<String, Object>> obtenerTodas(String filtroEstado) {
         List<Map<String, Object>> lista = new ArrayList<>();
         StringBuilder sql = new StringBuilder(
@@ -160,9 +153,6 @@ public class DevolucionDAO {
         return lista;
     }
 
-    // =========================================================================
-    // RESPONDER — Admin aprueba o rechaza (cambia estado del pedido)
-    // =========================================================================
     /**
      * Actualiza la solicitud y, si se aprueba, cambia el estado del pedido a 9 (Devolucion).
      * Si se rechaza, vuelve el pedido a estado 8 (Entregado).
