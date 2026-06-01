@@ -7,6 +7,8 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.*;
 import java.io.IOException;
+import java.io.PrintWriter;
+import java.util.List;
 
 @WebServlet(name = "PerfilServlet", urlPatterns = {"/PerfilServlet"})
 public class PerfilServlet extends HttpServlet {
@@ -18,9 +20,25 @@ public class PerfilServlet extends HttpServlet {
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
 
-        response.setContentType("application/json");
-        response.setCharacterEncoding("UTF-8");
+        response.setContentType("application/json;charset=UTF-8");
 
+        String accion = request.getParameter("accion");
+
+        // ── accion=testimonios — antes: ObtenerTestimoniosServlet ─────────────
+        // Endpoint público: no requiere sesión activa (se muestra en inicio.html)
+        if ("testimonios".equals(accion)) {
+            try (PrintWriter out = response.getWriter()) {
+                List<String> nombres = usuarioDAO.obtenerNombresParaTestimonios(3);
+                out.print(gson.toJson(nombres));
+            } catch (Exception e) {
+                response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+                response.getWriter().print("{\"error\":\"" + e.getMessage() + "\"}");
+                e.printStackTrace();
+            }
+            return;
+        }
+
+        // ── Sin accion: datos del perfil del usuario en sesión ────────────────
         HttpSession session = request.getSession(false);
         if (session == null || session.getAttribute("usuarioLogueado") == null) {
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);

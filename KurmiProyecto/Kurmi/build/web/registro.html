@@ -81,7 +81,7 @@
                 <div class="div__form">
                     <div class="aceptar">
                         <input id="chkTerminos" name="inputCheck" type="checkbox">
-                        <p class="terminos">Aceptas nuestros <a href="#">Terminos y condiciones</a></p>
+                        <p class="terminos">Aceptas nuestros <a href="#" id="linkTerminos">Terminos y condiciones</a></p>
                         <span id="errorcheck" class="formulario-registro__error"></span>
                     </div>
                     <p>Si estas registrado/a da click <a href="./inicioSesion.html">aqui</a></p>
@@ -92,7 +92,56 @@
         
         <div id="footer"></div>
     </div>
-    
+
+    <!-- Modal Términos y Condiciones -->
+    <div id="modalTerminos" class="modal-terminos__overlay">
+        <div class="modal-terminos__caja">
+            <div class="modal-terminos__header">
+                <div>
+                    <h2 class="modal-terminos__titulo">Términos y Condiciones</h2>
+                    <p class="modal-terminos__sub">Kurmi · Tu jardín de deseos</p>
+                </div>
+                <button id="cerrarModalTerminos" class="modal-terminos__cerrar">✕</button>
+            </div>
+            <div class="modal-terminos__body">
+                <h3 class="modal-terminos__seccion">1. Aceptación de los términos</h3>
+                <p>Al registrarte en Kurmi, aceptas cumplir con estos Términos y Condiciones. Si no estás de acuerdo con alguno de ellos, te pedimos que no uses nuestra plataforma.</p>
+
+                <h3 class="modal-terminos__seccion">2. Uso de la plataforma</h3>
+                <p>Kurmi es una plataforma de comercio electrónico que conecta clientes con proveedores de productos artesanales y especiales. El uso está destinado exclusivamente a personas mayores de 18 años.</p>
+
+                <h3 class="modal-terminos__seccion">3. Registro y cuenta</h3>
+                <p>Al crear una cuenta, te comprometes a proporcionar información veraz, completa y actualizada. Eres responsable de mantener la confidencialidad de tu contraseña y de todas las actividades que ocurran bajo tu cuenta.</p>
+
+                <h3 class="modal-terminos__seccion">4. Privacidad de datos</h3>
+                <p>Kurmi recopila y trata tus datos personales (nombre, correo, teléfono, dirección) con el único propósito de gestionar tu cuenta y procesar tus pedidos. No compartimos tu información con terceros sin tu consentimiento, salvo obligación legal.</p>
+
+                <h3 class="modal-terminos__seccion">5. Compras y pagos</h3>
+                <p>Todos los precios publicados incluyen impuestos aplicables. Kurmi se reserva el derecho de modificar precios en cualquier momento. Una vez confirmado un pedido, el pago es vinculante y solo podrá cancelarse siguiendo el proceso de cancelación establecido.</p>
+
+                <h3 class="modal-terminos__seccion">6. Devoluciones</h3>
+                <p>Puedes solicitar una devolución dentro de los 5 días hábiles siguientes a la recepción de tu pedido, siempre que el producto presente defectos o no corresponda a lo descrito. Kurmi evaluará cada caso y notificará la decisión en un plazo máximo de 3 días hábiles.</p>
+
+                <h3 class="modal-terminos__seccion">7. Responsabilidad de los proveedores</h3>
+                <p>Los proveedores registrados en Kurmi son responsables de la calidad, descripción veraz y disponibilidad de los productos que publican. Kurmi actúa como intermediario y no se hace responsable de incumplimientos directos del proveedor.</p>
+
+                <h3 class="modal-terminos__seccion">8. Conducta del usuario</h3>
+                <p>Queda prohibido usar la plataforma para actividades ilegales, fraudulentas o que atenten contra los derechos de otros usuarios o proveedores. Kurmi se reserva el derecho de suspender o eliminar cuentas que incumplan esta norma.</p>
+
+                <h3 class="modal-terminos__seccion">9. Modificaciones</h3>
+                <p>Kurmi puede actualizar estos Términos y Condiciones en cualquier momento. Te notificaremos los cambios relevantes a través del correo registrado. El uso continuado de la plataforma tras la notificación implica la aceptación de los nuevos términos.</p>
+
+                <h3 class="modal-terminos__seccion">10. Contacto</h3>
+                <p>Si tienes dudas sobre estos términos, puedes contactarnos a través de la sección <strong>Contáctanos</strong> disponible en la plataforma.</p>
+
+                <p class="modal-terminos__nota">Última actualización: mayo 2026 · Kurmi — Tu jardín de deseos :)</p>
+            </div>
+            <div class="modal-terminos__footer">
+                <button id="btnAceptarTerminos" class="modal-terminos__btn-aceptar">Aceptar y cerrar</button>
+            </div>
+        </div>
+    </div>
+
     <script src="./helpers/app.js" type="module"></script>
 </body>
 </html>

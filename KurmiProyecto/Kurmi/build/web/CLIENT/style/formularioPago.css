@@ -51,6 +51,39 @@
     background-color: #9180DB;
 }
 
+/* ── Validación de campos ── */
+.form-group input.campo-error,
+.form-group select.campo-error {
+    border-color: #e74c3c;
+    background-color: #fff5f5;
+    animation: shake 0.3s ease;
+}
+
+.form-group input.campo-ok,
+.form-group select.campo-ok {
+    border-color: #6bcb77;
+    background-color: #f5fff6;
+}
+
+.campo-mensaje-error {
+    font-size: 0.78rem;
+    color: #e74c3c;
+    margin-top: -4px;
+    display: none;
+}
+
+.campo-mensaje-error.visible {
+    display: block;
+}
+
+@keyframes shake {
+    0%   { transform: translateX(0); }
+    25%  { transform: translateX(-5px); }
+    50%  { transform: translateX(5px); }
+    75%  { transform: translateX(-4px); }
+    100% { transform: translateX(0); }
+}
+
 .resumen-producto {
     background: #F4F2FF;
     padding: 12px;

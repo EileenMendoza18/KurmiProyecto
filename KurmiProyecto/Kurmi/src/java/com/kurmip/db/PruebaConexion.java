@@ -15,7 +15,7 @@ public class PruebaConexion {
                 System.out.println("Error al cerrar: " + e.getMessage());
             }
         } else {
-            System.out.println("❌ ERROR: La conexión es nula. Revisa el Driver o las credenciales.");
+            System.out.println("ERROR: La conexión es nula. Revisa el Driver o las credenciales.");
         }
     }
 }

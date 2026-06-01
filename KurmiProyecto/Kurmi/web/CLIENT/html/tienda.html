@@ -9,18 +9,23 @@
 <body>
     <div class="div__body">
         <div id="header"></div>
-        <div id="asideContainer">
-            
-        </div> 
+        <div id="asideContainer"></div>
         <main class="tienda-main">
             <h1 class="tienda-titulo">Bienvenido a tu jardin de deseos</h1>
-            
+
             <section class="buscador-seccion">
                 <div class="buscador-contenedor">
                     <h2 class="buscador-texto">Busca lo que mas te guste</h2>
-                    <div class="buscador-input-wrapper">
-                        <input type="text" placeholder="¿Qué deseas probar hoy?..." class="buscador-input">
-                        <img src="../../RESOURCES/img/twiter.png" alt="Buscar" class="buscador-icono">
+                    <div class="buscador-fila">
+                        <div class="buscador-input-wrapper">
+                            <input type="text" placeholder="¿Qué deseas probar hoy?..." class="buscador-input">
+                            <img src="../../RESOURCES/img/search.png" alt="Buscar" class="buscador-icono">
+                        </div>
+                        <div class="buscador-filtros-extra">
+                            <select id="filtroProveedorTienda" class="buscador-select-proveedor">
+                                <option value="">Todos los proveedores</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
             </section>
@@ -35,7 +40,7 @@
 
         <div id="footer"></div>
     </div>
-    
+
     <script src="../js/index.js" type="module"></script>
 </body>
 </html>

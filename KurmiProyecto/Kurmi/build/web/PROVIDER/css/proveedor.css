@@ -72,7 +72,6 @@ html, body {
     border-radius: 50%;
     object-fit: cover;
     border: 3px solid var(--color-morado-clr);
-    background-color: var(--color-blanco);
 }
 
 .sidebar__bienvenida {
@@ -1083,4 +1082,8 @@ html, body {
     color: #756a9b;
     font-size: 0.85rem;
     margin: 0;
+}
+
+.sol-card__tipo img{
+    width: 25px;
 }
