@@ -20,11 +20,11 @@ async function cargarModulos() {
             cargarProductosPorCategoriaPagina();
         }
         if (document.getElementById('contenedorMasVendidos')) {
-            cargarGaleriaDinamica('contenedorMasVendidos', 'ObtenerProductosServlet');
+            cargarGaleriaDinamica('contenedorMasVendidos', 'ProductoServlet?accion=masVendidos');
         }
         
         if (document.getElementById('contenedorUltimos')) {
-            cargarGaleriaDinamica('contenedorUltimos', 'ObtenerUltimosProductosServlet');
+            cargarGaleriaDinamica('contenedorUltimos', 'ProductoServlet?accion=ultimos');
         }
         
         if (document.getElementById('contenedorCategorias')) {
@@ -196,7 +196,7 @@ async function cargarGaleriaDinamica(contenedorId, servletURL) {
  */
 async function cargarCategoriasGaleria(contenedorId) {
     try {
-        const responseCat = await fetch('/KurmiProyect/ObtenerCategoriasServlet');
+        const responseCat = await fetch('/KurmiProyect/CatalogoServlet?accion=categorias');
         const categorias = await responseCat.json();
 
         const responseTemplate = await fetch('../../components/tarjetaCategoria.html');
@@ -240,7 +240,7 @@ async function cargarCategoriasGaleria(contenedorId) {
  */
 async function cargarCategoriasAside(contenedorId) {
     try {
-        const responseCat = await fetch('/KurmiProyect/ObtenerCategoriasServlet');
+        const responseCat = await fetch('/KurmiProyect/CatalogoServlet?accion=categorias');
         const categorias = await responseCat.json();
 
         const contenedor = document.getElementById(contenedorId);
@@ -251,12 +251,7 @@ async function cargarCategoriasAside(contenedorId) {
         if (contenedorIconos) contenedorIconos.innerHTML = '';
 
         // SVG genérico de postre (cupcake)
-        const iconoPostre = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="26" height="26" fill="none">
-            <path d="M20 36 c-2-8 0-16 12-18 12 2 14 10 12 18Z" fill="#DCD6F7" stroke="#463877" stroke-width="2"/>
-            <rect x="18" y="36" width="28" height="14" rx="4" fill="#B1B2FF" stroke="#463877" stroke-width="2"/>
-            <circle cx="32" cy="28" r="4" fill="#ff9eb5" stroke="#463877" stroke-width="1.5"/>
-            <line x1="32" y1="24" x2="32" y2="18" stroke="#463877" stroke-width="2" stroke-linecap="round"/>
-        </svg>`;
+        const iconoPostre = `<img src="../../RESOURCES/img/postreAside.png" alt="Toggle">`;
 
         categorias.forEach(nombreCat => {
             // --- Icono lateral ---
@@ -330,7 +325,7 @@ async function cargarCategoriasAside(contenedorId) {
  */
 async function cargarTestimoniosDinamicos() {
     try {
-        const responseData = await fetch('/KurmiProyect/ObtenerTestimoniosServlet');
+        const responseData = await fetch('/KurmiProyect/PerfilServlet?accion=testimonios');
         const nombresUsuarios = await responseData.json();
 
         const responseTemplate = await fetch('../../components/tarjetaTestimonio.html');
@@ -393,10 +388,10 @@ async function mostrarNotificacionDinamica(tipo) {
 
     // 3. Cambiamos el texto y el emoji según la acción
     if (tipo === "carrito") {
-        toastIcon.textContent = "🛒"; 
+        toastIcon.textContent = ":)"; 
         toastMessage.textContent = "¡Has agregado el producto a tu carrito!";
     } else {
-        toastIcon.textContent = "💜"; 
+        toastIcon.textContent = ":)"; 
         toastMessage.textContent = "¡Artículo añadido a tu lista de favoritos!";
     }
     
@@ -428,7 +423,7 @@ inicializarBotonProductos();
  */
 async function cargarSeccionesTienda(contenedorId) {
     try {
-        const response = await fetch('/KurmiProyect/ObtenerProductosPorCategoriaServlet');
+        const response = await fetch('/KurmiProyect/ProductoServlet?accion=porCategoria');
         const productos = await response.json();
 
         // Guardar globalmente para el buscador
@@ -522,7 +517,7 @@ async function cargarProductosPorCategoriaPagina() {
         if (tituloCategoria) tituloCategoria.textContent = categoriaSeleccionada;
 
         // 1. Petición al Servlet de la base de datos
-        const response = await fetch(`/KurmiProyect/ObtenerProductosPorCategoriaServlet?categoria=${encodeURIComponent(categoriaSeleccionada)}`);
+        const response = await fetch(`/KurmiProyect/ProductoServlet?accion=porCategoria&categoria=${encodeURIComponent(categoriaSeleccionada)}`);
         const todosLosProductos = await response.json();
 
         if (todosLosProductos.length === 0) {
@@ -936,7 +931,7 @@ function inicializarBuscador() {
         if (filtrados.length === 0) {
             contenedor.innerHTML = `
                 <div class="buscador__sin-resultados">
-                    <p>😕 No encontramos productos con "<strong>${inputBuscador.value.trim() || proveedor}</strong>"</p>
+                    <p>:( No encontramos productos con "<strong>${inputBuscador.value.trim() || proveedor}</strong>"</p>
                     <p>Intenta con otro nombre, categoría o proveedor.</p>
                 </div>`;
             return;
@@ -1197,7 +1192,7 @@ function abrirModalDetalle(prod) {
                 </div>
             </div>
             <div class="modal-detalle__footer">
-                <button class="modal-detalle__btn-carrito" id="mdBtnCarrito">🛒 Añadir al carrito</button>
+                <button class="modal-detalle__btn-carrito" id="mdBtnCarrito">Añadir al carrito</button>
                 <button class="modal-detalle__btn-comprar" id="mdBtnComprar">Comprar ahora</button>
             </div>
         </div>

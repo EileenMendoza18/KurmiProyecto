@@ -69,7 +69,7 @@ async function cargarPedidos(estado) {
                 '9':          'pedidos en devolución',
                 '3':          'pedidos cancelados'
             };
-            grid.innerHTML = `<p class="pedidos__vacio">😕 No tienes ${etiquetas[estado] || 'pedidos'} aún.</p>`;
+            grid.innerHTML = `<p class="pedidos__vacio">:( No tienes ${etiquetas[estado] || 'pedidos'} aún.</p>`;
             return;
         }
 
@@ -149,7 +149,7 @@ function crearTarjetaPedido(pedido, filtroActivo) {
         if (diffHoras <= 24) {
             const btnDevolver = document.createElement('button');
             btnDevolver.className = 'btn__pedido-devolver';
-            btnDevolver.innerHTML = '↩ Solicitar devolución';
+            btnDevolver.innerHTML = 'Solicitar devolución';
             btnDevolver.addEventListener('click', e => {
                 e.stopPropagation();
                 abrirFormDevolucion(pedido.idPedido, pedido.fechaPedido);
@@ -161,7 +161,7 @@ function crearTarjetaPedido(pedido, filtroActivo) {
     // Botón factura — aparece en TODOS los pedidos sin importar el estado
     const btnFactura = document.createElement('button');
     btnFactura.className = 'btn__pedido-factura';
-    btnFactura.innerHTML = '🧾 Ver factura';
+    btnFactura.innerHTML = 'Ver factura';
     btnFactura.addEventListener('click', e => {
         e.stopPropagation();
         generarFacturaPDF(pedido);
@@ -329,7 +329,7 @@ function generarFacturaPDF(pedido) {
     </div>
 
     <div class="factura__footer">
-        <p>Kurmi — Gracias por tu compra 💜 &nbsp;·&nbsp; Este documento es tu comprobante de pago.</p>
+        <p>Kurmi — Gracias por tu compra &nbsp;·&nbsp; Este documento es tu comprobante de pago.</p>
     </div>
 
 </div>
@@ -370,7 +370,7 @@ function confirmarCancelacion(idPedido) {
     overlay.innerHTML = `
         <div class="modal__card cancel__card">
             <button class="modal__cerrar" id="cancelModalCerrar">✕</button>
-            <h2 class="modal__titulo">❌ Cancelar pedido</h2>
+            <h2 class="modal__titulo">Cancelar pedido</h2>
             <p class="cancel__subtitulo">Pedido #${idPedido} — indica el motivo de la cancelación.</p>
 
             <label class="cancel__label">
@@ -432,13 +432,13 @@ function confirmarCancelacion(idPedido) {
                 mostrarNotificacion('✅ Solicitud enviada. El administrador la revisará pronto.');
                 cargarPedidos('1');
             } else {
-                errorEl.textContent = '❌ ' + (data.msg || 'Error desconocido');
+                errorEl.textContent = (data.msg || 'Error desconocido');
                 errorEl.classList.remove('hidden');
                 btnConf.disabled = false;
                 btnConf.textContent = 'Enviar solicitud';
             }
         } catch (e) {
-            errorEl.textContent = '❌ Error de red. Intenta de nuevo.';
+            errorEl.textContent = 'Error de red. Intenta de nuevo.';
             errorEl.classList.remove('hidden');
             btnConf.disabled = false;
             btnConf.textContent = 'Enviar solicitud';
@@ -470,7 +470,7 @@ function abrirFormDevolucion(idPedido, fechaPedido) {
     overlay.innerHTML = `
         <div class="modal__card dev__card" id="devCard">
             <button class="modal__cerrar" id="devCerrar">✕</button>
-            <h2 class="modal__titulo">↩ Solicitar devolución</h2>
+            <h2 class="modal__titulo">Solicitar devolución</h2>
             <p class="modal__fecha">Pedido del ${fechaPedido} &nbsp;·&nbsp; Tienes 24 horas para solicitar devoluciones.</p>
 
             <div class="dev__form">
@@ -644,7 +644,7 @@ async function cargarMisDevoluciones() {
         grid.innerHTML = '';
 
         if (!data.ok || !data.devoluciones || data.devoluciones.length === 0) {
-            grid.innerHTML = '<p class="pedidos__vacio">😕 Aún no has enviado solicitudes de devolución.</p>';
+            grid.innerHTML = '<p class="pedidos__vacio">:( Aún no has enviado solicitudes de devolución.</p>';
             return;
         }
 
@@ -661,18 +661,21 @@ async function cargarMisDevoluciones() {
 
 function crearTarjetaDevolucion(dev) {
     const cfgEstado = {
-        'Pendiente': { bg: '#e67e22', color: '#fff', icon: '⏳' },
-        'Aprobada':  { bg: '#2ecc71', color: '#fff', icon: '✅' },
-        'Rechazada': { bg: '#e74c3c', color: '#fff', icon: '❌' }
+        'Pendiente': { bg: '#e67e22', color: '#fff', icon: '...' },
+        'Aprobada':  { bg: '#2ecc71', color: '#fff', icon: ':)' },
+        'Rechazada': { bg: '#e74c3c', color: '#fff', icon: ':(' }
     };
     const cfg = cfgEstado[dev.estado] || { bg: '#aaa', color: '#fff', icon: '?' };
 
     const card = document.createElement('div');
     card.className = 'pedido__card dev__solicitud-card';
+    card.style.cursor = 'pointer';
 
     const BASE_IMG = '/KurmiProyect/RESOURCES/img/';
-    const imgSrc   = dev.imagenPrueba
-        ? BASE_IMG + 'devoluciones/' + dev.imagenPrueba
+
+    // Bug fix 1: mostrar imagen del primer producto del pedido, no imagenPrueba
+    const imgSrc = (dev.imagenPrimera && dev.imagenPrimera !== 'inicioHelado.png')
+        ? BASE_IMG + dev.imagenPrimera
         : '../../RESOURCES/img/inicioHelado.png';
 
     card.innerHTML = `
@@ -700,6 +703,20 @@ function crearTarjetaDevolucion(dev) {
             </p>
         </div>
     `;
+
+    // Bug fix 2: click abre el modal con los productos del pedido original
+    card.addEventListener('click', async () => {
+        try {
+            const res = await fetch('/KurmiProyect/PedidosServlet?estado=9');
+            if (!res.ok) return;
+            const pedidos = await res.json();
+            const pedido  = pedidos.find(p => p.idPedido === dev.idPedido);
+            if (pedido) abrirModal(pedido, '9');
+        } catch (e) {
+            console.error('Error al abrir detalle de devolución:', e);
+        }
+    });
+
     return card;
 }
 

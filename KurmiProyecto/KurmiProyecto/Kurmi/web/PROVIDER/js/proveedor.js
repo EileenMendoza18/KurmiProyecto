@@ -55,7 +55,7 @@ function renderSeccionProductos() {
     main.innerHTML = `
         <div class="seccion-header">
             <h2>Mis productos</h2>
-            <button class="btn-primario" id="btnNuevoProducto">＋ Nuevo producto</button>
+            <button class="btn-primario" id="btnNuevoProducto">Nuevo producto</button>
         </div>
 
         <div class="filtros-bar">
@@ -101,7 +101,7 @@ function renderSeccionProductos() {
 async function cargarMisProductos() {
     const contenedor = document.getElementById('listaProductos');
     try {
-        const res = await fetch(`${BASE_URL}/ObtenerMisProductosServlet`);
+        const res = await fetch(`${BASE_URL}/ProductoServlet?accion=misProductos`);
         const contentType = res.headers.get('content-type') || '';
         if (!contentType.includes('application/json')) {
             contenedor.innerHTML = `<p class="error-txt">Error del servidor (${res.status}).</p>`;
@@ -197,7 +197,7 @@ function htmlModalCrear() {
     return `
         <div class="modal">
             <div class="modal__header">
-                <h3>➕ Nuevo producto</h3>
+                <h3>Nuevo producto</h3>
                 <button class="modal__cerrar" id="btnCerrarModalCrear">✕</button>
             </div>
             <div class="modal__body">
@@ -295,7 +295,7 @@ function cerrarModalCrear() {
 
 async function cargarCategoriasSabores(selectId) {
     try {
-        const res  = await fetch(`${BASE_URL}/ObtenerRelacionesCatSaborServlet`);
+        const res  = await fetch(`${BASE_URL}/CatalogoServlet?accion=relaciones`);
         const data = await res.json();
         const sel  = document.getElementById(selectId);
         if (!sel) return;
@@ -311,7 +311,7 @@ async function cargarCategoriasSabores(selectId) {
 
 async function cargarCategoriasSaboresConSeleccion(selectId, valorSeleccionado) {
     try {
-        const res  = await fetch(`${BASE_URL}/ObtenerRelacionesCatSaborServlet`);
+        const res  = await fetch(`${BASE_URL}/CatalogoServlet?accion=relaciones`);
         const data = await res.json();
         const sel  = document.getElementById(selectId);
         if (!sel) return;
@@ -364,10 +364,11 @@ async function enviarNuevoProducto() {
     fd.append('unidadMedida',   unidadMedida);
     fd.append('fechaVenc',      fechaVenc);
     fd.append('idRelaCatSabor', idRelaCatSabor);
+    fd.append('accion',         'crear');
     if (imagenFile) fd.append('imagen', imagenFile);
 
     try {
-        const res  = await fetch(`${BASE_URL}/CrearProductoServlet`, { method: 'POST', body: fd });
+        const res  = await fetch(`${BASE_URL}/GestionProductoServlet`, { method: 'POST', body: fd });
         const data = await res.json();
 
         if (data.ok) {
@@ -377,10 +378,10 @@ async function enviarNuevoProducto() {
                 cargarMisProductos();
             }, 1200);
         } else {
-            mostrarFeedback('feedback-modal', 'error', `❌ ${data.error}`);
+            mostrarFeedback('feedback-modal', 'error', `${data.error}`);
         }
     } catch (err) {
-        mostrarFeedback('feedback-modal', 'error', `❌ Error de conexión: ${err.message}`);
+        mostrarFeedback('feedback-modal', 'error', ` Error de conexión: ${err.message}`);
     } finally {
         btn.disabled = false;
     }
@@ -393,7 +394,7 @@ function htmlModalEditar() {
     return `
         <div class="modal">
             <div class="modal__header">
-                <h3>✏️ Editar producto</h3>
+                <h3> Editar producto</h3>
                 <button class="modal__cerrar" id="btnCerrarModalEditar">✕</button>
             </div>
             <div class="modal__body">
@@ -420,7 +421,7 @@ function htmlModalEditar() {
                 </select>
 
                 <div class="stock-info-box">
-                    <p>📦 Stock actual: <strong id="edit-stockActual">—</strong></p>
+                    <p>Stock actual: <strong id="edit-stockActual">—</strong></p>
                 </div>
 
                 <label>Cantidad a añadir al stock</label>
@@ -551,11 +552,12 @@ async function enviarEdicionProducto() {
     fd.append('fechaVenc',        fechaVenc);
     fd.append('idRelaCatSabor',   idRelaCatSabor);
     fd.append('cantidadAniadida', cantidadAniadida);
+    fd.append('accion',           'editar');
     if (imagenFile) fd.append('imagen', imagenFile);
     fd.append('estado', estado);
 
     try {
-        const res  = await fetch(`${BASE_URL}/EditarProductoServlet`, { method: 'POST', body: fd });
+        const res  = await fetch(`${BASE_URL}/GestionProductoServlet`, { method: 'POST', body: fd });
         const data = await res.json();
 
         if (data.ok) {
@@ -565,10 +567,10 @@ async function enviarEdicionProducto() {
                 cargarMisProductos();
             }, 1200);
         } else {
-            mostrarFeedback('feedback-editar', 'error', `❌ ${data.error}`);
+            mostrarFeedback('feedback-editar', 'error', ` ${data.error}`);
         }
     } catch (err) {
-        mostrarFeedback('feedback-editar', 'error', `❌ Error de conexión: ${err.message}`);
+        mostrarFeedback('feedback-editar', 'error', ` Error de conexión: ${err.message}`);
     } finally {
         btn.disabled = false;
     }
@@ -588,10 +590,10 @@ async function confirmarEliminar(idProducto, nombre) {
     if (!confirmado) return;
 
     try {
-        const res = await fetch(`${BASE_URL}/EliminarProductoServlet`, {
+        const res = await fetch(`${BASE_URL}/GestionProductoServlet`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: `idProducto=${encodeURIComponent(id)}`
+            body: `accion=eliminar&idProducto=${encodeURIComponent(id)}`
         });
 
         if (!res.ok) {
@@ -858,7 +860,7 @@ function renderListaPedidos(lista, tipo) {
                 <button class="btn-factura-prov" data-id="${p.idPedido}"
                         style="padding:6px 16px;background:#7C4DFF;color:#fff;border:none;
                                border-radius:20px;font-size:.82rem;font-weight:600;cursor:pointer;">
-                    🧾 Ver factura
+                    Ver factura
                 </button>
             </div>
         </div>
@@ -988,7 +990,7 @@ function generarFacturaProv(p) {
         <div class="total-box"><p>Subtotal de tus productos</p><strong>$${subtotal}</strong></div>
     </div>
     <div class="factura__footer">
-        <p>Kurmi — Gracias por tu compra 💜 &nbsp;·&nbsp; Este documento es tu comprobante de pago.</p>
+        <p>Kurmi — Gracias por tu compra &nbsp;·&nbsp; Este documento es tu comprobante de pago.</p>
     </div>
 </div>
 </body>
@@ -1272,16 +1274,16 @@ function renderSeccionSolicitudes() {
     const main = document.getElementById('contenidoPrincipal');
     main.innerHTML = `
         <div class="seccion-header">
-            <h2>📋 Mis solicitudes</h2>
-            <button class="btn-primario" id="btnNuevaSolicitud">＋ Nueva solicitud</button>
+            <h2>Mis solicitudes</h2>
+            <button class="btn-primario" id="btnNuevaSolicitud">Nueva solicitud</button>
         </div>
 
         <div class="filtros-bar">
             <select id="filtroEstadoSolicitud" class="filtro-select">
                 <option value="">Todos los estados</option>
-                <option value="Pendiente">⏳ Pendiente</option>
-                <option value="Aprobado">✅ Aprobado</option>
-                <option value="Rechazado">❌ Rechazado</option>
+                <option value="Pendiente">Pendiente</option>
+                <option value="Aprobado">Aprobado</option>
+                <option value="Rechazado">Rechazado</option>
             </select>
             <button class="btn-limpiar" id="btnLimpiarFiltroSol">✕ Limpiar</button>
         </div>
@@ -1295,7 +1297,7 @@ function renderSeccionSolicitudes() {
         <div id="modalCrearSolicitud" class="modal-overlay" style="display:none">
             <div class="modal modal--solicitud">
                 <div class="modal__header">
-                    <h3>📋 Nueva solicitud de categoría / sabor</h3>
+                    <h3>Nueva solicitud de categoría / sabor</h3>
                     <button class="modal__cerrar" id="cerrarModalSolicitud">✕</button>
                 </div>
                 <div class="modal__body">
@@ -1307,9 +1309,9 @@ function renderSeccionSolicitudes() {
                     <label class="sol-label">Tipo de solicitud <span class="sol-required">*</span></label>
                     <select id="sol-tipo" class="filtro-select" style="width:100%;margin-bottom:14px;">
                         <option value="">— Selecciona el tipo —</option>
-                        <option value="Categoria">🏷 Solo categoría nueva</option>
-                        <option value="Sabor">🍦 Solo sabor nuevo</option>
-                        <option value="Ambos">🏷🍦 Categoría y sabor nuevos</option>
+                        <option value="Categoria">Solo categoría nueva</option>
+                        <option value="Sabor">Solo sabor nuevo</option>
+                        <option value="Ambos">Categoría y sabor nuevos</option>
                     </select>
                     <span class="error-msg" id="error-sol-tipo"></span>
 
@@ -1399,7 +1401,7 @@ function renderSeccionSolicitudes() {
 
 async function cargarOpcionesExistentes() {
     try {
-        const res  = await fetch(`${BASE_URL}/ObtenerSaboresYCategoriasServlet`);
+        const res  = await fetch(`${BASE_URL}/CatalogoServlet?accion=saboresYCategorias`);
         const data = await res.json();
         if (!data.ok) return;
 
@@ -1431,7 +1433,7 @@ async function cargarMisSolicitudes() {
         const data = await res.json();
 
         if (!data.ok) {
-            contenedor.innerHTML = `<p class="error-txt">❌ ${data.error}</p>`;
+            contenedor.innerHTML = `<p class="error-txt"> ${data.error}</p>`;
             return;
         }
 
@@ -1451,10 +1453,10 @@ function renderListaSolicitudes(lista) {
         contador.textContent = '';
         contenedor.innerHTML = `
             <div class="sol-vacio">
-                <span class="sol-vacio__icono">📭</span>
+                <span class="sol-vacio__icono">:(</span>
                 <p>No tienes solicitudes aún.<br>
                    <span style="font-size:.85rem;color:#999;">
-                     Pulsa <strong>+ Nueva solicitud</strong> para pedir una nueva categoría o sabor.
+                     Pulsa <strong>Nueva solicitud</strong> para pedir una nueva categoría o sabor.
                    </span>
                 </p>
             </div>`;
@@ -1473,16 +1475,16 @@ function tarjetaSolicitudProveedor(s) {
     }[s.estado] ?? 'badge--gris';
 
     const badgeIcon = {
-        'Pendiente': '⏳',
-        'Aprobado':  '✅',
-        'Rechazado': '❌'
+        'Pendiente': '...',
+        'Aprobado':  ':)',
+        'Rechazado': ':('
     }[s.estado] ?? '';
 
     const tipoIcono = {
-        'Categoria': '🏷',
-        'Sabor':     '🍦',
-        'Ambos':     '🏷🍦'
-    }[s.tipo] ?? '📋';
+        'Categoria': '<img src="../../RESOURCES/img/postreAside.png" >',
+        'Sabor':     '<img src="../../RESOURCES/img/postreAside.png" >',
+        'Ambos':     '<img src="../../RESOURCES/img/postreAside.png" >'
+    }[s.tipo] ?? ':)';
 
     const filaCateg    = s.nombreCat   ? `<p class="sol-card__fila"><span class="sol-card__etiq">Categoría nueva:</span> ${s.nombreCat}</p>`   : '';
     const filaSabor    = s.nombreSabor ? `<p class="sol-card__fila"><span class="sol-card__etiq">Sabor nuevo:</span> ${s.nombreSabor}</p>`     : '';
@@ -1582,7 +1584,7 @@ async function enviarNuevaSolicitud() {
 
     btn.disabled         = true;
     feedback.className   = 'feedback feedback--cargando';
-    feedback.textContent = '⏳ Enviando solicitud…';
+    feedback.textContent = 'Enviando solicitud…';
 
     try {
         const res = await fetch(`${BASE_URL}/SolicitudesServlet`, {
@@ -1610,11 +1612,11 @@ async function enviarNuevaSolicitud() {
             }, 1200);
         } else {
             feedback.className   = 'feedback feedback--error';
-            feedback.textContent = `❌ ${data.error ?? 'No se pudo enviar la solicitud.'}`;
+            feedback.textContent = ` ${data.error ?? 'No se pudo enviar la solicitud.'}`;
         }
     } catch (e) {
         feedback.className   = 'feedback feedback--error';
-        feedback.textContent = `❌ Error de conexión: ${e.message}`;
+        feedback.textContent = ` Error de conexión: ${e.message}`;
     } finally {
         btn.disabled = false;
     }

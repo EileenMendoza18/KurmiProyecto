@@ -2,6 +2,7 @@ package com.kurmip.controller;
 
 import com.kurmip.model.dao.PedidoDAO;
 import com.kurmip.model.dto.UsuarioDTO;
+import com.kurmip.util.AuthHelper;
 import com.google.gson.Gson;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
@@ -14,15 +15,13 @@ import java.util.Map;
  * CambiarEstadoPedidoServlet — acciones del CLIENTE sobre sus pedidos
  *
  * POST /CambiarEstadoPedidoServlet
- *   nuevoEstado = 3  → Cancelar  (solo si el pedido está en estado 1 = Pendiente)
- *   nuevoEstado = 1  → Reactivar (solo si el pedido está en estado 3 = Cancelado)
+ *   nuevoEstado = 3  → Solicitar cancelación (solo si estado = 1 Pendiente)
+ *   nuevoEstado = 1  → Reactivar pedido (solo si estado = 3 Cancelado)
  *                       requiere idMetodo (int)
  *
  * Estados de pedido:
  *   1=Pendiente  3=Cancelado  4=Preparando  5=En bodega
  *   6=Empacando  7=Transportando  8=Entregado  9=Devolución
- *
- * El cliente NO puede cancelar un pedido que ya está en preparación (estado ≥ 4).
  */
 @WebServlet(name = "CambiarEstadoPedidoServlet", urlPatterns = {"/CambiarEstadoPedidoServlet"})
 public class CambiarEstadoPedidoServlet extends HttpServlet {
@@ -34,20 +33,12 @@ public class CambiarEstadoPedidoServlet extends HttpServlet {
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
 
-        response.setContentType("application/json");
-        response.setCharacterEncoding("UTF-8");
+        response.setContentType("application/json;charset=UTF-8");
 
-        // ── Sesión ─────────────────────────────────────────────────────────────
-        HttpSession session = request.getSession(false);
-        if (session == null || session.getAttribute("usuarioLogueado") == null) {
-            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            response.getWriter().write("{\"ok\":false,\"msg\":\"No autorizado\"}");
-            return;
-        }
+        UsuarioDTO usuario = AuthHelper.obtenerUsuario(request, response);
+        if (usuario == null) return;
 
-        UsuarioDTO usuario = (UsuarioDTO) session.getAttribute("usuarioLogueado");
         int idUsuario = usuario.getId();
-
         Map<String, Object> result = new HashMap<>();
 
         String idPedidoParam    = request.getParameter("idPedido");

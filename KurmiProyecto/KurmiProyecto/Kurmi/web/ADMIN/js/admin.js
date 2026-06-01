@@ -150,7 +150,7 @@ function renderSeccionProductos() {
 // ── Ventas totales (VentasTotalesAdminServlet) ────────────────────────────────
 async function cargarVentasTotales() {
     try {
-        const res  = await fetch(`${BASE_URL}/VentasTotalesAdminServlet`);
+        const res  = await fetch(`${BASE_URL}/AdminServlet?accion=ventasTotales`);
         if (!res.ok) return;
         const data = await res.json();
 
@@ -172,7 +172,7 @@ async function cargarVentasTotales() {
 async function cargarTodosLosProductos() {
     const contenedor = document.getElementById('listaProductos');
     try {
-        const res = await fetch(`${BASE_URL}/ObtenerTodosProductosServlet`);
+        const res = await fetch(`${BASE_URL}/ProductoServlet?accion=todos`);
         const contentType = res.headers.get('content-type') || '';
 
         if (!contentType.includes('application/json')) {
@@ -183,7 +183,7 @@ async function cargarTodosLosProductos() {
         const data = await res.json();
 
         if (data.error) {
-            contenedor.innerHTML = `<p class="error-txt">❌ ${data.error}</p>`;
+            contenedor.innerHTML = `<p class="error-txt">${data.error}</p>`;
             return;
         }
 
@@ -285,7 +285,7 @@ function tarjetaProductoAdmin(p) {
                 <button class="btn-estado"
                         data-id="${p.idProducto}"
                         title="Cambiar estado del producto">
-                    🔄 Cambiar estado
+                    Cambiar estado
                 </button>
             </div>
         </div>
@@ -477,7 +477,7 @@ function abrirModalDetalleAdmin(prod) {
                 </div>
             </div>
             <div class="mda-footer">
-                <button class="mda-btn-estado" id="mdaBtnEstado">🔄 Cambiar estado</button>
+                <button class="mda-btn-estado" id="mdaBtnEstado">Cambiar estado</button>
             </div>
         </div>
     `;
@@ -505,11 +505,11 @@ async function guardarCambioEstado() {
     const btn         = document.getElementById('confirmarCambioEstado');
 
     feedback.className   = 'feedback feedback--cargando';
-    feedback.textContent = '⏳ Guardando cambio…';
+    feedback.textContent = 'Guardando cambio…';
     btn.disabled = true;
 
     try {
-        const res = await fetch(`${BASE_URL}/CambiarEstadoProductoAdminServlet`, {
+        const res = await fetch(`${BASE_URL}/AdminServlet?accion=cambiarEstadoProducto`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body: new URLSearchParams({
@@ -539,12 +539,12 @@ async function guardarCambioEstado() {
             }, 900);
         } else {
             feedback.className   = 'feedback feedback--error';
-            feedback.textContent = `❌ ${data.error ?? 'No se pudo actualizar.'}`;
+            feedback.textContent = ` ${data.error ?? 'No se pudo actualizar.'}`;
         }
 
     } catch (e) {
         feedback.className   = 'feedback feedback--error';
-        feedback.textContent = `❌ Error de conexión: ${e.message}`;
+        feedback.textContent = ` Error de conexión: ${e.message}`;
     } finally {
         btn.disabled = false;
     }
@@ -558,7 +558,7 @@ function renderSeccionClientes() {
     const main = document.getElementById('contenidoPrincipal');
     main.innerHTML = `
         <div class="seccion-header">
-            <h2>👥 Clientes y Proveedores</h2>
+            <h2>Clientes y Proveedores</h2>
         </div>
 
         <!-- Filtros -->
@@ -589,7 +589,7 @@ function renderSeccionClientes() {
         <div id="modalEstadoUsuario" class="modal-overlay" style="display:none">
             <div class="modal">
                 <div class="modal__header">
-                    <h3>🔄 Cambiar estado del usuario</h3>
+                    <h3>Cambiar estado del usuario</h3>
                     <button class="modal__cerrar" id="cerrarModalUsuario">✕</button>
                 </div>
                 <div class="modal__body">
@@ -599,9 +599,9 @@ function renderSeccionClientes() {
                         Estado actual: <strong id="modalUsuarioEstadoActual"></strong>
                     </p>
                     <select class="modal-estado-select" id="selectNuevoEstadoUsuario" style="margin-top:14px;">
-                        <option value="1">✅ Activo</option>
-                        <option value="2">🚫 Inactivo</option>
-                        <option value="3">⏳ Pendiente</option>
+                        <option value="1">Activo</option>
+                        <option value="2">Inactivo</option>
+                        <option value="3">Pendiente</option>
                     </select>
                     <div id="feedbackEstadoUsuario"></div>
                 </div>
@@ -626,7 +626,7 @@ function renderSeccionClientes() {
 async function cargarTodosLosUsuarios() {
     const contenedor = document.getElementById('listaUsuarios');
     try {
-        const res = await fetch(`${BASE_URL}/ObtenerClientesAdminServlet`);
+        const res = await fetch(`${BASE_URL}/AdminServlet?accion=clientes`);
         const contentType = res.headers.get('content-type') || '';
         if (!contentType.includes('application/json')) {
             contenedor.innerHTML = `<p class="error-txt">Error del servidor (${res.status}).</p>`;
@@ -634,7 +634,7 @@ async function cargarTodosLosUsuarios() {
         }
         const data = await res.json();
         if (data.error) {
-            contenedor.innerHTML = `<p class="error-txt">❌ ${data.error}</p>`;
+            contenedor.innerHTML = `<p class="error-txt"> ${data.error}</p>`;
             return;
         }
         todosLosUsuarios = data;
@@ -699,7 +699,7 @@ function filaUsuario(u) {
             <td><span class="badge ${badgeClass}" style="position:static;">${u.estadoNombre ?? '—'}</span></td>
             <td>
                 <button class="btn-estado btn-estado-usuario" data-id="${u.id}">
-                    🔄 Cambiar estado
+                    Cambiar estado
                 </button>
             </td>
         </tr>
@@ -766,11 +766,11 @@ async function guardarCambioEstadoUsuario() {
     const btn         = document.getElementById('confirmarCambioEstadoUsuario');
 
     feedback.className   = 'feedback feedback--cargando';
-    feedback.textContent = '⏳ Guardando cambio…';
+    feedback.textContent = 'Guardando cambio…';
     btn.disabled = true;
 
     try {
-        const res = await fetch(`${BASE_URL}/CambiarEstadoUsuarioAdminServlet`, {
+        const res = await fetch(`${BASE_URL}/AdminServlet?accion=cambiarEstadoUsuario`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body: new URLSearchParams({
@@ -797,11 +797,11 @@ async function guardarCambioEstadoUsuario() {
             }, 900);
         } else {
             feedback.className   = 'feedback feedback--error';
-            feedback.textContent = `❌ ${data.error ?? 'No se pudo actualizar.'}`;
+            feedback.textContent = ` ${data.error ?? 'No se pudo actualizar.'}`;
         }
     } catch (e) {
         feedback.className   = 'feedback feedback--error';
-        feedback.textContent = `❌ Error de conexión: ${e.message}`;
+        feedback.textContent = ` Error de conexión: ${e.message}`;
     } finally {
         btn.disabled = false;
     }
@@ -824,7 +824,7 @@ async function renderSeccionPerfil() {
 
         main.innerHTML = `
             <div class="seccion-header">
-                <h2>👤 Mi perfil</h2>
+                <h2>Mi perfil</h2>
             </div>
 
             <div class="perfil-card">
@@ -1050,14 +1050,14 @@ async function renderSeccionPedidos() {
     const main = document.getElementById('contenidoPrincipal');
     main.innerHTML = `
         <div class="seccion-header">
-            <h2>📦 Gestión de pedidos</h2>
+            <h2>Gestión de pedidos</h2>
         </div>
 
         <!-- Tabs filtro -->
         <div class="ventas-tabs">
             <button class="ventas-tab ventas-tab--activo" data-filtro="activos">En proceso</button>
             <button class="ventas-tab" data-filtro="entregados">Entregados</button>
-            <button class="ventas-tab" data-filtro="cancelados">❌ Cancelados</button>
+            <button class="ventas-tab" data-filtro="cancelados"> Cancelados</button>
             <button class="ventas-tab" data-filtro="todos">Todos</button>
         </div>
 
@@ -1114,14 +1114,14 @@ function renderPedidosAdmin(pedidos) {
             const prodsProv = (prov.productos || []).map(pr => `
                 <div style="display:flex;justify-content:space-between;align-items:center;
                             padding:3px 0 3px 12px;font-size:.78rem;color:#555;border-left:2px solid #e8e0f7;margin:2px 0;">
-                    <span>🍦 ${pr.nombre} <span style="color:#aaa;">x${pr.cantidad}</span></span>
+                    <span>${pr.nombre} <span style="color:#aaa;">x${pr.cantidad}</span></span>
                     <span style="color:#7C4DFF;font-weight:600;">$${Number(pr.subtotal).toLocaleString('es-CO')}</span>
                 </div>
             `).join('');
             return `
                 <div style="margin:6px 0;padding:8px;background:#fff;border-radius:8px;border:1px solid #f0ecff;">
                     <div style="display:flex;align-items:center;gap:8px;margin-bottom:${prodsProv ? '6px' : '0'};">
-                        <span style="color:#666;font-size:.82rem;">🏭 ${prov.nombre}</span>
+                        <span style="color:#666;font-size:.82rem;">${prov.nombre}</span>
                         <span style="background:${colorProv};color:#fff;padding:2px 8px;
                                      border-radius:12px;font-size:.75rem;">
                             ${prov.nombreEstado}
@@ -1135,11 +1135,11 @@ function renderPedidosAdmin(pedidos) {
         // Botones de avance de estado — solo si no está cancelado, entregado ni en devolución
         const puedeAvanzar = p.estadoPedido < 8 && p.estadoPedido !== 3 && p.estadoPedido !== 11;
         const estadosSiguientes = {
-            1: [{ v: 4, l: '📦 Pasar a Preparando' }],
-            4: [{ v: 5, l: '📦 Pasar a En bodega' }],
-            5: [{ v: 6, l: '🎁 Pasar a Empacando' }],
-            6: [{ v: 7, l: '🚚 Pasar a Transportando' }],
-            7: [{ v: 8, l: '✅ Marcar como Entregado' }]
+            1: [{ v: 4, l: 'Pasar a Preparando' }],
+            4: [{ v: 5, l: 'Pasar a En bodega' }],
+            5: [{ v: 6, l: 'Pasar a Empacando' }],
+            6: [{ v: 7, l: 'Pasar a Transportando' }],
+            7: [{ v: 8, l: 'Marcar como Entregado' }]
         };
         const botonesAvance = puedeAvanzar && estadosSiguientes[p.estadoPedido]
             ? estadosSiguientes[p.estadoPedido].map(e => `
@@ -1193,7 +1193,7 @@ function renderPedidosAdmin(pedidos) {
                     <button class="btn-factura-admin" data-id="${p.idPedido}"
                             style="padding:6px 16px;background:#7C4DFF;color:#fff;border:none;
                                    border-radius:20px;font-size:.82rem;font-weight:600;cursor:pointer;">
-                        🧾 Ver factura
+                        Ver factura
                     </button>
                 </div>
             </div>
@@ -1326,7 +1326,7 @@ function generarFacturaAdmin(p) {
         <div class="total-box"><p>Total pagado</p><strong>$${total}</strong></div>
     </div>
     <div class="factura__footer">
-        <p>Kurmi — Gracias por tu compra 💜 &nbsp;·&nbsp; Este documento es tu comprobante de pago.</p>
+        <p>Kurmi — Gracias por tu compra &nbsp;·&nbsp; Este documento es tu comprobante de pago.</p>
     </div>
 </div>
 </body>
@@ -1380,15 +1380,15 @@ function renderSeccionSolicitudesAdmin() {
     const main = document.getElementById('contenidoPrincipal');
     main.innerHTML = `
         <div class="seccion-header">
-            <h2>📋 Solicitudes de proveedores</h2>
+            <h2>Solicitudes de proveedores</h2>
         </div>
  
         <!-- Tabs de estado -->
         <div class="ventas-tabs">
             <button class="ventas-tab ventas-tab--activo" data-estado="">Todas</button>
-            <button class="ventas-tab" data-estado="Pendiente">⏳ Pendientes</button>
-            <button class="ventas-tab" data-estado="Aprobado">✅ Aprobadas</button>
-            <button class="ventas-tab" data-estado="Rechazado">❌ Rechazadas</button>
+            <button class="ventas-tab" data-estado="Pendiente">Pendientes</button>
+            <button class="ventas-tab" data-estado="Aprobado">Aprobadas</button>
+            <button class="ventas-tab" data-estado="Rechazado">Rechazadas</button>
         </div>
  
         <p class="contador-resultados" id="contadorSolicitudesAdmin"></p>
@@ -1418,7 +1418,7 @@ function renderSeccionSolicitudesAdmin() {
                             ✅ Aprobar
                         </button>
                         <button class="sol-btn-decision sol-btn-rechazar" id="btnDecisionRechazar">
-                            ❌ Rechazar
+                            Rechazar
                         </button>
                     </div>
  
@@ -1472,7 +1472,7 @@ async function cargarSolicitudesAdmin(estadoFiltro) {
         const data = await res.json();
  
         if (!data.ok) {
-            contenedor.innerHTML = `<p class="error-txt">❌ ${data.error}</p>`;
+            contenedor.innerHTML = `<p class="error-txt">${data.error}</p>`;
             return;
         }
  
@@ -1493,7 +1493,7 @@ function renderListaSolicitudesAdmin(lista) {
         contador.textContent = '';
         contenedor.innerHTML = `
             <div class="sol-vacio">
-                <span class="sol-vacio__icono">📭</span>
+                <span class="sol-vacio__icono">:(</span>
                 <p>No hay solicitudes en esta categoría.</p>
             </div>`;
         return;
@@ -1517,16 +1517,16 @@ function tarjetaSolicitudAdmin(s) {
     }[s.estado] ?? 'badge--gris';
  
     const badgeIcon = {
-        'Pendiente': '⏳',
-        'Aprobado':  '✅',
-        'Rechazado': '❌'
+        'Pendiente': '...',
+        'Aprobado':  ':)',
+        'Rechazado': ':('
     }[s.estado] ?? '';
  
     const tipoIcono = {
-        'Categoria': '🏷',
-        'Sabor':     '🍦',
-        'Ambos':     '🏷🍦'
-    }[s.tipo] ?? '📋';
+        'Categoria': '<img src="../../RESOURCES/img/postreAside.png" >',
+        'Sabor':     '<img src="../../RESOURCES/img/postreAside.png" >',
+        'Ambos':     '<img src="../../RESOURCES/img/postreAside.png" >'
+    }[s.tipo] ?? ':)';
  
     const filaCateg  = s.nombreCat   ? `<p class="sol-card__fila"><span class="sol-card__etiq">Categoría nueva:</span> ${s.nombreCat}</p>`   : '';
     const filaSabor  = s.nombreSabor ? `<p class="sol-card__fila"><span class="sol-card__etiq">Sabor nuevo:</span> ${s.nombreSabor}</p>`     : '';
@@ -1547,7 +1547,7 @@ function tarjetaSolicitudAdmin(s) {
  
     const btnResponder = s.estado === 'Pendiente'
         ? `<button class="btn-estado btn-responder-sol" data-id="${s.idSolicitud}">
-               ✏️ Responder
+                Responder
            </button>`
         : `<span style="font-size:.8rem;color:#aaa;">Ya respondida</span>`;
  
@@ -1560,7 +1560,7 @@ function tarjetaSolicitudAdmin(s) {
                         ${badgeIcon} ${s.estado}
                     </span>
                     <span class="sol-card__proveedor">
-                        👤 ${s.nombreProveedor ?? '—'}
+                        ${s.nombreProveedor ?? '—'}
                     </span>
                 </div>
                 <span class="sol-card__fecha">Enviada: ${s.fechaSolicitud ?? '—'}</span>
@@ -1595,7 +1595,7 @@ function abrirModalResponder(idSolicitud) {
     // Actualizar título y detalle
     document.getElementById('modalSolTitulo').textContent = `Solicitud #${sol.idSolicitud}`;
  
-    const tipoIcono = { 'Categoria': '🏷', 'Sabor': '🍦', 'Ambos': '🏷🍦' }[sol.tipo] ?? '📋';
+    const tipoIcono = { 'Categoria': '<img src="../../RESOURCES/img/postreAside.png" >', 'Sabor': '<img src="../../RESOURCES/img/postreAside.png" >', 'Ambos': '<img src="../../RESOURCES/img/postreAside.png" >' }[sol.tipo] ?? ':)';
     document.getElementById('solModalDetalle').innerHTML = `
         <div class="sol-modal__fila">
             <span class="sol-card__etiq">Proveedor:</span>
@@ -1680,7 +1680,7 @@ async function guardarRespuestaSolicitud() {
 
     btn.disabled = true;
     feedback.className   = 'feedback feedback--cargando';
-    feedback.textContent = '⏳ Guardando respuesta…';
+    feedback.textContent = 'Guardando respuesta…';
 
     try {
         const res = await fetch(`${BASE_URL}/SolicitudesServlet`, {
@@ -1712,13 +1712,13 @@ async function guardarRespuestaSolicitud() {
             }
         } else {
             feedback.className   = 'feedback feedback--error';
-            feedback.textContent = `❌ ${data.error ?? 'No se pudo guardar.'}`;
+            feedback.textContent = `${data.error ?? 'No se pudo guardar.'}`;
             btn.disabled = false;
         }
 
     } catch (e) {
         feedback.className   = 'feedback feedback--error';
-        feedback.textContent = `❌ Error de conexión: ${e.message}`;
+        feedback.textContent = `Error de conexión: ${e.message}`;
         btn.disabled = false;
     }
 }
@@ -1840,12 +1840,12 @@ async function crearDesdeAprobacion(sol) {
                 cargarSolicitudesAdmin(tabActivo ? tabActivo.dataset.estado : '');
             });
         } else {
-            errorEl.textContent = `❌ ${data.error ?? 'Error al crear.'}`;
+            errorEl.textContent = `${data.error ?? 'Error al crear.'}`;
             btn.disabled = false;
         }
 
     } catch (e) {
-        errorEl.textContent = `❌ Error de conexión: ${e.message}`;
+        errorEl.textContent = `Error de conexión: ${e.message}`;
         btn.disabled = false;
     }
 }
@@ -1863,15 +1863,15 @@ function renderSeccionDevolucionesAdmin() {
     const contenido = document.getElementById('contenidoPrincipal');
     contenido.innerHTML = `
         <div class="ventas-header">
-            <h2 class="ventas-titulo">↩ Solicitudes de Devolución</h2>
+            <h2 class="ventas-titulo">Solicitudes de Devolución</h2>
         </div>
 
         <!-- Pestañas de filtro -->
         <div class="ventas-tabs">
             <button class="ventas-tab ventas-tab--activo" data-filtro-dev="">Todas</button>
-            <button class="ventas-tab" data-filtro-dev="Pendiente">⏳ Pendientes</button>
-            <button class="ventas-tab" data-filtro-dev="Aprobada">✅ Aprobadas</button>
-            <button class="ventas-tab" data-filtro-dev="Rechazada">❌ Rechazadas</button>
+            <button class="ventas-tab" data-filtro-dev="Pendiente">Pendientes</button>
+            <button class="ventas-tab" data-filtro-dev="Aprobada">Aprobadas</button>
+            <button class="ventas-tab" data-filtro-dev="Rechazada">Rechazadas</button>
         </div>
 
         <p class="contador-resultados" id="contadorDevAdmin"></p>
@@ -1898,10 +1898,10 @@ function renderSeccionDevolucionesAdmin() {
                     </label>
                     <div class="sol-radio-group">
                         <label class="sol-radio">
-                            <input type="radio" name="devDecision" value="Aprobada"> ✅ Aprobar devolución
+                            <input type="radio" name="devDecision" value="Aprobada"> Aprobar devolución
                         </label>
                         <label class="sol-radio">
-                            <input type="radio" name="devDecision" value="Rechazada"> ❌ Rechazar devolución
+                            <input type="radio" name="devDecision" value="Rechazada"> Rechazar devolución
                         </label>
                     </div>
 
@@ -1984,7 +1984,7 @@ async function cargarDevolucionesAdmin(filtro) {
         }
 
         if (lista.length === 0) {
-            contenedor.innerHTML = '<p class="sol-vacia">😕 No hay solicitudes de devolución.</p>';
+            contenedor.innerHTML = '<p class="sol-vacia">:) No hay solicitudes de devolución.</p>';
             return;
         }
 
@@ -2062,7 +2062,7 @@ function crearTarjetaDevAdmin(dev) {
         <div class="sol-card__footer">
             <button class="sol-btn-responder" data-id="${dev.idDevolucion}"
                     data-pedido="${dev.idPedido}" data-cliente="${dev.nombreCliente || ''}">
-                ✏️ Responder
+                 Responder
             </button>
         </div>` : ''}
     `;
@@ -2181,14 +2181,14 @@ function renderSeccionCancelacionesAdmin() {
     const main = document.getElementById('contenidoPrincipal');
     main.innerHTML = `
         <div class="seccion-header">
-            <h2>🚫 Solicitudes de Cancelación</h2>
+            <h2> Solicitudes de Cancelación</h2>
         </div>
 
         <div class="ventas-tabs">
             <button class="ventas-tab ventas-tab--activo" data-filtro-can="">Todas</button>
-            <button class="ventas-tab" data-filtro-can="Pendiente">⏳ Pendientes</button>
-            <button class="ventas-tab" data-filtro-can="Aprobada">✅ Aprobadas</button>
-            <button class="ventas-tab" data-filtro-can="Rechazada">❌ Rechazadas</button>
+            <button class="ventas-tab" data-filtro-can="Pendiente">Pendientes</button>
+            <button class="ventas-tab" data-filtro-can="Aprobada">Aprobadas</button>
+            <button class="ventas-tab" data-filtro-can="Rechazada">Rechazadas</button>
         </div>
 
         <div id="listaCancelAdmin" class="solicitudes-lista">
@@ -2210,10 +2210,10 @@ function renderSeccionCancelacionesAdmin() {
                     </label>
                     <div class="sol-radio-group">
                         <label class="sol-radio">
-                            <input type="radio" name="canDecision" value="Aprobada"> ✅ Aprobar cancelación
+                            <input type="radio" name="canDecision" value="Aprobada"> Aprobar cancelación
                         </label>
                         <label class="sol-radio">
-                            <input type="radio" name="canDecision" value="Rechazada"> ❌ Rechazar cancelación
+                            <input type="radio" name="canDecision" value="Rechazada"> Rechazar cancelación
                         </label>
                     </div>
 
@@ -2275,7 +2275,7 @@ async function cargarCancelacionesAdmin(filtro) {
         const lista = await res.json();
 
         if (!lista.length) {
-            contenedor.innerHTML = '<p class="solicitudes-vacia">📭 No hay solicitudes en esta categoría.</p>';
+            contenedor.innerHTML = '<p class="solicitudes-vacia">No hay solicitudes en esta categoría.</p>';
             return;
         }
 
@@ -2310,7 +2310,7 @@ async function cargarCancelacionesAdmin(filtro) {
         });
 
     } catch (e) {
-        contenedor.innerHTML = `<p class="sol-error">❌ Error al cargar: ${e.message}</p>`;
+        contenedor.innerHTML = `<p class="sol-error"> Error al cargar: ${e.message}</p>`;
     }
 }
 
@@ -2376,13 +2376,13 @@ async function enviarRespuestaCancelacion() {
             const tabActivo = document.querySelector('[data-filtro-can].ventas-tab--activo');
             cargarCancelacionesAdmin(tabActivo ? tabActivo.dataset.filtroCan : 'Pendiente');
         } else {
-            errorEl.textContent = `❌ ${data.msg ?? 'Error al procesar.'}`;
+            errorEl.textContent = `${data.msg ?? 'Error al procesar.'}`;
             errorEl.classList.remove('hidden');
             btnC.disabled = false;
             btnC.textContent = 'Confirmar';
         }
     } catch (e) {
-        errorEl.textContent = `❌ Error de conexión: ${e.message}`;
+        errorEl.textContent = `Error de conexión: ${e.message}`;
         errorEl.classList.remove('hidden');
         btnC.disabled = false;
         btnC.textContent = 'Confirmar';
