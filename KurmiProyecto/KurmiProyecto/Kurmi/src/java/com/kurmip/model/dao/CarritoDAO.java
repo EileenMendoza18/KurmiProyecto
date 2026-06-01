@@ -172,7 +172,6 @@ public class CarritoDAO {
                 ps.executeUpdate();
                 resultadoOperacion = (estadoActual == 2) ? 1 : 2; // 1=NUEVO_AGREGADO reactivado, 2=CANTIDAD_INCREMENTADA
             } else {
-                // El producto nunca ha estado en este carrito: insertar fila nueva
                 double subtotal = cantidad * precio;
                 String sqlInsertarDetalle = "INSERT INTO Carrito_Detalle " +
                     "(ID_Carrito, ID_Producto, Cantidad_Producto, Precio_Unitario_Momento, SubTotal) " +
