@@ -1,4 +1,4 @@
-import { components, fetchComponent } from '../../helpers/index.js';
+import { components } from '../../helpers/index.js';
 
 // 1. Cargar componentes estructurales compartidos
 components('header', '../../components/header.html');
@@ -44,7 +44,7 @@ function validarCampo(input) {
     // ── Campo vacío (aplica a todos) ──────────────────────────────────────
     if (valor === "") {
         const mensajesVacio = {
-            nombre:    "El nombre es obligatorio.",
+            nombre:   "El nombre es obligatorio.",
             direccion: "La dirección es obligatoria.",
             telefono:  "El teléfono es obligatorio.",
             idMetodo:  "Selecciona un método de pago."
@@ -54,6 +54,7 @@ function validarCampo(input) {
     }
 
     // ── Nombre del receptor ───────────────────────────────────────────────
+    // Solo letras y espacios, sin números, mínimo 3 caracteres
     if (id === "nombre") {
         if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/.test(valor)) {
             setEstadoCampo(input, false, "Los nombres no pueden contener números.");
@@ -66,6 +67,7 @@ function validarCampo(input) {
     }
 
     // ── Dirección ─────────────────────────────────────────────────────────
+    // Solo caracteres válidos, mínimo 6 caracteres, y debe contener al menos una letra
     if (id === "direccion") {
         if (!/^[a-zA-Z0-9\s.,#\-\/°áéíóúÁÉÍÓÚñÑ]+$/.test(valor)) {
             setEstadoCampo(input, false, "Ingresa una dirección válida (Ejemplo: Calle 12 #34-56).");
@@ -82,6 +84,7 @@ function validarCampo(input) {
     }
 
     // ── Teléfono ──────────────────────────────────────────────────────────
+    // Regla tomada del registro: exactamente 10 dígitos
     if (id === "telefono") {
         if (!/^\d{10}$/.test(valor)) {
             setEstadoCampo(input, false, "El número de teléfono debe tener mínimo y máximo 10 caracteres.");
@@ -116,7 +119,7 @@ function validarFormulario() {
     return todoValido;
 }
 
-document.addEventListener("DOMContentLoaded", async () => {
+document.addEventListener("DOMContentLoaded", () => {
     const urlParams = new URLSearchParams(window.location.search);
 
     const idProd     = urlParams.get("id");
@@ -145,10 +148,17 @@ document.addEventListener("DOMContentLoaded", async () => {
         localStorage.removeItem("recompraIdCarrito");
         localStorage.removeItem("recompraFechaPedido");
 
-        // Se reemplaza el bloque de pago por el componente de compra exitosa
         if (bloquePago) {
-            const compraExitosa = await fetchComponent('../../components/compraExitosa.html');
-            bloquePago.replaceWith(compraExitosa);
+            bloquePago.innerHTML = `
+                <h2>¡Compra Exitosa!</h2>
+                <div class="resumen-producto">
+                    🎉 Tu pedido ha sido registrado correctamente en Kurmi.
+                </div>
+                <p style="text-align: center; color: #463877; margin-bottom: 20px;">
+                    Pronto nos comunicaremos contigo para coordinar la entrega.
+                </p>
+                <button class="btn-pagar" onclick="window.location.href='tienda.html'">Volver a la Tienda</button>
+            `;
         }
         return;
     }
@@ -161,7 +171,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             mensajeError.innerText = "⚠️ Datos de formulario inválidos. Revisa los campos.";
             mensajeError.style.display = "block";
         } else if (status === "error_db") {
-            mensajeError.innerText = "❌ No se pudo procesar la orden en el servidor.";
+            mensajeError.innerText = "No se pudo procesar la orden en el servidor.";
             mensajeError.style.display = "block";
         }
     }
@@ -215,8 +225,10 @@ document.addEventListener("DOMContentLoaded", async () => {
             if (!esRecompra) {
                 const carritoValido = listaProductos.find(p => p.idCarrito && p.idCarrito !== "");
                 inputIdCarrito.value = carritoValido ? carritoValido.idCarrito : 0;
+                console.log("idCarrito enviado al servlet:", inputIdCarrito.value);
             } else {
                 inputIdCarrito.value = localStorage.getItem("recompraIdCarrito") || 0;
+                console.log("recompra idCarrito original:", inputIdCarrito.value);
             }
         }
 
@@ -246,7 +258,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     // =========================================================================
-    // VALIDACIÓN EN TIEMPO REAL
+    // VALIDACIÓN EN TIEMPO REAL — muestra mensajes al salir del campo
+    // y los corrige en cuanto el usuario escribe lo correcto
     // =========================================================================
     const camposValidar = ["nombre", "direccion", "telefono", "idMetodo"];
 
@@ -254,10 +267,12 @@ document.addEventListener("DOMContentLoaded", async () => {
         const input = document.getElementById(idCampo);
         if (!input) return;
 
+        // Validar al perder el foco (incluso si está vacío)
         input.addEventListener("blur", () => {
             validarCampo(input);
         });
 
+        // Revalidar mientras escribe solo si ya tiene un error visible
         const eventoCambio = (idCampo === "idMetodo") ? "change" : "input";
         input.addEventListener(eventoCambio, () => {
             if (input.classList.contains("campo-error")) {
@@ -267,7 +282,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
 
     // =========================================================================
-    // INTERCEPCIÓN DEL SUBMIT
+    // INTERCEPCIÓN DEL SUBMIT — bloquea el envío si hay errores
     // =========================================================================
     const formPagoEl = document.getElementById("formPago");
     if (formPagoEl) {
@@ -282,6 +297,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                     mensajeError.style.display = "block";
                 }
 
+                // Scroll y foco al primer campo con error
                 const primerError = formPagoEl.querySelector(".campo-error");
                 if (primerError) {
                     primerError.scrollIntoView({ behavior: "smooth", block: "center" });

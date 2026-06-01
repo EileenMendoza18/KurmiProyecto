@@ -152,7 +152,8 @@ function inicializarBotones() {
                 });
                 asignarLimpiezaEnTiempoReal();
                 btnActualizar.textContent = 'Guardar cambios';
-                btnActualizar.classList.add('btn__actualizar--activo');
+                btnActualizar.style.backgroundColor = '#463877';
+                btnActualizar.style.color = 'white';
                 modoEdicion = true;
 
             } else {
@@ -186,7 +187,8 @@ function inicializarBotones() {
                             if (errorEl && el)  clearError(errorEl, el);
                         });
                         btnActualizar.textContent = 'Actualizar datos';
-                        btnActualizar.classList.remove('btn__actualizar--activo');
+                        btnActualizar.style.backgroundColor = '';
+                        btnActualizar.style.color = '';
                         modoEdicion = false;
 
                         const spanNombre = document.getElementById('nombreUsuario');

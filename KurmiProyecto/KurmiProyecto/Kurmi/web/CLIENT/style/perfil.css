@@ -211,9 +211,3 @@
 .perfil__campo input.error {
     box-shadow: 0 0 0 2px #c0392b;
 }
-/* ── Estado "modo edición" del botón actualizar ────────────────────────────── */
-/* Antes: btnActualizar.style.backgroundColor = '#463877' y .color = 'white' en perfil.js */
-.btn__actualizar--activo {
-    background-color: #463877;
-    color: white;
-}

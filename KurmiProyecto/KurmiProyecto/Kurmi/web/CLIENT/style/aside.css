@@ -120,9 +120,7 @@ aside {
     gap: 10px;
     width: 100%;
 }
-/* ── Iconos y opciones de categoría lateral generados por JS ───────────────── */
-/* Antes: divIcono.style.cursor = 'pointer' y divOpcion.style.cursor = 'pointer' en index.js */
-.menudos div,
-.letras div {
-    cursor: pointer;
+
+.menudos div img{
+    width: 20px;
 }

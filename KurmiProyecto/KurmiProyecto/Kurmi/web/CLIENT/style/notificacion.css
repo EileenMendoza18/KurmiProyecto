@@ -1,27 +1,9 @@
-/* ============================================================
-   Toast de notificación — favoritos.js
-   Antes estaba como style.cssText incrustado en mostrarNotificacion()
-   ============================================================ */
+/*
+Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
+Click nbfs://nbhost/SystemFileSystem/Templates/Other/CascadeStyleSheet.css to edit this template
+*/
+/* 
+    Created on : 20/05/2026, 8:36:38 p. m.
+    Author     : USER
+*/
 
-#notificacion {
-    position: fixed;
-    bottom: 30px;
-    right: 30px;
-    background: #463877;
-    color: white;
-    padding: 14px 24px;
-    border-radius: 12px;
-    font-size: 0.9rem;
-    font-weight: 600;
-    z-index: 9999;
-    box-shadow: 0 4px 16px rgba(70, 56, 119, 0.25);
-    opacity: 1;
-    visibility: visible;                   
-    transition: opacity 0.4s, visibility 0.4s; 
-}
-
-#notificacion.oculto {
-    opacity: 0;
-    visibility: hidden;      
-    pointer-events: none;
-}
