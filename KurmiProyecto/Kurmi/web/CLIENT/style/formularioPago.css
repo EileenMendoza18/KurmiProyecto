@@ -1,0 +1,61 @@
+/* Estilos específicos para el flujo de pago */
+.pago-container {
+    max-width: 500px;
+    margin: 15vh auto 50px auto;
+    background: white;
+    padding: 30px;
+    border-radius: 20px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+    font-family: sans-serif;
+    color: #463877;
+}
+
+.pago-container h2 {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 15px;
+}
+
+.form-group input, 
+.form-group select {
+    padding: 10px;
+    border: 1px solid #DCD6F7;
+    border-radius: 8px;
+    outline: none;
+}
+
+.form-group input:focus {
+    border-color: #B1B2FF;
+}
+
+.btn-pagar {
+    width: 100%;
+    padding: 12px;
+    background-color: #B1B2FF;
+    border: none;
+    border-radius: 10px;
+    color: white;
+    font-size: 1rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.btn-pagar:hover {
+    background-color: #9180DB;
+}
+
+.resumen-producto {
+    background: #F4F2FF;
+    padding: 12px;
+    border-radius: 10px;
+    margin-bottom: 20px;
+    text-align: center;
+    font-weight: bold;
+}

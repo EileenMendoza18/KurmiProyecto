@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel Proveedor - Kurmi</title>
+    <link rel="stylesheet" href="../css/proveedor.css">
+</head>
+<body>
+
+    <div class="layout">
+
+        <!-- ── SIDEBAR ─────────────────────────────────────── -->
+        <aside class="sidebar">
+
+            <!-- Perfil -->
+            <div class="sidebar__perfil">
+                <img src="../../RESOURCES/img/perfil.png" alt="Foto de perfil" class="sidebar__avatar">
+                <p class="sidebar__bienvenida">Bienvenido(a), <span id="nombreProveedor">...</span></p>
+            </div>
+
+            <hr class="sidebar__divider">
+
+            <!-- Logo Kurmi -->
+            <div class="sidebar__logo">
+                <img src="../../RESOURCES/img/logo.png" alt="Logo Kurmi" class="sidebar__logo-img">
+            </div>
+
+            <hr class="sidebar__divider">
+
+            <!-- Navegación -->
+            <nav class="sidebar__nav">
+                <button class="nav__btn nav__btn--activo" id="btnProductos" data-seccion="productos">
+                    Ver mis productos
+                </button>
+                <button class="nav__btn" id="btnPagos" data-seccion="pagos">
+                    Ver mis pagos
+                </button>
+                <button class="nav__btn" id="btnPerfil" data-seccion="perfil">
+                    Ver mi perfil
+                </button>
+                <button class="nav__btn" id="btnContacto" data-seccion="contacto">
+                    Contáctanos
+                </button>
+            </nav>
+
+        </aside>
+
+        <!-- ── CONTENIDO PRINCIPAL ─────────────────────────── -->
+        <main class="contenido" id="contenidoPrincipal">
+            <!-- Las secciones se cargan dinámicamente desde proveedor.js -->
+            <div class="contenido__placeholder">
+                <p>Cargando...</p>
+            </div>
+        </main>
+
+    </div>
+
+    <script type="module" src="../js/proveedor.js"></script>
+</body>
+</html>
