@@ -372,7 +372,7 @@ async function enviarNuevoProducto() {
         const data = await res.json();
 
         if (data.ok) {
-            mostrarFeedback('feedback-modal', 'ok', `✅ ${data.mensaje}`);
+            mostrarFeedback('feedback-modal', 'ok', `${data.mensaje}`);
             setTimeout(() => {
                 cerrarModalCrear();
                 cargarMisProductos();
@@ -561,7 +561,7 @@ async function enviarEdicionProducto() {
         const data = await res.json();
 
         if (data.ok) {
-            mostrarFeedback('feedback-editar', 'ok', `✅ ${data.mensaje}`);
+            mostrarFeedback('feedback-editar', 'ok', `${data.mensaje}`);
             setTimeout(() => {
                 cerrarModalEditar();
                 cargarMisProductos();
@@ -818,7 +818,7 @@ function renderListaPedidos(lista, tipo) {
                 // Ya preparando → botón para pasar a 5
                 accionFooter = `
                     <button class="btn-entregar btn-entregar--bodega" data-id="${p.idPedido}" data-nuevo-estado="5">
-                        ✅ Marcar en bodega
+                        Marcar en bodega
                     </button>`;
             } else if (p.estadoProveedor === 5) {
                 // Ya en bodega → solo mensaje
@@ -1605,7 +1605,7 @@ async function enviarNuevaSolicitud() {
 
         if (data.ok) {
             feedback.className   = 'feedback feedback--ok';
-            feedback.textContent = '✅ Solicitud enviada correctamente al administrador.';
+            feedback.textContent = 'Solicitud enviada correctamente al administrador.';
             setTimeout(() => {
                 cerrarModalSolicitud();
                 cargarMisSolicitudes();

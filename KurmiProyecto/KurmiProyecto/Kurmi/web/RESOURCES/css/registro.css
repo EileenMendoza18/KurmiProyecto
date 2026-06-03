@@ -47,6 +47,22 @@ input::placeholder{
     font-size:0.65rem ;
 }
 
+.form button{
+    background-color: #b195ff;
+    color: #fff;
+    border: none;
+    border-radius: 20px;
+    padding: 12px 28px;
+    font-size: 0.9rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background .15s;
+}
+
+
+.form button:hover{
+    background-color: #d6c5fa;
+}
 
 p a{
     color:#8f85bd;

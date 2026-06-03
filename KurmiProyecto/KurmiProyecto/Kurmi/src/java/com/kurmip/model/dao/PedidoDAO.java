@@ -22,6 +22,8 @@ public class PedidoDAO {
             con = cn.getConexion();
             con.setAutoCommit(false);
 
+            // SQL: Captura el sello de tiempo (TIMESTAMP) unificado del servidor de base de datos.
+            // Evita discrepancias horarias entre la inserción del Pedido, la Venta y los registros del Proveedor.
             // Capturar NOW() una sola vez → Fecha_Pedido y Fecha_Venta serán idénticos
             String ahora;
             try (PreparedStatement psNow = con.prepareStatement("SELECT NOW() AS ahora");

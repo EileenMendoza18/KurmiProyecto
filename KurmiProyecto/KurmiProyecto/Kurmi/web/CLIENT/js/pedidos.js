@@ -429,7 +429,7 @@ function confirmarCancelacion(idPedido) {
             const data = await res.json();
             if (data.ok) {
                 cerrar();
-                mostrarNotificacion('✅ Solicitud enviada. El administrador la revisará pronto.');
+                mostrarNotificacion('Solicitud enviada. El administrador la revisará pronto.');
                 cargarPedidos('1');
             } else {
                 errorEl.textContent = (data.msg || 'Error desconocido');
@@ -597,7 +597,7 @@ async function enviarDevolucion(idPedido, overlay) {
 
         if (data.ok) {
             overlay.remove();
-            mostrarToast('✅ Solicitud de devolución enviada correctamente');
+            mostrarToast('Solicitud de devolución enviada correctamente');
             // Recargar la pestaña de entregados para reflejar el cambio de estado
             cargarPedidos('8');
         } else {

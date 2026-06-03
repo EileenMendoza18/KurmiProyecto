@@ -522,7 +522,7 @@ async function guardarCambioEstado() {
 
         if (data.ok) {
             feedback.className   = 'feedback feedback--ok';
-            feedback.textContent = '✅ Estado actualizado correctamente.';
+            feedback.textContent = 'Estado actualizado correctamente.';
 
             // Actualizar estado local
             const prod = todosLosProductos.find(p => p.idProducto === productoSeleccionadoId);
@@ -783,7 +783,7 @@ async function guardarCambioEstadoUsuario() {
 
         if (data.ok) {
             feedback.className   = 'feedback feedback--ok';
-            feedback.textContent = '✅ Estado actualizado correctamente.';
+            feedback.textContent = 'Estado actualizado correctamente.';
 
             // Actualizar estado local sin recargar
             const u = todosLosUsuarios.find(u => u.id === usuarioSeleccionadoId);
@@ -1415,7 +1415,7 @@ function renderSeccionSolicitudesAdmin() {
                     </label>
                     <div class="sol-decision-btns">
                         <button class="sol-btn-decision sol-btn-aprobar" id="btnDecisionAprobar">
-                            ✅ Aprobar
+                            Aprobar
                         </button>
                         <button class="sol-btn-decision sol-btn-rechazar" id="btnDecisionRechazar">
                             Rechazar
@@ -1700,7 +1700,7 @@ async function guardarRespuestaSolicitud() {
             if (decisionSeleccionada === 'Rechazado') {
                 // Rechazo: cerrar y refrescar
                 feedback.className   = 'feedback feedback--ok';
-                feedback.textContent = '✅ Solicitud rechazada correctamente.';
+                feedback.textContent = 'Solicitud rechazada correctamente.';
                 setTimeout(() => {
                     cerrarModalResponder();
                     const tabActivo = document.querySelector('[data-estado].ventas-tab--activo');
@@ -1760,7 +1760,7 @@ const camposSabor = (sol.tipo === 'Sabor' || sol.tipo === 'Ambos')
  
     document.getElementById('solModalDetalle').innerHTML = `
         <div class="feedback feedback--ok" style="margin-bottom:14px;">
-            ✅ Solicitud aprobada. Ahora crea la ${sol.tipo.toLowerCase()} en el catálogo:
+            Solicitud aprobada. Ahora crea la ${sol.tipo.toLowerCase()} en el catálogo:
         </div>
         ${infoRelacion}
         ${camposCat}
@@ -1828,7 +1828,7 @@ async function crearDesdeAprobacion(sol) {
         if (data.ok) {
             document.getElementById('solModalDetalle').innerHTML += `
                 <div class="feedback feedback--ok" style="margin-top:10px;">
-                    ✅ ${sol.tipo} creada correctamente en el catálogo.
+                    ${sol.tipo} creada correctamente en el catálogo.
                 </div>`;
             btn.textContent = 'Cerrar';
             btn.disabled    = false;
