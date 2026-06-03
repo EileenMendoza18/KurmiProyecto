@@ -20,11 +20,11 @@ async function cargarModulos() {
             cargarProductosPorCategoriaPagina();
         }
         if (document.getElementById('contenedorMasVendidos')) {
-            cargarGaleriaDinamica('contenedorMasVendidos', 'ObtenerProductosServlet');
+            cargarGaleriaDinamica('contenedorMasVendidos', 'ProductoServlet?accion=masVendidos');
         }
         
         if (document.getElementById('contenedorUltimos')) {
-            cargarGaleriaDinamica('contenedorUltimos', 'ObtenerUltimosProductosServlet');
+            cargarGaleriaDinamica('contenedorUltimos', 'ProductoServlet?accion=ultimos');
         }
         
         if (document.getElementById('contenedorCategorias')) {
@@ -173,7 +173,7 @@ async function cargarGaleriaDinamica(contenedorId, servletURL) {
  */
 async function cargarCategoriasGaleria(contenedorId) {
     try {
-        const responseCat = await fetch('/KurmiProyect/ObtenerCategoriasServlet');
+        const responseCat = await fetch('/KurmiProyect/CatalogoServlet?accion=categorias');
         const categorias = await responseCat.json();
 
         const responseTemplate = await fetch('../../components/tarjetaCategoria.html');
@@ -217,13 +217,26 @@ async function cargarCategoriasGaleria(contenedorId) {
  */
 async function cargarCategoriasAside(contenedorId) {
     try {
+<<<<<<< HEAD
         const responseCat = await fetch('/KurmiProyect/ObtenerCategoriasServlet');
         const categorias = await responseCat.json(); 
+=======
+        const responseCat = await fetch('/KurmiProyect/CatalogoServlet?accion=categorias');
+        const categorias = await responseCat.json();
+>>>>>>> 979ff32c7c2667c7a790882cbc2bf9781d3def68
 
         const contenedor = document.getElementById(contenedorId);
         if (!contenedor) return;
 
+<<<<<<< HEAD
         contenedor.innerHTML = ''; 
+=======
+        contenedor.innerHTML = '';
+        if (contenedorIconos) contenedorIconos.innerHTML = '';
+
+        // SVG genérico de postre (cupcake)
+        const iconoPostre = `<img src="../../RESOURCES/img/postreAside.png" alt="Toggle">`;
+>>>>>>> 979ff32c7c2667c7a790882cbc2bf9781d3def68
 
         categorias.forEach(nombreCat => {
             const divOpcion = document.createElement('div');
@@ -252,7 +265,7 @@ async function cargarCategoriasAside(contenedorId) {
  */
 async function cargarTestimoniosDinamicos() {
     try {
-        const responseData = await fetch('/KurmiProyect/ObtenerTestimoniosServlet');
+        const responseData = await fetch('/KurmiProyect/PerfilServlet?accion=testimonios');
         const nombresUsuarios = await responseData.json();
 
         const responseTemplate = await fetch('../../components/tarjetaTestimonio.html');
@@ -315,10 +328,10 @@ async function mostrarNotificacionDinamica(tipo) {
 
     // 3. Cambiamos el texto y el emoji según la acción
     if (tipo === "carrito") {
-        toastIcon.textContent = "🛒"; 
+        toastIcon.textContent = ":)"; 
         toastMessage.textContent = "¡Has agregado el producto a tu carrito!";
     } else {
-        toastIcon.textContent = "💜"; 
+        toastIcon.textContent = ":)"; 
         toastMessage.textContent = "¡Artículo añadido a tu lista de favoritos!";
     }
     
@@ -350,7 +363,7 @@ inicializarBotonProductos();
  */
 async function cargarSeccionesTienda(contenedorId) {
     try {
-        const response = await fetch('/KurmiProyect/ObtenerProductosPorCategoriaServlet');
+        const response = await fetch('/KurmiProyect/ProductoServlet?accion=porCategoria');
         const productos = await response.json();
         
         console.log("Productos recibidos del Servlet:", productos);
@@ -446,7 +459,7 @@ async function cargarProductosPorCategoriaPagina() {
         if (tituloCategoria) tituloCategoria.textContent = categoriaSeleccionada;
 
         // 1. Petición al Servlet de la base de datos
-        const response = await fetch(`/KurmiProyect/ObtenerProductosPorCategoriaServlet?categoria=${encodeURIComponent(categoriaSeleccionada)}`);
+        const response = await fetch(`/KurmiProyect/ProductoServlet?accion=porCategoria&categoria=${encodeURIComponent(categoriaSeleccionada)}`);
         const todosLosProductos = await response.json();
 
         if (todosLosProductos.length === 0) {
@@ -836,8 +849,13 @@ function inicializarBuscador() {
         if (filtrados.length === 0) {
             contenedor.innerHTML = `
                 <div class="buscador__sin-resultados">
+<<<<<<< HEAD
                     <p>😕 No encontramos productos con "<strong>${inputBuscador.value.trim()}</strong>"</p>
                     <p>Intenta con otro nombre o categoría.</p>
+=======
+                    <p>:( No encontramos productos con "<strong>${inputBuscador.value.trim() || proveedor}</strong>"</p>
+                    <p>Intenta con otro nombre, categoría o proveedor.</p>
+>>>>>>> 979ff32c7c2667c7a790882cbc2bf9781d3def68
                 </div>`;
             return;
         }
@@ -901,4 +919,247 @@ function renderizarPorCategorias(productos, contenedor) {
         seccion.appendChild(grid);
         contenedor.appendChild(seccion);
     }
+<<<<<<< HEAD
+=======
+}
+// ─────────────────────────────────────────────────────────────────────────────
+// MODAL DE DETALLE DE PRODUCTO
+// ─────────────────────────────────────────────────────────────────────────────
+
+function inyectarEstilosModal() {
+    if (document.getElementById('estilos-modal-detalle')) return;
+    const style = document.createElement('style');
+    style.id = 'estilos-modal-detalle';
+    style.textContent = `
+        .modal-detalle-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(74, 59, 83, 0.55);
+            backdrop-filter: blur(3px);
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+            animation: fadeInOverlay .18s ease;
+        }
+        @keyframes fadeInOverlay { from { opacity: 0; } to { opacity: 1; } }
+        .modal-detalle {
+            background: #fff;
+            border-radius: 20px;
+            max-width: 520px;
+            width: 100%;
+            box-shadow: 0 12px 48px rgba(74,59,83,.22);
+            overflow: hidden;
+            animation: slideUpModal .22s ease;
+            display: flex;
+            flex-direction: column;
+        }
+        @keyframes slideUpModal {
+            from { transform: translateY(28px); opacity: 0; }
+            to   { transform: translateY(0);    opacity: 1; }
+        }
+        .modal-detalle__img-wrap {
+            position: relative;
+            width: 100%;
+            height: 220px;
+            background: #F4EEFF;
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+        .modal-detalle__img-wrap img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .modal-detalle__cerrar {
+            position: absolute;
+            top: 12px;
+            right: 14px;
+            background: rgba(255,255,255,.85);
+            border: none;
+            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            font-size: 1rem;
+            cursor: pointer;
+            color: #4A3B53;
+            box-shadow: 0 2px 8px rgba(0,0,0,.15);
+            transition: background .15s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-detalle__cerrar:hover { background: #fff; }
+        .modal-detalle__body {
+            padding: 24px 28px 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .modal-detalle__nombre {
+            font-size: 1.35rem;
+            font-weight: 700;
+            color: #4A3B53;
+            margin: 0;
+        }
+        .modal-detalle__precio {
+            font-size: 1.45rem;
+            font-weight: 800;
+            color: #7C4DFF;
+            margin: 0;
+        }
+        .modal-detalle__desc {
+            font-size: .9rem;
+            color: #666;
+            line-height: 1.5;
+            margin: 0;
+        }
+        .modal-detalle__grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px 16px;
+            margin-top: 4px;
+        }
+        .modal-detalle__campo { display: flex; flex-direction: column; gap: 2px; }
+        .modal-detalle__label {
+            font-size: .72rem;
+            font-weight: 700;
+            color: #a68fc0;
+            text-transform: uppercase;
+            letter-spacing: .04em;
+        }
+        .modal-detalle__valor { font-size: .88rem; color: #333; font-weight: 500; }
+        .modal-detalle__footer {
+            padding: 0 28px 24px;
+            display: flex;
+            gap: 10px;
+        }
+        .modal-detalle__btn-comprar {
+            flex: 1;
+            padding: 12px;
+            background: #7C4DFF;
+            color: #fff;
+            border: none;
+            border-radius: 12px;
+            font-size: .95rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: background .15s;
+        }
+        .modal-detalle__btn-comprar:hover { background: #6a3de8; }
+        .modal-detalle__btn-carrito {
+            padding: 12px 16px;
+            background: #F4EEFF;
+            color: #7C4DFF;
+            border: 2px solid #7C4DFF;
+            border-radius: 12px;
+            font-size: .95rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: background .15s;
+        }
+        .modal-detalle__btn-carrito:hover { background: #e8d8ff; }
+    `;
+    document.head.appendChild(style);
+}
+
+function abrirModalDetalle(prod) {
+    inyectarEstilosModal();
+    document.getElementById('modal-detalle-root')?.remove();
+
+    const BASE_IMG_MODAL = '/KurmiProyect/RESOURCES/img/';
+    const imgSrc = (prod.imagen && prod.imagen !== 'inicioHelado.png')
+        ? BASE_IMG_MODAL + prod.imagen
+        : BASE_IMG_MODAL + 'inicioHelado.png';
+    const fechaFormateada = prod.fechaVencimiento
+        ? prod.fechaVencimiento.substring(0, 10)
+        : '—';
+
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-detalle-overlay';
+    overlay.id = 'modal-detalle-root';
+    overlay.innerHTML = `
+        <div class="modal-detalle" role="dialog" aria-modal="true">
+            <div class="modal-detalle__img-wrap">
+                <img src="${imgSrc}" alt="${prod.nombre}"
+                     onerror="this.src='${BASE_IMG_MODAL}inicioHelado.png'" />
+                <button class="modal-detalle__cerrar" id="btnCerrarModalDetalle" title="Cerrar">✕</button>
+            </div>
+            <div class="modal-detalle__body">
+                <p class="modal-detalle__nombre">${prod.nombre}</p>
+                <p class="modal-detalle__precio">$${Number(prod.precio).toLocaleString('es-CO')}</p>
+                <p class="modal-detalle__desc">${prod.descripcion || 'Sin descripción.'}</p>
+                <div class="modal-detalle__grid">
+                    <div class="modal-detalle__campo">
+                        <span class="modal-detalle__label">Categoría</span>
+                        <span class="modal-detalle__valor">${prod.categoria || '—'}</span>
+                    </div>
+                    <div class="modal-detalle__campo">
+                        <span class="modal-detalle__label">Sabor</span>
+                        <span class="modal-detalle__valor">${prod.nombreSabor || '—'}</span>
+                    </div>
+                    <div class="modal-detalle__campo">
+                        <span class="modal-detalle__label">Unidad de medida</span>
+                        <span class="modal-detalle__valor">${prod.unidadMedida || '—'}</span>
+                    </div>
+                    <div class="modal-detalle__campo">
+                        <span class="modal-detalle__label">Vence</span>
+                        <span class="modal-detalle__valor">${fechaFormateada}</span>
+                    </div>
+                    <div class="modal-detalle__campo" style="grid-column:span 2">
+                        <span class="modal-detalle__label">Proveedor</span>
+                        <span class="modal-detalle__valor">${prod.proveedor || '—'}</span>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-detalle__footer">
+                <button class="modal-detalle__btn-carrito" id="mdBtnCarrito">Añadir al carrito</button>
+                <button class="modal-detalle__btn-comprar" id="mdBtnComprar">Comprar ahora</button>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(overlay);
+
+    // Cerrar al click en fondo o en X
+    overlay.addEventListener('click', (e) => {
+        if (e.target === overlay || e.target.id === 'btnCerrarModalDetalle') overlay.remove();
+    });
+
+    // Cerrar con Escape
+    const onKeyDown = (e) => {
+        if (e.key === 'Escape') { overlay.remove(); document.removeEventListener('keydown', onKeyDown); }
+    };
+    document.addEventListener('keydown', onKeyDown);
+
+    // Botón comprar ahora
+    document.getElementById('mdBtnComprar').addEventListener('click', () => {
+        overlay.remove();
+        window.location.href = `formularioPago.html?id=${prod.idProducto}&nombre=${encodeURIComponent(prod.nombre)}&precio=${prod.precio}`;
+    });
+
+    // Botón añadir al carrito
+    document.getElementById('mdBtnCarrito').addEventListener('click', async () => {
+        try {
+            const res = await fetch(
+                `/KurmiProyect/CarritoServlet?idProducto=${prod.idProducto}&precio=${prod.precio}&cantidad=1`,
+                { method: 'POST' }
+            );
+            if (res.ok) {
+                const msg = (await res.text()).trim();
+                overlay.remove();
+                if (msg === 'NUEVO_AGREGADO') {
+                    mostrarNotificacionDinamica('carrito');
+                } else if (msg === 'CANTIDAD_INCREMENTADA') {
+                    alert('Este producto ya está en tu carrito. ¡Hemos sumado una unidad!');
+                } else if (msg === 'DEBES_INICIAR_SESION') {
+                    alert('Por favor, inicia sesión para añadir productos al carrito.');
+                }
+            }
+        } catch (err) {
+            console.error('Error al agregar al carrito desde modal:', err);
+        }
+    });
+>>>>>>> 979ff32c7c2667c7a790882cbc2bf9781d3def68
 }

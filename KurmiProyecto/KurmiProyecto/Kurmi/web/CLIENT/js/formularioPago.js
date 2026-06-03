@@ -59,7 +59,7 @@ document.addEventListener("DOMContentLoaded", () => {
             mensajeError.innerText = "⚠️ Datos de formulario inválidos. Revisa los campos.";
             mensajeError.style.display = "block";
         } else if (status === "error_db") {
-            mensajeError.innerText = "❌ No se pudo procesar la orden en el servidor.";
+            mensajeError.innerText = "No se pudo procesar la orden en el servidor.";
             mensajeError.style.display = "block";
         }
     }

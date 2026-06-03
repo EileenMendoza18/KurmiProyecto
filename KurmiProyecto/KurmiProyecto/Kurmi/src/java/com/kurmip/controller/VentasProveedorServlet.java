@@ -3,6 +3,7 @@ package com.kurmip.controller;
 import com.google.gson.Gson;
 import com.kurmip.model.dao.PedidoDAO;
 import com.kurmip.model.dto.UsuarioDTO;
+import com.kurmip.util.AuthHelper;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.*;
@@ -21,17 +22,10 @@ public class VentasProveedorServlet extends HttpServlet {
 
         response.setContentType("application/json;charset=UTF-8");
 
-        HttpSession session = request.getSession(false);
-        if (session == null || session.getAttribute("usuarioLogueado") == null) {
-            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            response.getWriter().write("{\"error\":\"No autorizado\"}");
-            return;
-        }
+        UsuarioDTO usuario = AuthHelper.obtenerUsuario(request, response);
+        if (usuario == null) return;
 
-        UsuarioDTO usuario = (UsuarioDTO) session.getAttribute("usuarioLogueado");
-        int idProveedor = usuario.getId();
-
-        Map<String, Object> ventas = pedidoDAO.obtenerVentasProveedor(idProveedor);
+        Map<String, Object> ventas = pedidoDAO.obtenerVentasProveedor(usuario.getId());
         response.getWriter().write(gson.toJson(ventas));
     }
 }

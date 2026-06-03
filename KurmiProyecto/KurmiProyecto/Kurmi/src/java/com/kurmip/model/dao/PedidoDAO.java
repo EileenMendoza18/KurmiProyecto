@@ -196,7 +196,12 @@ public class PedidoDAO {
         List<Map<String, Object>> listaPedidos = new ArrayList<>();
 
         String sqlPedidos =
+<<<<<<< HEAD
             "SELECT p.ID_Pedido, p.ID_Carrito, p.Fecha_Pedido, p.Total_Pago, " +
+=======
+            "SELECT p.ID_Pedido, p.ID_Carrito, p.Fecha_Pedido, p.Total_Pago, p.Estado_Pedido, " +
+            "p.Nombre_Receptor, p.Direccion_Envio, p.Telefono_Envio, " +
+>>>>>>> 979ff32c7c2667c7a790882cbc2bf9781d3def68
             "mp.Nombre_Metodo AS metodoPago " +
             "FROM Pedidos_Cliente p " +
             "LEFT JOIN Pago_Pedido pp ON pp.ID_Pedido = p.ID_Pedido " +
@@ -288,6 +293,122 @@ public class PedidoDAO {
     }
 
     // ─────────────────────────────────────────────────────────────────────────
+<<<<<<< HEAD
+=======
+    // OBTENER PEDIDOS "EN PROCESO" (estados 4, 5, 6, 7) PARA EL CLIENTE
+    // El cliente ve todos estos estados agrupados como "En proceso"
+    // Se incluye estadoPedido y nombreEstado para que el JS los muestre
+    // ─────────────────────────────────────────────────────────────────────────
+    public List<Map<String, Object>> obtenerPedidosEnProceso(int idUsuario) {
+        List<Map<String, Object>> listaPedidos = new ArrayList<>();
+
+        String sqlPedidos =
+            "SELECT p.ID_Pedido, p.ID_Carrito, p.Fecha_Pedido, p.Total_Pago, p.Estado_Pedido, " +
+            "mp.Nombre_Metodo AS metodoPago " +
+            "FROM Pedidos_Cliente p " +
+            "LEFT JOIN Pago_Pedido pp ON pp.ID_Pedido = p.ID_Pedido " +
+            "LEFT JOIN Metodo_Pago mp ON mp.ID_Metodo = pp.ID_Metodo " +
+            "WHERE p.ID_Cliente = ? AND p.Estado_Pedido IN (4, 5, 6, 7) " +
+            "ORDER BY p.Fecha_Pedido DESC";
+
+        String sqlProductos =
+            "SELECT pr.ID_Producto, pr.Nombre_Producto, pr.Imagen_Producto, " +
+            "cd.Cantidad_producto, cd.Precio_Unitario_Momento, cd.SubTotal " +
+            "FROM Carrito_Detalle cd " +
+            "JOIN Productos pr ON cd.ID_Producto = pr.ID_Producto " +
+            "WHERE cd.ID_Carrito = ? " +
+            "AND cd.Estado_Carrito IN (3, 6) " +
+            "AND cd.Fecha_Venta = ?";
+
+        Connection conLocal = null;
+        PreparedStatement psLocal = null;
+        ResultSet rsLocal = null;
+
+        try {
+            conLocal = cn.getConexion();
+            psLocal = conLocal.prepareStatement(sqlPedidos);
+            psLocal.setInt(1, idUsuario);
+            rsLocal = psLocal.executeQuery();
+
+            while (rsLocal.next()) {
+                Map<String, Object> pedido = construirMapPedido(conLocal, rsLocal, sqlProductos);
+                listaPedidos.add(pedido);
+            }
+
+        } catch (SQLException e) {
+            System.err.println("Error en obtenerPedidosEnProceso: " + e.getMessage());
+        } finally {
+            try {
+                if (rsLocal  != null) rsLocal.close();
+                if (psLocal  != null) psLocal.close();
+                if (conLocal != null) conLocal.close();
+            } catch (SQLException e) {
+                System.err.println("Error cerrando recursos: " + e.getMessage());
+            }
+        }
+        return listaPedidos;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // HELPER: construye el Map de un pedido desde el ResultSet abierto
+    // ─────────────────────────────────────────────────────────────────────────
+    private Map<String, Object> construirMapPedido(Connection conLocal, ResultSet rs,
+                                                    String sqlProductos) throws SQLException {
+        int    idPedido    = rs.getInt("ID_Pedido");
+        int    idCarrito   = rs.getInt("ID_Carrito");
+        String fechaPedido = rs.getString("Fecha_Pedido");
+        int    estadoPed   = rs.getInt("Estado_Pedido");
+
+        List<Map<String, Object>> listaProds = new ArrayList<>();
+        int totalUnidades = 0;
+
+        PreparedStatement psP = conLocal.prepareStatement(sqlProductos);
+        psP.setInt(1, idCarrito);
+        psP.setString(2, fechaPedido);
+        ResultSet rsP = psP.executeQuery();
+
+        while (rsP.next()) {
+            int cantidad = rsP.getInt("Cantidad_producto");
+            totalUnidades += cantidad;
+
+            String imgProd = rsP.getString("Imagen_Producto");
+            String imagenFinal = (imgProd != null && !imgProd.isBlank())
+                ? imgProd : "inicioHelado.png";
+
+            Map<String, Object> prod = new java.util.LinkedHashMap<>();
+            prod.put("idProducto",  rsP.getInt("ID_Producto"));
+            prod.put("nombre",      rsP.getString("Nombre_Producto"));
+            prod.put("cantidad",    cantidad);
+            prod.put("precio",      rsP.getDouble("Precio_Unitario_Momento"));
+            prod.put("precioTotal", rsP.getDouble("SubTotal"));
+            prod.put("imagen",      imagenFinal);
+            listaProds.add(prod);
+        }
+        rsP.close(); psP.close();
+
+        String imagenPrimera = listaProds.isEmpty() ? "inicioHelado.png"
+                : (String) listaProds.get(0).get("imagen");
+
+        Map<String, Object> pedido = new java.util.LinkedHashMap<>();
+        pedido.put("idPedido",       idPedido);
+        pedido.put("idCarrito",      idCarrito);
+        pedido.put("fechaPedido",    fechaPedido.substring(0, 10));
+        pedido.put("totalPago",      rs.getDouble("Total_Pago"));
+        pedido.put("totalProductos", totalUnidades);
+        pedido.put("metodoPago",     rs.getString("metodoPago") != null
+                                     ? rs.getString("metodoPago") : "No registrado");
+        pedido.put("receptor",       rs.getString("Nombre_Receptor"));
+        pedido.put("direccion",      rs.getString("Direccion_Envio"));
+        pedido.put("telefono",       rs.getString("Telefono_Envio"));
+        pedido.put("imagenPrimera",  imagenPrimera);
+        pedido.put("estadoPedido",   estadoPed);
+        pedido.put("nombreEstado",   etiquetaEstado(estadoPed));
+        pedido.put("productos",      listaProds);
+        return pedido;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+>>>>>>> 979ff32c7c2667c7a790882cbc2bf9781d3def68
     // CAMBIAR ESTADO (cancelar pedido — solo estado 3)
     // ─────────────────────────────────────────────────────────────────────────
     public boolean cambiarEstadoPedido(int idPedido, int idUsuario, int nuevoEstado) {

@@ -67,8 +67,13 @@ main.tienda-main {
 
 .buscador-input-wrapper {
     position: relative;
+<<<<<<< HEAD
     width: 100%;
     max-width: 480px;
+=======
+    width: 350px;
+    flex-shrink: 0;
+>>>>>>> 979ff32c7c2667c7a790882cbc2bf9781d3def68
 }
 
 .buscador-input {

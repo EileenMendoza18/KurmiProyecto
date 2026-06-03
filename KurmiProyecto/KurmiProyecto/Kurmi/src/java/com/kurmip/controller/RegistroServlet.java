@@ -3,72 +3,105 @@ package com.kurmip.controller;
 import com.kurmip.model.dao.UsuarioDAO;
 import com.kurmip.model.dto.UsuarioDTO;
 import jakarta.servlet.ServletException;
-import jakarta.servlet.annotation.MultipartConfig;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.*;
-import java.io.File;
 import java.io.IOException;
+import java.time.LocalDate;
+import java.time.Period;
 
 /**
- * Controlador Servlet encargado de gestionar el registro de nuevos usuarios en Kurmi.
- * Procesa peticiones de tipo multipart/form-data de forma nativa.
- * * @author Eileen Mendoza
+ * RegistroServlet — gestiona el registro de nuevos usuarios en Kurmi.
+ *
+ * @author Eileen Mendoza
  */
 @WebServlet(name = "RegistroServlet", urlPatterns = {"/RegistroServlet"})
 public class RegistroServlet extends HttpServlet {
 
-    /**
-     * Procesa la petición POST enviada por el formulario de registro.
-     * * @param request Petición del cliente con los parámetros de texto
-     * @param response Respuesta del servidor para manejar las redirecciones.
-     * @throws ServletException
-     * @throws IOException 
-     */
+    private static final String BASE_REGISTRO = "registro.html?error=";
+
     @Override
-    protected void doPost(HttpServletRequest request, HttpServletResponse response) 
+    protected void doPost(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-        
+
         try {
-            // 1. Capturar los campos de texto usando los atributos "name" exactos del HTML
-            String nombres = request.getParameter("inputNombre");
+            String nombres   = request.getParameter("inputNombre");
             String apellidos = request.getParameter("inputApellido");
-            String telefono = request.getParameter("inputTelefono");
-            String correo = request.getParameter("Correo_Usu");
-            String fechaNac = request.getParameter("inputFecha");
+            String telefono  = request.getParameter("inputTelefono");
+            String correo    = request.getParameter("Correo_Usu");
+            String fechaNac  = request.getParameter("inputFecha");
             String contrasena = request.getParameter("Contrasena_Usu");
-            String direccion = request.getParameter("inputDireccion"); 
-            int idRol = Integer.parseInt(request.getParameter("inputRol")); 
-            
-            // 3. Empaquetar la información dentro de tu objeto de transferencia de datos (DTO)
+            String direccion = request.getParameter("inputDireccion");
+            int    idRol     = Integer.parseInt(request.getParameter("inputRol"));
+
+            // ── Validar edad ─────────────────────────────────────────────────
+            String errorEdad = validarEdad(fechaNac);
+            if (errorEdad != null) {
+                response.sendRedirect(BASE_REGISTRO + errorEdad);
+                return;
+            }
+
+            // ── Validar correo ───────────────────────────────────────────────
+            if (!correoValido(correo)) {
+                response.sendRedirect(BASE_REGISTRO + "correo_invalido");
+                return;
+            }
+
+            // ── Armar DTO y persistir ────────────────────────────────────────
             UsuarioDTO nuevoUsuario = new UsuarioDTO();
             nuevoUsuario.setNombres(nombres);
             nuevoUsuario.setApellidos(apellidos);
             nuevoUsuario.setTelefono(telefono);
             nuevoUsuario.setCorreo(correo);
             nuevoUsuario.setFechaNacimiento(fechaNac);
-            nuevoUsuario.setContrasena(contrasena); // El DAO se encargará de recibirla en texto plano y encriptarla
+            nuevoUsuario.setContrasena(contrasena);
             nuevoUsuario.setDireccion(direccion);
             nuevoUsuario.setIdRol(idRol);
 
+<<<<<<< HEAD
             // 4. Invocar la capa del modelo mediante el DAO para persistir en MySQL
+=======
+>>>>>>> 979ff32c7c2667c7a790882cbc2bf9781d3def68
             UsuarioDAO dao = new UsuarioDAO();
-            boolean guardadoExitoso = dao.registrar(nuevoUsuario);
+            boolean guardado = dao.registrar(nuevoUsuario);
 
-            // 5. Controlar el flujo de navegación según el resultado de la base de datos
-            if (guardadoExitoso) {
-                // Registro completado. Redirige al login exitosamente
+            if (guardado) {
                 response.sendRedirect("inicioSesion.html?registro=success");
             } else {
-                // Error de inserción en MySQL (ej: duplicado de llave única en Teléfono o Correo)
-                response.sendRedirect("registro.html?error=insert_failed");
+                response.sendRedirect(BASE_REGISTRO + "insert_failed");
             }
-            
+
         } catch (NumberFormatException e) {
-            System.err.println("Error crítico de conversión en el rol seleccionado: " + e.getMessage());
-            response.sendRedirect("registro.html?error=invalid_role");
+            System.err.println("Error de conversión en rol: " + e.getMessage());
+            response.sendRedirect(BASE_REGISTRO + "invalid_role");
         } catch (Exception e) {
-            System.err.println("Error general en el ciclo de vida de RegistroServlet: " + e.getMessage());
-            response.sendRedirect("registro.html?error=unexpected_system_error");
+            System.err.println("Error en RegistroServlet: " + e.getMessage());
+            response.sendRedirect(BASE_REGISTRO + "unexpected_system_error");
         }
+    }
+
+    // ── Helpers privados ──────────────────────────────────────────────────────
+
+    /**
+     * Valida que la fecha corresponda a una persona entre 18 y 90 años.
+     * @return código de error (String) si falla, null si es válida.
+     */
+    private String validarEdad(String fechaNac) {
+        if (fechaNac == null || fechaNac.isEmpty()) return null;
+        try {
+            int edad = Period.between(LocalDate.parse(fechaNac), LocalDate.now()).getYears();
+            if (edad < 18) return "menor_edad";
+            if (edad > 90) return "edad_maxima";
+        } catch (Exception ignored) {
+            return "fecha_invalida";
+        }
+        return null;
+    }
+
+    /**
+     * Verifica que el correo cumpla el formato esperado.
+     */
+    private boolean correoValido(String correo) {
+        if (correo == null) return false;
+        return correo.matches("^[a-zA-Z][a-zA-Z0-9._%+\\-]*@[a-zA-Z0-9.\\-]+\\.[a-zA-Z]{2,}$");
     }
 }

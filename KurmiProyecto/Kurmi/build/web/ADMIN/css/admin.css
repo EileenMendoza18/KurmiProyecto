@@ -196,7 +196,10 @@ html, body {
     font-size: 0.95rem;
     margin-top: 12px;
 }
-
+.sol-modal__fila img{
+    width: 25px;
+    
+}
 /* ============================================================
    RESPONSIVE — Tablets y móvil
    ============================================================ */
@@ -1064,3 +1067,10 @@ html, body {
 .badge--amarillo { background: #fff8e1; color: #f57f17; }
 .badge--morado   { background: #ede7f6; color: #6a1b9a; }
 .badge--azul     { background: #e3f2fd; color: #1565c0; }
+
+
+.sol-card__tipo img{
+    width: 20px;
+    height: 20px;
+    object-fit: contain;
+}

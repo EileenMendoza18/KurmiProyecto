@@ -139,10 +139,10 @@ function crearTarjetaFavorito(prod) {
                     // Si ya no quedan tarjetas, mostrar mensaje vacío
                     const grid = document.getElementById('favoritosGrid');
                     if (grid && grid.children.length === 0) {
-                        grid.innerHTML = '<p class="favoritos__vacio">😕 Aún no tienes productos en favoritos.</p>';
+                        grid.innerHTML = '<p class="favoritos__vacio">:( Aún no tienes productos en favoritos.</p>';
                     }
                 }, 300);
-                mostrarNotificacion('Producto eliminado de favoritos 💜');
+                mostrarNotificacion('Producto eliminado de favoritos');
             } else {
                 alert('No se pudo quitar el producto de favoritos.');
             }

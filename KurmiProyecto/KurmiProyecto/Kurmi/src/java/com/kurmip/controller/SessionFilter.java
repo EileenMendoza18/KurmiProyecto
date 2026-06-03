@@ -38,7 +38,12 @@ public class SessionFilter implements Filter {
         }
 
         // 2. Definir qué es libre
-        boolean esPublico = path.endsWith("inicioSesion.html") || path.endsWith("inicio.html") || path.contains("RESOURCES/") || 
+        // accion=testimonios es pública: se muestra en inicio.html sin sesión
+        String queryString = req.getQueryString();
+        boolean esTestimonios = path.contains("PerfilServlet") && queryString != null && queryString.contains("accion=testimonios");
+
+        boolean esPublico = esTestimonios ||
+                           path.endsWith("inicioSesion.html") || path.endsWith("inicio.html") || path.contains("RESOURCES/") || 
                            path.endsWith(".css") || path.endsWith(".js") || path.endsWith(".png") || 
                    path.endsWith(".jpg") || 
                    path.endsWith(".gif") || 

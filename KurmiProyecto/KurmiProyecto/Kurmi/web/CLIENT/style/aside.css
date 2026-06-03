@@ -113,3 +113,10 @@ aside label img {
     gap: 10px; /* Separación horizontal entre el icono y el nombre de la categoría */
     width: 100%;
 }
+<<<<<<< HEAD
+=======
+
+.menudos div img{
+    width: 20px;
+}
+>>>>>>> 979ff32c7c2667c7a790882cbc2bf9781d3def68
