@@ -30,7 +30,11 @@ function configurarNavegacion() {
             const seccion = btn.dataset.seccion;
             if      (seccion === 'productos') renderSeccionProductos();
             else if (seccion === 'clientes')  renderSeccionClientes();
+            else if (seccion === 'pedidos') renderSeccionPedidos();
             else if (seccion === 'perfil')    renderSeccionPerfil();
+            else if (seccion === 'solicitudes') renderSeccionSolicitudesAdmin();
+            else if (seccion === 'cancelaciones') renderSeccionCancelacionesAdmin();
+            else if (seccion === 'devoluciones') renderSeccionDevolucionesAdmin();
         });
     });
 }
@@ -93,6 +97,9 @@ function renderSeccionProductos() {
                 <option value="Agotado">Agotado</option>
                 <option value="Descontinuado">Descontinuado</option>
             </select>
+            <select id="filtroProveedor" class="filtro-select">
+                <option value="">Todos los proveedores</option>
+            </select>
             <button class="btn-limpiar" id="btnLimpiarFiltros">✕ Limpiar</button>
         </div>
 
@@ -131,6 +138,7 @@ function renderSeccionProductos() {
 
     document.getElementById('filtroNombre').addEventListener('input',  aplicarFiltros);
     document.getElementById('filtroEstado').addEventListener('change', aplicarFiltros);
+    document.getElementById('filtroProveedor').addEventListener('change', aplicarFiltros);
     document.getElementById('btnLimpiarFiltros').addEventListener('click', limpiarFiltros);
     document.getElementById('cerrarModalEstado').addEventListener('click',  cerrarModalEstado);
     document.getElementById('cancelarModalEstado').addEventListener('click', cerrarModalEstado);
@@ -183,6 +191,20 @@ async function cargarTodosLosProductos() {
         actualizarStatsProductos(data);
         renderProductosAdmin(data);
 
+        // Poblar el select de proveedores con los únicos disponibles
+        const selectProv = document.getElementById('filtroProveedor');
+        if (selectProv) {
+            const proveedoresUnicos = [...new Set(
+                data.map(p => p.proveedor).filter(p => p && p !== '--' && p !== '—')
+            )].sort();
+            proveedoresUnicos.forEach(nombre => {
+                const opt = document.createElement('option');
+                opt.value = nombre;
+                opt.textContent = nombre;
+                selectProv.appendChild(opt);
+            });
+        }
+
     } catch (e) {
         contenedor.innerHTML = `<p class="error-txt">No se pudo conectar: ${e.message}</p>`;
     }
@@ -215,7 +237,21 @@ function renderProductosAdmin(lista) {
     contenedor.innerHTML = lista.map(p => tarjetaProductoAdmin(p)).join('');
 
     contenedor.querySelectorAll('.btn-estado').forEach(btn => {
-        btn.addEventListener('click', () => abrirModalEstado(Number(btn.dataset.id)));
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            abrirModalEstado(Number(btn.dataset.id));
+        });
+    });
+
+    // Click en la tarjeta (fuera del botón) abre el modal de detalle
+    contenedor.querySelectorAll('.tarjeta-prov').forEach(card => {
+        card.style.cursor = 'pointer';
+        card.addEventListener('click', (e) => {
+            if (e.target.closest('.btn-estado')) return;
+            const id = Number(card.dataset.id);
+            const prod = todosLosProductos.find(p => p.idProducto === id);
+            if (prod) abrirModalDetalleAdmin(prod);
+        });
     });
 }
 
@@ -231,7 +267,7 @@ function tarjetaProductoAdmin(p) {
     }[p.estadoNombre] ?? 'badge--gris';
 
     return `
-        <div class="tarjeta-prov">
+        <div class="tarjeta-prov" data-id="${p.idProducto}">
             <div class="tarjeta-prov__img-wrap" style="position:relative">
                 <img src="${urlImg}" alt="${p.nombre}"
                      onerror="this.src='${IMG_DEF}'"
@@ -258,19 +294,22 @@ function tarjetaProductoAdmin(p) {
 
 // ── Filtros ───────────────────────────────────────────────────────────────────
 function aplicarFiltros() {
-    const termino  = document.getElementById('filtroNombre').value.trim().toLowerCase();
-    const estado   = document.getElementById('filtroEstado').value;
+    const termino    = document.getElementById('filtroNombre').value.trim().toLowerCase();
+    const estado     = document.getElementById('filtroEstado').value;
+    const proveedor  = document.getElementById('filtroProveedor').value;
     const filtrados = todosLosProductos.filter(p => {
-        const coincideNombre = !termino || p.nombre.toLowerCase().includes(termino);
-        const coincideEstado = !estado  || (p.estadoNombre ?? '') === estado;
-        return coincideNombre && coincideEstado;
+        const coincideNombre    = !termino    || p.nombre.toLowerCase().includes(termino);
+        const coincideEstado    = !estado     || (p.estadoNombre ?? '') === estado;
+        const coincideProveedor = !proveedor  || (p.proveedor ?? '') === proveedor;
+        return coincideNombre && coincideEstado && coincideProveedor;
     });
     renderProductosAdmin(filtrados);
 }
 
 function limpiarFiltros() {
-    document.getElementById('filtroNombre').value = '';
-    document.getElementById('filtroEstado').value = '';
+    document.getElementById('filtroNombre').value    = '';
+    document.getElementById('filtroEstado').value    = '';
+    document.getElementById('filtroProveedor').value = '';
     renderProductosAdmin(todosLosProductos);
 }
 
@@ -300,8 +339,6 @@ function cerrarModalEstado() {
     productoSeleccionadoId = null;
 }
 
-<<<<<<< HEAD
-=======
 // ── Modal de detalle de producto (vista similar al cliente + datos de admin) ──
 function abrirModalDetalleAdmin(prod) {
     // Inyectar estilos solo una vez
@@ -460,7 +497,6 @@ function abrirModalDetalleAdmin(prod) {
     document.addEventListener('keydown', onKey);
 }
 
->>>>>>> 979ff32c7c2667c7a790882cbc2bf9781d3def68
 async function guardarCambioEstado() {
     if (!productoSeleccionadoId) return;
 
@@ -486,7 +522,7 @@ async function guardarCambioEstado() {
 
         if (data.ok) {
             feedback.className   = 'feedback feedback--ok';
-            feedback.textContent = '✅ Estado actualizado correctamente.';
+            feedback.textContent = 'Estado actualizado correctamente.';
 
             // Actualizar estado local
             const prod = todosLosProductos.find(p => p.idProducto === productoSeleccionadoId);
@@ -499,7 +535,7 @@ async function guardarCambioEstado() {
 
             setTimeout(() => {
                 cerrarModalEstado();
-                renderProductosAdmin(todosLosProductos);
+                aplicarFiltros(); // Respeta los filtros activos en lugar de mostrar todos
             }, 900);
         } else {
             feedback.className   = 'feedback feedback--error';
@@ -747,7 +783,7 @@ async function guardarCambioEstadoUsuario() {
 
         if (data.ok) {
             feedback.className   = 'feedback feedback--ok';
-            feedback.textContent = '✅ Estado actualizado correctamente.';
+            feedback.textContent = 'Estado actualizado correctamente.';
 
             // Actualizar estado local sin recargar
             const u = todosLosUsuarios.find(u => u.id === usuarioSeleccionadoId);
@@ -1004,8 +1040,6 @@ function configurarPerfilAdmin() {
         try { await fetch(`${BASE_URL}/CerrarSesionServlet`, { method: 'POST' }); } catch (_) {}
         window.location.replace(`${BASE_URL}/inicioSesion.html`);
     });
-<<<<<<< HEAD
-=======
 }
     // ─────────────────────────────────────────────────────────────────────────────
 // SECCIÓN GESTIÓN DE PEDIDOS (Admin)
@@ -1381,7 +1415,7 @@ function renderSeccionSolicitudesAdmin() {
                     </label>
                     <div class="sol-decision-btns">
                         <button class="sol-btn-decision sol-btn-aprobar" id="btnDecisionAprobar">
-                            ✅ Aprobar
+                            Aprobar
                         </button>
                         <button class="sol-btn-decision sol-btn-rechazar" id="btnDecisionRechazar">
                             Rechazar
@@ -1666,7 +1700,7 @@ async function guardarRespuestaSolicitud() {
             if (decisionSeleccionada === 'Rechazado') {
                 // Rechazo: cerrar y refrescar
                 feedback.className   = 'feedback feedback--ok';
-                feedback.textContent = '✅ Solicitud rechazada correctamente.';
+                feedback.textContent = 'Solicitud rechazada correctamente.';
                 setTimeout(() => {
                     cerrarModalResponder();
                     const tabActivo = document.querySelector('[data-estado].ventas-tab--activo');
@@ -1726,7 +1760,7 @@ const camposSabor = (sol.tipo === 'Sabor' || sol.tipo === 'Ambos')
  
     document.getElementById('solModalDetalle').innerHTML = `
         <div class="feedback feedback--ok" style="margin-bottom:14px;">
-            ✅ Solicitud aprobada. Ahora crea la ${sol.tipo.toLowerCase()} en el catálogo:
+            Solicitud aprobada. Ahora crea la ${sol.tipo.toLowerCase()} en el catálogo:
         </div>
         ${infoRelacion}
         ${camposCat}
@@ -1794,7 +1828,7 @@ async function crearDesdeAprobacion(sol) {
         if (data.ok) {
             document.getElementById('solModalDetalle').innerHTML += `
                 <div class="feedback feedback--ok" style="margin-top:10px;">
-                    ✅ ${sol.tipo} creada correctamente en el catálogo.
+                    ${sol.tipo} creada correctamente en el catálogo.
                 </div>`;
             btn.textContent = 'Cerrar';
             btn.disabled    = false;
@@ -2353,5 +2387,4 @@ async function enviarRespuestaCancelacion() {
         btnC.disabled = false;
         btnC.textContent = 'Confirmar';
     }
->>>>>>> 979ff32c7c2667c7a790882cbc2bf9781d3def68
 }

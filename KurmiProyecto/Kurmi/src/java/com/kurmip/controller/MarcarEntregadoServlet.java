@@ -11,6 +11,14 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * MarcarEntregadoServlet — usado por el PROVEEDOR
+ * Avanza el estado de su parte del pedido:
+ *   4 = Preparando  →  5 = En bodega
+ *
+ * POST /MarcarEntregadoServlet
+ *   Params: idPedido (int), nuevoEstado (int) — solo 4 o 5 son válidos para el proveedor
+ */
 @WebServlet(name = "MarcarEntregadoServlet", urlPatterns = {"/MarcarEntregadoServlet"})
 public class MarcarEntregadoServlet extends HttpServlet {
 
@@ -24,40 +32,24 @@ public class MarcarEntregadoServlet extends HttpServlet {
         response.setContentType("application/json;charset=UTF-8");
         Map<String, Object> result = new HashMap<>();
 
-<<<<<<< HEAD
-        HttpSession session = request.getSession(false);
-        if (session == null || session.getAttribute("usuarioLogueado") == null) {
-            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            result.put("ok", false); result.put("msg", "No autorizado");
-            response.getWriter().write(gson.toJson(result));
-            return;
-        }
-=======
         UsuarioDTO usuario = AuthHelper.obtenerUsuario(request, response);
         if (usuario == null) return;
->>>>>>> 979ff32c7c2667c7a790882cbc2bf9781d3def68
 
         int idProveedor = usuario.getId();
 
-<<<<<<< HEAD
-        String idPedidoParam = request.getParameter("idPedido");
-=======
         String idPedidoParam    = request.getParameter("idPedido");
         String nuevoEstadoParam = request.getParameter("nuevoEstado");
 
->>>>>>> 979ff32c7c2667c7a790882cbc2bf9781d3def68
         if (idPedidoParam == null || idPedidoParam.isBlank()) {
             response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            result.put("ok", false); result.put("msg", "Falta idPedido");
+            result.put("ok", false);
+            result.put("msg", "Falta idPedido");
             response.getWriter().write(gson.toJson(result));
             return;
         }
 
         try {
             int idPedido = Integer.parseInt(idPedidoParam.trim());
-<<<<<<< HEAD
-            boolean ok = pedidoDAO.marcarPedidoEntregado(idPedido, idProveedor);
-=======
 
             if (nuevoEstadoParam == null || nuevoEstadoParam.isBlank()) {
                 response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
@@ -77,14 +69,16 @@ public class MarcarEntregadoServlet extends HttpServlet {
             }
 
             boolean ok = pedidoDAO.actualizarEstadoProveedor(idPedido, idProveedor, nuevoEstado);
->>>>>>> 979ff32c7c2667c7a790882cbc2bf9781d3def68
             result.put("ok", ok);
-            result.put("msg", ok ? "Pedido marcado como entregado"
-                                 : "No se pudo actualizar el pedido");
+            result.put("msg", ok
+                ? "Estado actualizado a: " + PedidoDAO.etiquetaEstado(nuevoEstado)
+                : "No se pudo actualizar el pedido");
             response.getWriter().write(gson.toJson(result));
+
         } catch (NumberFormatException e) {
             response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            result.put("ok", false); result.put("msg", "ID inválido");
+            result.put("ok", false);
+            result.put("msg", "ID inválido");
             response.getWriter().write(gson.toJson(result));
         }
     }

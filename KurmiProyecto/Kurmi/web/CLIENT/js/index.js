@@ -69,6 +69,29 @@ function mapearDatosTarjeta(tarjetaClonada, prod) {
     if (pDesc) pDesc.textContent = prod.descripcion;
     if (pPrecio) pPrecio.textContent = `$${precioReal.toLocaleString()}`;
 
+    // Guardar datos completos en el elemento para el modal
+    tarjetaClonada.dataset.prod = JSON.stringify({
+        idProducto:       idReal,
+        nombre:           nombreReal,
+        precio:           precioReal,
+        descripcion:      prod.descripcion      || '',
+        unidadMedida:     prod.unidadMedida     || prod.medida || '',
+        fechaVencimiento: prod.fechaVencimiento || '',
+        categoria:        prod.categoria        || '',
+        nombreSabor:      prod.nombreSabor      || '',
+        proveedor:        prod.proveedor        || '',
+        imagen:           prod.imagen           || 'inicioHelado.png'
+    });
+
+    // Click en la tarjeta (no en los botones) abre el modal de detalle
+    tarjetaClonada.style.cursor = 'pointer';
+    tarjetaClonada.addEventListener('click', (e) => {
+        // No abrir modal si el click fue en un botón de acción
+        if (e.target.closest('button')) return;
+        const datos = JSON.parse(tarjetaClonada.dataset.prod);
+        abrirModalDetalle(datos);
+    });
+
     // Se asocia el evento del click para redireccionar al formulario de pago
     const btnComprar = tarjetaClonada.querySelector('button:not([class])');
     if (btnComprar) {
@@ -217,40 +240,77 @@ async function cargarCategoriasGaleria(contenedorId) {
  */
 async function cargarCategoriasAside(contenedorId) {
     try {
-<<<<<<< HEAD
-        const responseCat = await fetch('/KurmiProyect/ObtenerCategoriasServlet');
-        const categorias = await responseCat.json(); 
-=======
         const responseCat = await fetch('/KurmiProyect/CatalogoServlet?accion=categorias');
         const categorias = await responseCat.json();
->>>>>>> 979ff32c7c2667c7a790882cbc2bf9781d3def68
 
         const contenedor = document.getElementById(contenedorId);
+        const contenedorIconos = document.getElementById('contenedorIconosAside');
         if (!contenedor) return;
 
-<<<<<<< HEAD
-        contenedor.innerHTML = ''; 
-=======
         contenedor.innerHTML = '';
         if (contenedorIconos) contenedorIconos.innerHTML = '';
 
         // SVG genérico de postre (cupcake)
         const iconoPostre = `<img src="../../RESOURCES/img/postreAside.png" alt="Toggle">`;
->>>>>>> 979ff32c7c2667c7a790882cbc2bf9781d3def68
 
         categorias.forEach(nombreCat => {
+            // --- Icono lateral ---
+            if (contenedorIconos) {
+                const divIcono = document.createElement('div');
+                divIcono.innerHTML = iconoPostre;
+                divIcono.style.cursor = 'pointer';
+                divIcono.title = nombreCat;
+                divIcono.addEventListener('click', () => {
+                    window.location.href = `Productos.html?categoria=${encodeURIComponent(nombreCat)}`;
+                });
+                contenedorIconos.appendChild(divIcono);
+            }
+
+            // --- Texto lateral ---
             const divOpcion = document.createElement('div');
             const pTexto = document.createElement('p');
-            
             pTexto.textContent = nombreCat;
             divOpcion.appendChild(pTexto);
-            divOpcion.style.cursor = 'pointer'; // Cambia el cursor a una mano al pasar el mouse
-            
+            divOpcion.style.cursor = 'pointer';
             divOpcion.addEventListener('click', () => {
-                // Redirige a la pantalla de productos individuales filtrando por la categoría
                 window.location.href = `Productos.html?categoria=${encodeURIComponent(nombreCat)}`;
             });
             contenedor.appendChild(divOpcion);
+        });
+
+        // --- Lógica de abrir/cerrar el aside ---
+        const aside = document.querySelector('aside.menu-lateral');
+        const toggle = document.getElementById('asideToggle');
+        const letras = document.getElementById(contenedorId);
+
+        function abrirAside() {
+            letras.style.display = 'flex';
+        }
+        function cerrarAside() {
+            letras.style.display = 'none';
+        }
+
+        // Click en el botón toggle abre/cierra
+        if (toggle) {
+            toggle.addEventListener('click', (e) => {
+                e.stopPropagation();
+                letras.style.display === 'flex' ? cerrarAside() : abrirAside();
+            });
+        }
+
+        // Click en cualquier icono del menudos abre
+        if (contenedorIconos) {
+            contenedorIconos.addEventListener('click', (e) => {
+                e.stopPropagation();
+                abrirAside();
+            });
+        }
+
+        // Click afuera del aside cierra
+        document.addEventListener('click', (e) => {
+            if (aside && !aside.contains(e.target)) {
+                cerrarAside();
+            }
         });
 
     } catch (error) {
@@ -365,11 +425,24 @@ async function cargarSeccionesTienda(contenedorId) {
     try {
         const response = await fetch('/KurmiProyect/ProductoServlet?accion=porCategoria');
         const productos = await response.json();
-        
-        console.log("Productos recibidos del Servlet:", productos);
 
         // Guardar globalmente para el buscador
         todosLosProductosTienda = productos;
+
+        // Poblar el select de proveedores aquí, cuando los datos ya están disponibles
+        const selectProv = document.getElementById('filtroProveedorTienda');
+        if (selectProv) {
+            while (selectProv.options.length > 1) selectProv.remove(1);
+            const proveedoresUnicos = [...new Set(
+                productos.map(p => p.proveedor).filter(p => p != null && String(p).trim() !== '' && p !== 'null')
+            )].sort();
+            proveedoresUnicos.forEach(nombre => {
+                const opt = document.createElement('option');
+                opt.value = nombre;
+                opt.textContent = nombre;
+                selectProv.appendChild(opt);
+            });
+        }
 
         // 1. Agrupar los productos por su nombre de categoría
         const categoriasMap = {};
@@ -382,55 +455,40 @@ async function cargarSeccionesTienda(contenedorId) {
         }
 
         const contenedorPadre = document.getElementById(contenedorId);
-        if (!contenedorPadre) {
-            console.error("No se encontró el contenedor padre con ID:", contenedorId);
-            return;
-        }
-        contenedorPadre.innerHTML = ''; // Limpiar contenedor de carga
+        if (!contenedorPadre) return;
+        contenedorPadre.innerHTML = '';
 
-        // 2. Traer la plantilla HTML de la tarjeta de producto
         const responseTemplate = await fetch('/KurmiProyect/components/tarjetaProducto.html');
         const templateHTML = await responseTemplate.text();
         const parser = new DOMParser();
         const docTemplate = parser.parseFromString(templateHTML, 'text/html');
-        plantillaTarjetaTienda = docTemplate.querySelector('.tarjeta'); // Guardar globalmente
+        plantillaTarjetaTienda = docTemplate.querySelector('.tarjeta');
 
-        if (!plantillaTarjetaTienda) {
-            console.error("No se encontró la clase '.tarjeta' dentro de tarjetaProducto.html");
-            return;
-        }
+        if (!plantillaTarjetaTienda) return;
 
-        // 3. Iterar por cada categoría agrupada y construir sus bloques independientes
         for (const [nombreCategoria, listaProductos] of Object.entries(categoriasMap)) {
-            
-            // CONSTRUCCIÓN DEL BLOQUE DE LA CATEGORÍA (Aquí se soluciona el ReferenceError)
             const seccionBloque = document.createElement('section');
             seccionBloque.className = 'categoria-bloque';
             seccionBloque.style.marginBottom = '40px';
 
-            // Crear el título de la categoría (Ej: "Postres de cuchara", "Postres fritos")
             const tituloCat = document.createElement('h2');
             tituloCat.textContent = nombreCategoria;
             tituloCat.className = 'categoria-titulo';
             tituloCat.style.fontSize = '1.6rem';
-            tituloCat.style.color = '#4A3B53'; // Tono morado oscuro acorde a tu paleta pastel
+            tituloCat.style.color = '#4A3B53';
             tituloCat.style.marginBottom = '20px';
             tituloCat.style.fontWeight = '600';
             seccionBloque.appendChild(tituloCat);
-            
-            // Crear la rejilla (Grid) donde se alinearán las tarjetas de esta categoría
+
             const gridTarjetas = document.createElement('div');
             gridTarjetas.className = 'tienda-productos-grid';
-            
 
-            // Inyectar cada producto correspondiente a esta sección
             for (const prod of listaProductos) {
                 const nuevaTarjeta = plantillaTarjetaTienda.cloneNode(true);
                 mapearDatosTarjeta(nuevaTarjeta, prod);
                 gridTarjetas.appendChild(nuevaTarjeta);
             }
 
-            // Unir la rejilla al bloque contenedor y este al contenedor de la página
             seccionBloque.appendChild(gridTarjetas);
             contenedorPadre.appendChild(seccionBloque);
         }
@@ -825,42 +883,61 @@ function actualizarResumenCarrito() {
 
 // ─── BUSCADOR EN TIEMPO REAL ──────────────────────────────────────────────────
 function inicializarBuscador() {
-    const inputBuscador = document.querySelector('.buscador-input');
-    const contenedor    = document.getElementById('contenedorTiendaCategorias');
+    const inputBuscador  = document.querySelector('.buscador-input');
+    const selectProv     = document.getElementById('filtroProveedorTienda');
+    const contenedor     = document.getElementById('contenedorTiendaCategorias');
     if (!inputBuscador || !contenedor) return;
 
-    inputBuscador.addEventListener('input', () => {
-        const termino = inputBuscador.value.trim().toLowerCase();
+    // Poblar el select de proveedores con los únicos disponibles
+    if (selectProv) {
+        const proveedoresUnicos = [...new Set(
+            todosLosProductosTienda
+                .map(p => p.proveedor)
+                .filter(p => p != null && p !== 'null' && p.trim() !== '' && p !== '--' && p !== '—')
+        )].sort();
 
-        // Sin texto → restaurar vista por categorías normal
-        if (!termino) {
+        // Limpiar opciones previas (excepto la primera "Todos")
+        while (selectProv.options.length > 1) selectProv.remove(1);
+
+        proveedoresUnicos.forEach(nombre => {
+            const opt = document.createElement('option');
+            opt.value = nombre;
+            opt.textContent = nombre;
+            selectProv.appendChild(opt);
+        });
+    }
+
+    function aplicarFiltrosTienda() {
+        const termino    = inputBuscador.value.trim().toLowerCase();
+        const proveedor  = selectProv ? selectProv.value : '';
+
+        // Sin filtros → vista normal por categorías
+        if (!termino && !proveedor) {
             renderizarPorCategorias(todosLosProductosTienda, contenedor);
             return;
         }
 
-        // Filtrar por nombre o categoría
         const filtrados = todosLosProductosTienda.filter(p => {
-            const nombre    = (p.nombre    || '').toLowerCase();
-            const categoria = (p.categoria || '').toLowerCase();
-            const sabor     = (p.nombreSabor || '').toLowerCase();
-            return nombre.includes(termino) || categoria.includes(termino) || sabor.includes(termino);
+            const coincideTexto = !termino || (
+                (p.nombre || '').toLowerCase().includes(termino) ||
+                (p.categoria || '').toLowerCase().includes(termino) ||
+                (p.nombreSabor || '').toLowerCase().includes(termino)
+            );
+            const provProd = (p.proveedor ?? '').trim();
+            const coincideProveedor = !proveedor || provProd === proveedor;
+            return coincideTexto && coincideProveedor;
         });
 
         if (filtrados.length === 0) {
             contenedor.innerHTML = `
                 <div class="buscador__sin-resultados">
-<<<<<<< HEAD
-                    <p>😕 No encontramos productos con "<strong>${inputBuscador.value.trim()}</strong>"</p>
-                    <p>Intenta con otro nombre o categoría.</p>
-=======
                     <p>:( No encontramos productos con "<strong>${inputBuscador.value.trim() || proveedor}</strong>"</p>
                     <p>Intenta con otro nombre, categoría o proveedor.</p>
->>>>>>> 979ff32c7c2667c7a790882cbc2bf9781d3def68
                 </div>`;
             return;
         }
 
-        // Mostrar resultados como una sección plana sin agrupar
+        // Mostrar resultados como sección plana
         contenedor.innerHTML = '';
         const seccion = document.createElement('section');
         seccion.className = 'categoria-bloque';
@@ -869,12 +946,12 @@ function inicializarBuscador() {
         const titulo = document.createElement('h2');
         titulo.className = 'categoria-titulo';
         titulo.style.cssText = 'font-size:1.4rem;color:#4A3B53;margin-bottom:20px;font-weight:600;';
-        titulo.textContent = `Resultados para "${inputBuscador.value.trim()}" (${filtrados.length})`;
+        const labelFiltro = proveedor ? `Proveedor: ${proveedor}` : `"${inputBuscador.value.trim()}"`;
+        titulo.textContent = `Resultados para ${labelFiltro} (${filtrados.length})`;
         seccion.appendChild(titulo);
 
         const grid = document.createElement('div');
         grid.className = 'tienda-productos-grid';
-        
 
         for (const prod of filtrados) {
             const tarjeta = plantillaTarjetaTienda.cloneNode(true);
@@ -884,7 +961,10 @@ function inicializarBuscador() {
 
         seccion.appendChild(grid);
         contenedor.appendChild(seccion);
-    });
+    }
+
+    inputBuscador.addEventListener('input', aplicarFiltrosTienda);
+    if (selectProv) selectProv.addEventListener('change', aplicarFiltrosTienda);
 }
 
 // Renderiza los productos agrupados por categoría (restaurar vista original)
@@ -919,8 +999,6 @@ function renderizarPorCategorias(productos, contenedor) {
         seccion.appendChild(grid);
         contenedor.appendChild(seccion);
     }
-<<<<<<< HEAD
-=======
 }
 // ─────────────────────────────────────────────────────────────────────────────
 // MODAL DE DETALLE DE PRODUCTO
@@ -1161,5 +1239,4 @@ function abrirModalDetalle(prod) {
             console.error('Error al agregar al carrito desde modal:', err);
         }
     });
->>>>>>> 979ff32c7c2667c7a790882cbc2bf9781d3def68
 }

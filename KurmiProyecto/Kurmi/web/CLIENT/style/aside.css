@@ -1,28 +1,27 @@
 /* --- MENÚ LATERAL INTERACTIVO (ASIDE) --- */
 
-#asideContainer{
+#asideContainer {
     position: fixed;
     z-index: 10;
 }
+
 aside {
     margin-top: 14vh;
     display: grid;
     grid-template-columns: 50px 200px;
-    grid-template-rows: repeat(2, auto);
+    grid-template-rows: auto auto;
     width: auto;
-    height: auto;    
+    height: auto;
 }
 
-aside input {
-    display: none;
-}
-
-aside label {
-    grid-area: 1/1;
+/* --- BOTÓN TOGGLE (reemplaza el label/checkbox) --- */
+.aside-toggle {
+    grid-area: 1 / 1;
     width: 100%;
+    cursor: pointer;
 }
 
-aside label div {
+.aside-toggle div {
     background-color: #DCD6F7;
     width: 100%;
     padding: 12px;
@@ -32,15 +31,18 @@ aside label div {
     align-items: center;
 }
 
-aside label img {
+.aside-toggle img {
     width: 100%;
     height: auto;
     cursor: pointer;
 }
 
+/* --- COLUMNA DE ICONOS DINÁMICOS --- */
 .menudos {
-    grid-area: 2/1;
+    grid-area: 2 / 1;
     width: 100%;
+    display: flex;
+    flex-direction: column;
 }
 
 .menudos div {
@@ -51,6 +53,8 @@ aside label img {
     display: flex;
     justify-content: center;
     align-items: center;
+    min-height: 50px;
+    box-sizing: border-box;
 }
 
 .menudos div:last-child {
@@ -58,41 +62,38 @@ aside label img {
     border-bottom-left-radius: 10px;
 }
 
-.menudos img {
-    width: 100%;
-    height: auto;
+.menudos svg {
+    width: 26px;
+    height: 26px;
+    flex-shrink: 0;
 }
 
-#aside:checked ~ .letras {
-    display: flex;
-    flex-direction: column;
-}
-
+/* --- PANEL DE TEXTOS (letras) --- */
 .letras {
-    display: none;
+    display: none; /* JS controla show/hide */
+    flex-direction: column;
     grid-row: span 2;
-    grid-area: 2/2;
+    grid-area: 2 / 2;
     background-color: #DCD6F7;
     border-bottom-right-radius: 10px;
     border-top-right-radius: 10px;
     border: 1px solid rgb(186, 153, 233);
     width: auto;
-    
-    /* === CAMBIOS CRÍTICOS DE BLINDAJE === */
-    height: auto;     /* Permite que la caja crezca según los datos */
-    max-height: 443px;             /* No deja que supere la altura del panel morado izquierdo */
-    overflow-y: auto;              /* Si tienes más de 8 categorías, activa un scroll interno limpio */
+    height: auto;
+    max-height: 443px;
+    overflow-y: auto;
     box-shadow: 4px 4px 12px rgba(70, 56, 119, 0.1);
 }
 
 .letras div {
-    height:100%;
+    height: 50px;
     display: flex;
     align-items: center;
     padding-left: 15px;
-    padding-right: 10px;           /* Evita que los textos largos toquen el borde */
+    padding-right: 10px;
     border-bottom: 1px solid rgb(186, 153, 233);
     width: 100%;
+    box-sizing: border-box;
 }
 
 .letras div:last-child {
@@ -106,17 +107,20 @@ aside label img {
     font-size: 0.9rem;
 }
 
+/* Hover en filas */
+.letras div:hover,
+.menudos div:hover {
+    background-color: #cdc6ef;
+}
+
 /* Alinea de forma horizontal el icono generado y su respectivo texto */
 .item-menu-lateral {
     display: flex;
     align-items: center;
-    gap: 10px; /* Separación horizontal entre el icono y el nombre de la categoría */
+    gap: 10px;
     width: 100%;
 }
-<<<<<<< HEAD
-=======
 
 .menudos div img{
     width: 20px;
 }
->>>>>>> 979ff32c7c2667c7a790882cbc2bf9781d3def68

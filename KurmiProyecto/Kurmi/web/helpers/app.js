@@ -91,27 +91,38 @@ async function init() {
                         Correo_Usu: { 
                             required: true,
                             requiredMessage: "El correo electrónico es obligatorio",
-                            custom: (valor) => /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(valor.trim()),
-                            message: "El correo debe tener un @ y un dominio válido (ejemplo@dominio.com)",
+                            custom: (valor) => /^[a-zA-Z][a-zA-Z0-9._%+-]*@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(valor.trim()),
+                            message: "El correo debe empezar con una letra y tener un dominio válido (ejemplo@dominio.com)",
                             errorId: "errorCorreo"
                         },
                         inputFecha: {
                             required: true,
                             requiredMessage: "La fecha de nacimiento es obligatoria",
-                            custom: (valor) => {
+                            custom: (valor, inputElement) => {
                                 if (!valor) return false;
                                 const fechaIngresada = new Date(valor);
                                 const fechaActual = new Date();
                                 const fechaMinima = new Date(fechaActual);
                                 fechaMinima.setFullYear(fechaActual.getFullYear() - 90);
-                                
-                                fechaActual.setHours(0, 0, 0, 0);
+                                const fechaMaxima = new Date(fechaActual);
+                                fechaMaxima.setFullYear(fechaActual.getFullYear() - 18);
+
+                                fechaMaxima.setHours(0, 0, 0, 0);
                                 fechaMinima.setHours(0, 0, 0, 0);
                                 fechaIngresada.setHours(0, 0, 0, 0);
-                                
-                                return fechaIngresada <= fechaActual && fechaIngresada >= fechaMinima;
+
+                                const errorEl = document.getElementById('errorFecha');
+                                if (fechaIngresada < fechaMinima) {
+                                    if (errorEl) errorEl.textContent = 'La fecha de nacimiento no puede ser menor a 90 años atrás';
+                                    return false;
+                                }
+                                if (fechaIngresada > fechaMaxima) {
+                                    if (errorEl) errorEl.textContent = 'Debes ser mayor de 18 años para registrarte';
+                                    return false;
+                                }
+                                return true;
                             },
-                            message: "La fecha de nacimiento no debe ser mayor a la actual ni menor a 90 años",
+                            message: "",
                             errorId: "errorFecha"
                         },
                         inputRol: { 
@@ -219,6 +230,10 @@ function verificarErroresURL() {
         } else if (errorParam === '1') {
             if (errorCorreo && inputCorreo) showError(errorCorreo, "Correo o contraseña incorrectos", inputCorreo);
             if (errorContrasena && inputContrasena) showError(errorContrasena, "Correo o contraseña incorrectos", inputContrasena);
+        } else if (errorParam === "cuenta_inactiva") {
+            if (errorCorreo && inputCorreo) showError(errorCorreo, 
+                "Tu cuenta ha sido desactivada. Contacta al administrador para más información.", inputCorreo);
+            if (errorContrasena && inputContrasena) showError(errorContrasena, "Cuenta inactiva.", inputContrasena);
         }
         window.history.replaceState({}, document.title, window.location.pathname);
     } else {
@@ -226,6 +241,19 @@ function verificarErroresURL() {
         if (errorParam === 'invalid_role') {
             console.log('[Kurmi - Registro]  Error: rol inválido o no seleccionado.');
             if (errorRol && inputRol) showError(errorRol, 'El rol seleccionado no es válido.', inputRol);
+
+        } else if (errorParam === 'edad_maxima') {
+            const errorFecha = document.getElementById('errorFecha');
+            const inputFecha = document.querySelector('.fecha');
+            if (errorFecha && inputFecha) showError(errorFecha, 'La fecha de nacimiento no puede ser menor a 90 años atrás.', inputFecha);
+
+        } else if (errorParam === 'menor_edad') {
+            const errorFecha = document.getElementById('errorFecha');
+            const inputFecha = document.querySelector('.fecha');
+            if (errorFecha && inputFecha) showError(errorFecha, 'Debes ser mayor de 18 años para registrarte.', inputFecha);
+
+        } else if (errorParam === 'correo_invalido') {
+            if (errorCorreo && inputCorreo) showError(errorCorreo, 'El correo debe empezar con una letra y tener un dominio válido (ejemplo@dominio.com).', inputCorreo);
 
         } else if (errorParam === 'insert_failed') {
             console.log('[Kurmi - Registro]  Error: los datos ingresados ya existen en el sistema (correo o teléfono duplicado).');
@@ -242,3 +270,25 @@ function verificarErroresURL() {
 
 
 verificarErroresURL();
+
+// ── Modal Términos y Condiciones ──────────────────────────────────────────────
+(function iniciarModalTerminos() {
+    const modal      = document.getElementById('modalTerminos');
+    const linkTC     = document.getElementById('linkTerminos');
+    const btnCerrar  = document.getElementById('cerrarModalTerminos');
+    const btnAceptar = document.getElementById('btnAceptarTerminos');
+    const chk        = document.getElementById('chkTerminos');
+
+    if (!modal || !linkTC) return; // solo aplica en la página de registro
+
+    const abrir  = () => modal.classList.add('abierto');
+    const cerrar = () => modal.classList.remove('abierto');
+
+    linkTC.addEventListener('click', e => { e.preventDefault(); abrir(); });
+    btnCerrar.addEventListener('click', cerrar);
+    btnAceptar.addEventListener('click', () => {
+        if (chk) chk.checked = true; // marca el checkbox automáticamente
+        cerrar();
+    });
+    modal.addEventListener('click', e => { if (e.target === modal) cerrar(); });
+}());

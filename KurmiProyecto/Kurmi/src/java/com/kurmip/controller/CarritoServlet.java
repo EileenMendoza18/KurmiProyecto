@@ -61,89 +61,89 @@ public class CarritoServlet extends HttpServlet {
         }
     }
     @Override
-protected void doPost(HttpServletRequest request, HttpServletResponse response) 
-        throws ServletException, IOException {
+    protected void doPost(HttpServletRequest request, HttpServletResponse response) 
+            throws ServletException, IOException {
 
-    response.setContentType("text/plain");
-    response.setCharacterEncoding("UTF-8");
-    response.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
-    String accion = request.getParameter("accion");
+        response.setContentType("text/plain");
+        response.setCharacterEncoding("UTF-8");
+        response.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+        String accion = request.getParameter("accion");
 
-    if ("actualizarEstado".equals(accion)) {
-        int idDetalle = Integer.parseInt(request.getParameter("idDetalle"));
-        int nuevoEstado = Integer.parseInt(request.getParameter("estado"));
-        boolean ok = carritoDAO.actualizarEstadoDetalle(idDetalle, nuevoEstado);
-        response.getWriter().write(ok ? "OK" : "ERROR");
-        return;
-    }
-    if ("actualizarCantidad".equals(accion)) {
-        try {
-            int idDetalle     = Integer.parseInt(request.getParameter("idDetalle"));
-            int nuevaCantidad = Integer.parseInt(request.getParameter("cantidad"));
-            int idProducto    = Integer.parseInt(request.getParameter("idProducto"));
-            if (nuevaCantidad < 1) nuevaCantidad = 1;
-            int resultado = carritoDAO.actualizarCantidad(idDetalle, nuevaCantidad, idProducto);
-            if (resultado == -1) {
-                response.getWriter().write("STOCK_SUPERADO");
-            } else if (resultado == 1) {
-                response.getWriter().write("OK");
-            } else {
+        if ("actualizarEstado".equals(accion)) {
+            int idDetalle = Integer.parseInt(request.getParameter("idDetalle"));
+            int nuevoEstado = Integer.parseInt(request.getParameter("estado"));
+            boolean ok = carritoDAO.actualizarEstadoDetalle(idDetalle, nuevoEstado);
+            response.getWriter().write(ok ? "OK" : "ERROR");
+            return;
+        }
+        if ("actualizarCantidad".equals(accion)) {
+            try {
+                int idDetalle     = Integer.parseInt(request.getParameter("idDetalle"));
+                int nuevaCantidad = Integer.parseInt(request.getParameter("cantidad"));
+                int idProducto    = Integer.parseInt(request.getParameter("idProducto"));
+                if (nuevaCantidad < 1) nuevaCantidad = 1;
+                int resultado = carritoDAO.actualizarCantidad(idDetalle, nuevaCantidad, idProducto);
+                if (resultado == -1) {
+                    response.getWriter().write("STOCK_SUPERADO");
+                } else if (resultado == 1) {
+                    response.getWriter().write("OK");
+                } else {
+                    response.getWriter().write("ERROR");
+                }
+            } catch (NumberFormatException e) {
                 response.getWriter().write("ERROR");
             }
-        } catch (NumberFormatException e) {
-            response.getWriter().write("ERROR");
-        }
-        return;
-    }
-
-    if ("eliminar".equals(accion)) {
-        int idDetalle = Integer.parseInt(request.getParameter("idDetalle"));
-        boolean ok = carritoDAO.eliminarProductoDelCarrito(idDetalle);
-        response.getWriter().write(ok ? "OK" : "ERROR");
-        return;
-    }
-    try {
-        HttpSession session = request.getSession(false); 
-        
-        if (session == null || session.getAttribute("usuarioLogueado") == null) {
-            response.getWriter().write("DEBES_INICIAR_SESION");
-            return; 
-        }
-
-        UsuarioDTO user = (UsuarioDTO) session.getAttribute("usuarioLogueado");
-        int idUsuarioReal = user.getId();
-
-        String idProductoParam = request.getParameter("idProducto");
-        String precioParam = request.getParameter("precio");
-        String cantidadParam = request.getParameter("cantidad"); 
-
-        if (idProductoParam == null || precioParam == null) {
-            response.getWriter().write("DATOS_INCOMPLETOS");
             return;
         }
 
-        int idProductoReal = Integer.parseInt(idProductoParam);
-        double precioReal = Double.parseDouble(precioParam);
-        int cantidadReal = (cantidadParam != null && !cantidadParam.trim().isEmpty()) ? Integer.parseInt(cantidadParam) : 1;
-
-        // Capturamos el código de estado de la base de datos
-        int estadoTransaccion = carritoDAO.agregarProductoAlCarrito(idUsuarioReal, idProductoReal, cantidadReal, precioReal);
-
-        // Control estricto de la respuesta escrita enviada al fetch
-        if (estadoTransaccion == 1) {
-            response.getWriter().write("NUEVO_AGREGADO");
-        } else if (estadoTransaccion == 2) {
-            response.getWriter().write("CANTIDAD_INCREMENTADA");
-        } else {
-            response.getWriter().write("ERROR_PERSISTENCIA");
+        if ("eliminar".equals(accion)) {
+            int idDetalle = Integer.parseInt(request.getParameter("idDetalle"));
+            boolean ok = carritoDAO.eliminarProductoDelCarrito(idDetalle);
+            response.getWriter().write(ok ? "OK" : "ERROR");
+            return;
         }
+        try {
+            HttpSession session = request.getSession(false); 
 
-    } catch (NumberFormatException e) {
-        System.err.println("Error crítico de conversión en parámetros numéricos del Carrito: " + e.getMessage());
-        response.getWriter().write("FORMATO_INVALIDO");
-    } catch (Exception e) {
-        System.err.println("Error general en el ciclo de vida de CarritoServlet: " + e.getMessage());
-        response.getWriter().write("ERROR_SISTEMA");
+            if (session == null || session.getAttribute("usuarioLogueado") == null) {
+                response.getWriter().write("DEBES_INICIAR_SESION");
+                return; 
+            }
+
+            UsuarioDTO user = (UsuarioDTO) session.getAttribute("usuarioLogueado");
+            int idUsuarioReal = user.getId();
+
+            String idProductoParam = request.getParameter("idProducto");
+            String precioParam = request.getParameter("precio");
+            String cantidadParam = request.getParameter("cantidad"); 
+
+            if (idProductoParam == null || precioParam == null) {
+                response.getWriter().write("DATOS_INCOMPLETOS");
+                return;
+            }
+
+            int idProductoReal = Integer.parseInt(idProductoParam);
+            double precioReal = Double.parseDouble(precioParam);
+            int cantidadReal = (cantidadParam != null && !cantidadParam.trim().isEmpty()) ? Integer.parseInt(cantidadParam) : 1;
+
+            // Capturamos el código de estado de la base de datos
+            int estadoTransaccion = carritoDAO.agregarProductoAlCarrito(idUsuarioReal, idProductoReal, cantidadReal, precioReal);
+
+            // Control estricto de la respuesta escrita enviada al fetch
+            if (estadoTransaccion == 1) {
+                response.getWriter().write("NUEVO_AGREGADO");
+            } else if (estadoTransaccion == 2) {
+                response.getWriter().write("CANTIDAD_INCREMENTADA");
+            } else {
+                response.getWriter().write("ERROR_PERSISTENCIA");
+            }
+
+        } catch (NumberFormatException e) {
+            System.err.println("Error crítico de conversión en parámetros numéricos del Carrito: " + e.getMessage());
+            response.getWriter().write("FORMATO_INVALIDO");
+        } catch (Exception e) {
+            System.err.println("Error general en el ciclo de vida de CarritoServlet: " + e.getMessage());
+            response.getWriter().write("ERROR_SISTEMA");
+        }
     }
-}
-}
+    }

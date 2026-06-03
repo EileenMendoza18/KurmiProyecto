@@ -10,7 +10,7 @@ async function cargarModulos() {
     if (!tieneSesion) return;
 
     inicializarFiltros();
-    cargarPedidos(1); // Inicia en Pendiente
+    cargarPedidos('1'); // Inicia en Pendiente
 }
 cargarModulos();
 
@@ -35,11 +35,15 @@ function inicializarFiltros() {
         btn.addEventListener('click', () => {
             document.querySelectorAll('.filtro__btn').forEach(b => b.classList.remove('filtro__btn--activo'));
             btn.classList.add('filtro__btn--activo');
-            cargarPedidos(parseInt(btn.dataset.estado));
+
+            const estado = btn.dataset.estado;
+            if (estado === 'devoluciones') {
+                cargarMisDevoluciones();
+            } else {
+                cargarPedidos(estado);
+            }
         });
     });
-
-    // Activar botón Pendiente por defecto
     const btnPendiente = document.querySelector('.filtro__btn[data-estado="1"]');
     if (btnPendiente) btnPendiente.classList.add('filtro__btn--activo');
 }
@@ -57,10 +61,6 @@ async function cargarPedidos(estado) {
         grid.innerHTML = '';
 
         if (!pedidos || pedidos.length === 0) {
-<<<<<<< HEAD
-            const etiquetas = { 1: 'pedidos pendientes', 2: 'pedidos completados', 3: 'pedidos cancelados' };
-            grid.innerHTML = '<p class="pedidos__vacio">😕 No tienes ' + (etiquetas[estado] || 'pedidos') + ' aún.</p>';
-=======
             const etiquetas = {
                 '1':          'pedidos pendientes',
                 'en_proceso': 'pedidos en proceso',
@@ -70,7 +70,6 @@ async function cargarPedidos(estado) {
                 '3':          'pedidos cancelados'
             };
             grid.innerHTML = `<p class="pedidos__vacio">:( No tienes ${etiquetas[estado] || 'pedidos'} aún.</p>`;
->>>>>>> 979ff32c7c2667c7a790882cbc2bf9781d3def68
             return;
         }
 
@@ -86,7 +85,7 @@ async function cargarPedidos(estado) {
 }
 
 // ── Crear tarjeta de pedido ───────────────────────────────────────────────────
-function crearTarjetaPedido(pedido, estado) {
+function crearTarjetaPedido(pedido, filtroActivo) {
     const card = document.createElement('div');
     card.className = 'pedido__card';
 
@@ -106,6 +105,14 @@ function crearTarjetaPedido(pedido, estado) {
     fecha.className = 'pedido__fecha';
     fecha.textContent = 'Pedido del ' + (pedido.fechaPedido || '');
 
+    const badgeCfg = estadoBadgeConfig(pedido.estadoPedido);
+    const badge = document.createElement('span');
+    badge.className = 'pedido__estado-badge';
+    badge.textContent = pedido.nombreEstado || '';
+    badge.style.cssText = `background:${badgeCfg.bg};color:${badgeCfg.color};
+        padding:3px 10px;border-radius:20px;font-size:.72rem;font-weight:600;
+        display:inline-block;margin-bottom:4px;`;
+
     const detalle = document.createElement('p');
     detalle.className = 'pedido__detalle';
     detalle.textContent = 'Total productos: ' + (pedido.totalProductos || 0);
@@ -115,13 +122,14 @@ function crearTarjetaPedido(pedido, estado) {
     total.textContent = 'Total: $' + Number(pedido.totalPago).toLocaleString('es-CO');
 
     info.appendChild(fecha);
+    info.appendChild(badge);
     info.appendChild(detalle);
     info.appendChild(total);
     card.appendChild(img);
     card.appendChild(info);
 
-    // ── Botón cancelar — SOLO en Pendiente (1) ──
-    if (estado === 1) {
+    // Botón cancelar — SOLO en Pendiente (1)
+    if (filtroActivo === '1' && pedido.estadoPedido === 1) {
         const btnCancelar = document.createElement('button');
         btnCancelar.className = 'btn__pedido-cancelar';
         btnCancelar.textContent = 'Cancelar pedido';
@@ -132,15 +140,6 @@ function crearTarjetaPedido(pedido, estado) {
         card.appendChild(btnCancelar);
     }
 
-<<<<<<< HEAD
-    card.addEventListener('click', () => abrirModal(pedido, estado));
-    return card;
-}
-
-// ── Cancelar pedido ───────────────────────────────────────────────────────────
-async function confirmarCancelacion(idPedido) {
-    if (!confirm('¿Estás seguro de que deseas cancelar este pedido?')) return;
-=======
     // Botón devolver — SOLO en Entregado (8) y si no pasó más de 24 horas
     if (filtroActivo === '8' && pedido.estadoPedido === 8) {
         const fechaEntrega = new Date(pedido.fechaPedido + 'T00:00:00');
@@ -430,7 +429,7 @@ function confirmarCancelacion(idPedido) {
             const data = await res.json();
             if (data.ok) {
                 cerrar();
-                mostrarNotificacion('✅ Solicitud enviada. El administrador la revisará pronto.');
+                mostrarNotificacion('Solicitud enviada. El administrador la revisará pronto.');
                 cargarPedidos('1');
             } else {
                 errorEl.textContent = (data.msg || 'Error desconocido');
@@ -588,41 +587,47 @@ async function enviarDevolucion(idPedido, overlay) {
     if (inputImg.files[0]) {
         formData.append('imagenPrueba', inputImg.files[0]);
     }
->>>>>>> 979ff32c7c2667c7a790882cbc2bf9781d3def68
 
     try {
-        const res = await fetch('/KurmiProyect/CambiarEstadoPedidoServlet', {
+        const res  = await fetch('/KurmiProyect/DevolucionServlet', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: 'idPedido=' + encodeURIComponent(idPedido) + '&nuevoEstado=3'
+            body: formData
         });
-
         const data = await res.json();
+
         if (data.ok) {
-            alert('Pedido cancelado correctamente.');
-            cargarPedidos(1); // Refresca la vista de Pendientes
+            overlay.remove();
+            mostrarToast('Solicitud de devolución enviada correctamente');
+            // Recargar la pestaña de entregados para reflejar el cambio de estado
+            cargarPedidos('8');
         } else {
-            alert('No se pudo cancelar: ' + (data.msg || 'error desconocido'));
+            errorEl.textContent = data.error || 'No se pudo enviar la solicitud.';
+            errorEl.classList.remove('hidden');
+            btnEnviar.disabled = false;
+            btnEnviar.textContent = 'Enviar solicitud';
         }
     } catch (e) {
-        console.error('Error al cancelar pedido:', e);
-        alert('Error de red al cancelar el pedido.');
+        console.error('Error al enviar devolución:', e);
+        errorEl.textContent = 'Error de red. Intenta de nuevo.';
+        errorEl.classList.remove('hidden');
+        btnEnviar.disabled = false;
+        btnEnviar.textContent = 'Enviar solicitud';
     }
 }
 
-// ── Modal ─────────────────────────────────────────────────────────────────────
-function abrirModal(pedido, estado) {
-    const overlay   = document.getElementById('modalOverlay');
-    const titulo    = document.getElementById('modalTitulo');
-    const fecha     = document.getElementById('modalFecha');
-    const productos = document.getElementById('modalProductos');
-    const footer    = document.getElementById('modalFooter');
+// ── Toast de notificación ─────────────────────────────────────────────────────
+function mostrarToast(mensaje) {
+    const toast = document.createElement('div');
+    toast.className = 'dev__toast';
+    toast.textContent = mensaje;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.classList.add('dev__toast--visible'), 50);
+    setTimeout(() => {
+        toast.classList.remove('dev__toast--visible');
+        setTimeout(() => toast.remove(), 400);
+    }, 3500);
+}
 
-<<<<<<< HEAD
-    const etiquetas = { 1: 'Pedido Pendiente', 2: 'Pedido Completado', 3: 'Pedido Cancelado' };
-    titulo.textContent = etiquetas[estado] || 'Pedido';
-    fecha.textContent  = 'Fecha: ' + (pedido.fechaPedido || '') + '  ·  Pago: ' + (pedido.metodoPago || 'No registrado');
-=======
 // ═════════════════════════════════════════════════════════════════════════════
 // MIS DEVOLUCIONES — Apartado del cliente
 // ═════════════════════════════════════════════════════════════════════════════
@@ -746,7 +751,6 @@ function abrirModal(pedido, filtroActivo) {
     } else {
         badgeEl.innerHTML = '';
     }
->>>>>>> 979ff32c7c2667c7a790882cbc2bf9781d3def68
 
     productos.innerHTML = '';
     footer.innerHTML    = '';
@@ -787,8 +791,7 @@ function abrirModal(pedido, filtroActivo) {
     footer.appendChild(spanTotal);
 
     // Botón recomprar — solo en Cancelado (3)
-    if (estado === 3) {
-        // Selector de método de pago
+    if (filtroActivo === '3') {
         const selectMetodo = document.createElement('select');
         selectMetodo.id = 'selectMetodoRecompra';
         selectMetodo.style.cssText = 'padding:6px 10px;border-radius:8px;border:1px solid #c4b5e8;font-size:0.9rem;';
@@ -814,7 +817,7 @@ function abrirModal(pedido, filtroActivo) {
     overlay.classList.remove('hidden');
 }
 
-// ── Recomprar: solo cambia estado del pedido cancelado → Pendiente ────────────
+// ── Recomprar ─────────────────────────────────────────────────────────────────
 async function recomprarPedido(idPedido, idMetodo) {
     try {
         const res = await fetch('/KurmiProyect/CambiarEstadoPedidoServlet', {
@@ -828,7 +831,7 @@ async function recomprarPedido(idPedido, idMetodo) {
         if (data.ok) {
             alert('¡Pedido reactivado! Ya aparece en Pendientes.');
             document.getElementById('modalOverlay').classList.add('hidden');
-            cargarPedidos(3); // Refrescar vista Cancelados
+            cargarPedidos('3');
         } else {
             alert('No se pudo reactivar: ' + (data.msg || 'error desconocido'));
         }

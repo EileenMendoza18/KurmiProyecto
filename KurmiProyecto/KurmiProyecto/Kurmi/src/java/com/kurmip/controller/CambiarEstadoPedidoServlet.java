@@ -12,12 +12,9 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Gestiona cambios de estado de pedidos del cliente:
+ * CambiarEstadoPedidoServlet — acciones del CLIENTE sobre sus pedidos
  *
  * POST /CambiarEstadoPedidoServlet
-<<<<<<< HEAD
- *   Params: idPedido (int), nuevoEstado (int), idMetodo (int, requerido si nuevoEstado=1)
-=======
  *   nuevoEstado = 3  → Solicitar cancelación (solo si estado = 1 Pendiente)
  *   nuevoEstado = 1  → Reactivar pedido (solo si estado = 3 Cancelado)
  *                       requiere idMetodo (int)
@@ -25,7 +22,6 @@ import java.util.Map;
  * Estados de pedido:
  *   1=Pendiente  3=Cancelado  4=Preparando  5=En bodega
  *   6=Empacando  7=Transportando  8=Entregado  9=Devolución
->>>>>>> 979ff32c7c2667c7a790882cbc2bf9781d3def68
  */
 @WebServlet(name = "CambiarEstadoPedidoServlet", urlPatterns = {"/CambiarEstadoPedidoServlet"})
 public class CambiarEstadoPedidoServlet extends HttpServlet {
@@ -39,17 +35,8 @@ public class CambiarEstadoPedidoServlet extends HttpServlet {
 
         response.setContentType("application/json;charset=UTF-8");
 
-<<<<<<< HEAD
-        HttpSession session = request.getSession(false);
-        if (session == null || session.getAttribute("usuarioLogueado") == null) {
-            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            response.getWriter().write("{\"ok\":false,\"msg\":\"No autorizado\"}");
-            return;
-        }
-=======
         UsuarioDTO usuario = AuthHelper.obtenerUsuario(request, response);
         if (usuario == null) return;
->>>>>>> 979ff32c7c2667c7a790882cbc2bf9781d3def68
 
         int idUsuario = usuario.getId();
         Map<String, Object> result = new HashMap<>();
@@ -71,14 +58,42 @@ public class CambiarEstadoPedidoServlet extends HttpServlet {
             int nuevoEstado = Integer.parseInt(nuevoEstadoParam.trim());
 
             if (nuevoEstado == 3) {
-                // ── CANCELAR ──────────────────────────────────────────────
-                boolean ok = pedidoDAO.cambiarEstadoPedido(idPedido, idUsuario, 3);
+                // ── SOLICITAR CANCELACIÓN ─────────────────────────────────────
+                String motivo = request.getParameter("motivo");
+                if (motivo == null || motivo.isBlank()) {
+                    response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                    result.put("ok", false);
+                    result.put("msg", "Debes indicar el motivo de la cancelación");
+                    response.getWriter().write(gson.toJson(result));
+                    return;
+                }
+
+                int estadoActual = pedidoDAO.obtenerEstadoPedidoDeUsuario(idPedido, idUsuario);
+
+                if (estadoActual == -1) {
+                    response.setStatus(HttpServletResponse.SC_NOT_FOUND);
+                    result.put("ok", false);
+                    result.put("msg", "Pedido no encontrado");
+                    response.getWriter().write(gson.toJson(result));
+                    return;
+                }
+
+                if (estadoActual != 1) {
+                    response.setStatus(HttpServletResponse.SC_CONFLICT);
+                    result.put("ok", false);
+                    result.put("msg", "No puedes cancelar este pedido porque ya está en proceso ("
+                            + PedidoDAO.etiquetaEstado(estadoActual) + ").");
+                    response.getWriter().write(gson.toJson(result));
+                    return;
+                }
+
+                boolean ok = pedidoDAO.solicitarCancelacion(idPedido, idUsuario, motivo.trim());
                 result.put("ok", ok);
-                result.put("msg", ok ? "Pedido cancelado correctamente"
-                                     : "No se pudo cancelar el pedido");
+                result.put("msg", ok ? "Solicitud de cancelación enviada. El administrador la revisará pronto."
+                                     : "No se pudo enviar la solicitud");
 
             } else if (nuevoEstado == 1) {
-                // ── REACTIVAR (recompra) ───────────────────────────────────
+                // ── REACTIVAR (recompra) ──────────────────────────────────────
                 String idMetodoParam = request.getParameter("idMetodo");
                 if (idMetodoParam == null || idMetodoParam.isBlank()) {
                     response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
