@@ -15,54 +15,6 @@ public class CategoriaDAO {
     PreparedStatement ps;
     ResultSet rs;
 
-    /** Devuelve [{idCategoria, nombreCategoria}] para selectores del modal de solicitud */
-    public List<java.util.Map<String, Object>> obtenerCategoriasConId() {
-        List<java.util.Map<String, Object>> lista = new ArrayList<>();
-        String sql = "SELECT ID_Categoria, Nombre_Categoria FROM Categorias ORDER BY Nombre_Categoria";
-        try {
-            con = cn.getConexion();
-            ps  = con.prepareStatement(sql);
-            rs  = ps.executeQuery();
-            while (rs.next()) {
-                java.util.Map<String, Object> row = new java.util.HashMap<>();
-                row.put("idCategoria",    rs.getInt("ID_Categoria"));
-                row.put("nombreCategoria", rs.getString("Nombre_Categoria"));
-                lista.add(row);
-            }
-        } catch (Exception e) {
-            System.err.println("Error al obtener categorías con ID: " + e.getMessage());
-        } finally {
-            try { if (rs  != null) rs.close();  } catch (Exception ignored) {}
-            try { if (ps  != null) ps.close();  } catch (Exception ignored) {}
-            try { if (con != null) con.close(); } catch (Exception ignored) {}
-        }
-        return lista;
-    }
-
-    /** Devuelve [{idSabor, nombreSabor}] para selectores del modal de solicitud */
-    public List<java.util.Map<String, Object>> obtenerSaboresConId() {
-        List<java.util.Map<String, Object>> lista = new ArrayList<>();
-        String sql = "SELECT ID_Sabor, Nombre_Sabor FROM Sabores ORDER BY Nombre_Sabor";
-        try {
-            con = cn.getConexion();
-            ps  = con.prepareStatement(sql);
-            rs  = ps.executeQuery();
-            while (rs.next()) {
-                java.util.Map<String, Object> row = new java.util.HashMap<>();
-                row.put("idSabor",    rs.getInt("ID_Sabor"));
-                row.put("nombreSabor", rs.getString("Nombre_Sabor"));
-                lista.add(row);
-            }
-        } catch (Exception e) {
-            System.err.println("Error al obtener sabores con ID: " + e.getMessage());
-        } finally {
-            try { if (rs  != null) rs.close();  } catch (Exception ignored) {}
-            try { if (ps  != null) ps.close();  } catch (Exception ignored) {}
-            try { if (con != null) con.close(); } catch (Exception ignored) {}
-        }
-        return lista;
-    }
-
     public List<String> obtenerCategorias() {
         List<String> lista = new ArrayList<>();
         String sql = "SELECT Nombre_Categoria FROM Categorias";

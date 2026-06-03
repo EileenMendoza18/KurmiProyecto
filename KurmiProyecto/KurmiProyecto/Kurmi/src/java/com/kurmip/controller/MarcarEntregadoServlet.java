@@ -10,14 +10,6 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
-/**
- * MarcarEntregadoServlet — usado por el PROVEEDOR
- * Avanza el estado de su parte del pedido:
- *   4 = Preparando  →  5 = En bodega
- *
- * POST /MarcarEntregadoServlet
- *   Params: idPedido (int), nuevoEstado (int) — solo 4 o 5 son válidos para el proveedor
- */
 @WebServlet(name = "MarcarEntregadoServlet", urlPatterns = {"/MarcarEntregadoServlet"})
 public class MarcarEntregadoServlet extends HttpServlet {
 
@@ -31,12 +23,10 @@ public class MarcarEntregadoServlet extends HttpServlet {
         response.setContentType("application/json;charset=UTF-8");
         Map<String, Object> result = new HashMap<>();
 
-        // ── Verificar sesión ───────────────────────────────────────────────────
         HttpSession session = request.getSession(false);
         if (session == null || session.getAttribute("usuarioLogueado") == null) {
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            result.put("ok", false);
-            result.put("msg", "No autorizado");
+            result.put("ok", false); result.put("msg", "No autorizado");
             response.getWriter().write(gson.toJson(result));
             return;
         }
@@ -44,51 +34,24 @@ public class MarcarEntregadoServlet extends HttpServlet {
         UsuarioDTO usuario = (UsuarioDTO) session.getAttribute("usuarioLogueado");
         int idProveedor = usuario.getId();
 
-        // ── Leer parámetros ────────────────────────────────────────────────────
-        String idPedidoParam    = request.getParameter("idPedido");
-        String nuevoEstadoParam = request.getParameter("nuevoEstado");
-
+        String idPedidoParam = request.getParameter("idPedido");
         if (idPedidoParam == null || idPedidoParam.isBlank()) {
             response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            result.put("ok", false);
-            result.put("msg", "Falta idPedido");
+            result.put("ok", false); result.put("msg", "Falta idPedido");
             response.getWriter().write(gson.toJson(result));
             return;
         }
 
         try {
             int idPedido = Integer.parseInt(idPedidoParam.trim());
-
-            // nuevoEstado es OBLIGATORIO — el frontend debe mandarlo explícitamente
-            if (nuevoEstadoParam == null || nuevoEstadoParam.isBlank()) {
-                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-                result.put("ok", false);
-                result.put("msg", "Falta nuevoEstado");
-                response.getWriter().write(gson.toJson(result));
-                return;
-            }
-            int nuevoEstado = Integer.parseInt(nuevoEstadoParam.trim());
-
-            // El proveedor solo puede manejar estados 4 (Preparando) y 5 (En bodega)
-            if (nuevoEstado != 4 && nuevoEstado != 5) {
-                response.setStatus(HttpServletResponse.SC_FORBIDDEN);
-                result.put("ok", false);
-                result.put("msg", "Estado no permitido para proveedor. Solo 4=Iniciar preparación o 5=Listo en bodega.");
-                response.getWriter().write(gson.toJson(result));
-                return;
-            }
-
-            boolean ok = pedidoDAO.actualizarEstadoProveedor(idPedido, idProveedor, nuevoEstado);
+            boolean ok = pedidoDAO.marcarPedidoEntregado(idPedido, idProveedor);
             result.put("ok", ok);
-            result.put("msg", ok
-                ? "Estado actualizado a: " + PedidoDAO.etiquetaEstado(nuevoEstado)
-                : "No se pudo actualizar el pedido");
+            result.put("msg", ok ? "Pedido marcado como entregado"
+                                 : "No se pudo actualizar el pedido");
             response.getWriter().write(gson.toJson(result));
-
         } catch (NumberFormatException e) {
             response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            result.put("ok", false);
-            result.put("msg", "ID inválido");
+            result.put("ok", false); result.put("msg", "ID inválido");
             response.getWriter().write(gson.toJson(result));
         }
     }

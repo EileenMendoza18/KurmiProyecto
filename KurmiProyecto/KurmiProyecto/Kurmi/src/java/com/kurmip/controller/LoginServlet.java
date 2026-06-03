@@ -38,10 +38,6 @@ public class LoginServlet extends HttpServlet {
                 response.sendRedirect("inicioSesion.html?error=cuenta_pendiente");
                 return; // Rompe el flujo para que no se cree la sesión
             }
-            if ("Inactivo".equalsIgnoreCase(estado)) {
-                response.sendRedirect("inicioSesion.html?error=cuenta_inactiva");
-                return;
-            }
             
             HttpSession session = request.getSession(); 
             // Guarda el objeto 'user', no el correo

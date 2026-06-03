@@ -14,7 +14,6 @@ public class ProductoDTO {
     private int idEstado;
     private String fechaVencimiento;
     private int    idRelaCatSabor;
-    private String proveedor;
 
 
     public ProductoDTO() {}
@@ -57,8 +56,5 @@ public class ProductoDTO {
 
     public int getIdRelaCatSabor() { return idRelaCatSabor; }
     public void setIdRelaCatSabor(int idRelaCatSabor) { this.idRelaCatSabor = idRelaCatSabor; }
-
-    public String getProveedor() { return proveedor; }
-    public void setProveedor(String proveedor) { this.proveedor = proveedor; }
     
 }

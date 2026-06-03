@@ -1,27 +1,28 @@
 /* --- MENÚ LATERAL INTERACTIVO (ASIDE) --- */
 
-#asideContainer {
+#asideContainer{
     position: fixed;
     z-index: 10;
 }
-
 aside {
     margin-top: 14vh;
     display: grid;
     grid-template-columns: 50px 200px;
-    grid-template-rows: auto auto;
+    grid-template-rows: repeat(2, auto);
     width: auto;
-    height: auto;
+    height: auto;    
 }
 
-/* --- BOTÓN TOGGLE (reemplaza el label/checkbox) --- */
-.aside-toggle {
-    grid-area: 1 / 1;
+aside input {
+    display: none;
+}
+
+aside label {
+    grid-area: 1/1;
     width: 100%;
-    cursor: pointer;
 }
 
-.aside-toggle div {
+aside label div {
     background-color: #DCD6F7;
     width: 100%;
     padding: 12px;
@@ -31,18 +32,15 @@ aside {
     align-items: center;
 }
 
-.aside-toggle img {
+aside label img {
     width: 100%;
     height: auto;
     cursor: pointer;
 }
 
-/* --- COLUMNA DE ICONOS DINÁMICOS --- */
 .menudos {
-    grid-area: 2 / 1;
+    grid-area: 2/1;
     width: 100%;
-    display: flex;
-    flex-direction: column;
 }
 
 .menudos div {
@@ -53,8 +51,6 @@ aside {
     display: flex;
     justify-content: center;
     align-items: center;
-    min-height: 50px;
-    box-sizing: border-box;
 }
 
 .menudos div:last-child {
@@ -62,38 +58,41 @@ aside {
     border-bottom-left-radius: 10px;
 }
 
-.menudos svg {
-    width: 26px;
-    height: 26px;
-    flex-shrink: 0;
+.menudos img {
+    width: 100%;
+    height: auto;
 }
 
-/* --- PANEL DE TEXTOS (letras) --- */
-.letras {
-    display: none; /* JS controla show/hide */
+#aside:checked ~ .letras {
+    display: flex;
     flex-direction: column;
+}
+
+.letras {
+    display: none;
     grid-row: span 2;
-    grid-area: 2 / 2;
+    grid-area: 2/2;
     background-color: #DCD6F7;
     border-bottom-right-radius: 10px;
     border-top-right-radius: 10px;
     border: 1px solid rgb(186, 153, 233);
     width: auto;
-    height: auto;
-    max-height: 443px;
-    overflow-y: auto;
+    
+    /* === CAMBIOS CRÍTICOS DE BLINDAJE === */
+    height: auto;     /* Permite que la caja crezca según los datos */
+    max-height: 443px;             /* No deja que supere la altura del panel morado izquierdo */
+    overflow-y: auto;              /* Si tienes más de 8 categorías, activa un scroll interno limpio */
     box-shadow: 4px 4px 12px rgba(70, 56, 119, 0.1);
 }
 
 .letras div {
-    height: 50px;
+    height:100%;
     display: flex;
     align-items: center;
     padding-left: 15px;
-    padding-right: 10px;
+    padding-right: 10px;           /* Evita que los textos largos toquen el borde */
     border-bottom: 1px solid rgb(186, 153, 233);
     width: 100%;
-    box-sizing: border-box;
 }
 
 .letras div:last-child {
@@ -107,16 +106,10 @@ aside {
     font-size: 0.9rem;
 }
 
-/* Hover en filas */
-.letras div:hover,
-.menudos div:hover {
-    background-color: #cdc6ef;
-}
-
 /* Alinea de forma horizontal el icono generado y su respectivo texto */
 .item-menu-lateral {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 10px; /* Separación horizontal entre el icono y el nombre de la categoría */
     width: 100%;
 }

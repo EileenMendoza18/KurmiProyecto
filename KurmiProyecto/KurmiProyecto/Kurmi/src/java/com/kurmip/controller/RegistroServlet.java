@@ -50,28 +50,7 @@ public class RegistroServlet extends HttpServlet {
             nuevoUsuario.setDireccion(direccion);
             nuevoUsuario.setIdRol(idRol);
 
-            // 4. Validar edad: mayor de 18 y menor de 90 años
-            if (fechaNac != null && !fechaNac.isEmpty()) {
-                java.time.LocalDate nacimiento = java.time.LocalDate.parse(fechaNac);
-                java.time.LocalDate hoy = java.time.LocalDate.now();
-                int edad = java.time.Period.between(nacimiento, hoy).getYears();
-                if (edad < 18) {
-                    response.sendRedirect("registro.html?error=menor_edad");
-                    return;
-                }
-                if (edad > 90) {
-                    response.sendRedirect("registro.html?error=edad_maxima");
-                    return;
-                }
-            }
-
-            // 5. Validar formato del correo en el servidor
-            if (correo == null || !correo.matches("^[a-zA-Z][a-zA-Z0-9._%+\\-]*@[a-zA-Z0-9.\\-]+\\.[a-zA-Z]{2,}$")) {
-                response.sendRedirect("registro.html?error=correo_invalido");
-                return;
-            }
-
-            // 5. Invocar la capa del modelo mediante el DAO para persistir en MySQL
+            // 4. Invocar la capa del modelo mediante el DAO para persistir en MySQL
             UsuarioDAO dao = new UsuarioDAO();
             boolean guardadoExitoso = dao.registrar(nuevoUsuario);
 

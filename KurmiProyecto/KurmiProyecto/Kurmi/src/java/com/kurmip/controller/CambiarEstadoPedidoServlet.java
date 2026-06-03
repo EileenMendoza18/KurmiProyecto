@@ -11,18 +11,10 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * CambiarEstadoPedidoServlet — acciones del CLIENTE sobre sus pedidos
+ * Gestiona cambios de estado de pedidos del cliente:
  *
  * POST /CambiarEstadoPedidoServlet
- *   nuevoEstado = 3  → Cancelar  (solo si el pedido está en estado 1 = Pendiente)
- *   nuevoEstado = 1  → Reactivar (solo si el pedido está en estado 3 = Cancelado)
- *                       requiere idMetodo (int)
- *
- * Estados de pedido:
- *   1=Pendiente  3=Cancelado  4=Preparando  5=En bodega
- *   6=Empacando  7=Transportando  8=Entregado  9=Devolución
- *
- * El cliente NO puede cancelar un pedido que ya está en preparación (estado ≥ 4).
+ *   Params: idPedido (int), nuevoEstado (int), idMetodo (int, requerido si nuevoEstado=1)
  */
 @WebServlet(name = "CambiarEstadoPedidoServlet", urlPatterns = {"/CambiarEstadoPedidoServlet"})
 public class CambiarEstadoPedidoServlet extends HttpServlet {
@@ -37,7 +29,6 @@ public class CambiarEstadoPedidoServlet extends HttpServlet {
         response.setContentType("application/json");
         response.setCharacterEncoding("UTF-8");
 
-        // ── Sesión ─────────────────────────────────────────────────────────────
         HttpSession session = request.getSession(false);
         if (session == null || session.getAttribute("usuarioLogueado") == null) {
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
@@ -67,42 +58,14 @@ public class CambiarEstadoPedidoServlet extends HttpServlet {
             int nuevoEstado = Integer.parseInt(nuevoEstadoParam.trim());
 
             if (nuevoEstado == 3) {
-                // ── SOLICITAR CANCELACIÓN ─────────────────────────────────────
-                String motivo = request.getParameter("motivo");
-                if (motivo == null || motivo.isBlank()) {
-                    response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-                    result.put("ok", false);
-                    result.put("msg", "Debes indicar el motivo de la cancelación");
-                    response.getWriter().write(gson.toJson(result));
-                    return;
-                }
-
-                int estadoActual = pedidoDAO.obtenerEstadoPedidoDeUsuario(idPedido, idUsuario);
-
-                if (estadoActual == -1) {
-                    response.setStatus(HttpServletResponse.SC_NOT_FOUND);
-                    result.put("ok", false);
-                    result.put("msg", "Pedido no encontrado");
-                    response.getWriter().write(gson.toJson(result));
-                    return;
-                }
-
-                if (estadoActual != 1) {
-                    response.setStatus(HttpServletResponse.SC_CONFLICT);
-                    result.put("ok", false);
-                    result.put("msg", "No puedes cancelar este pedido porque ya está en proceso ("
-                            + PedidoDAO.etiquetaEstado(estadoActual) + ").");
-                    response.getWriter().write(gson.toJson(result));
-                    return;
-                }
-
-                boolean ok = pedidoDAO.solicitarCancelacion(idPedido, idUsuario, motivo.trim());
+                // ── CANCELAR ──────────────────────────────────────────────
+                boolean ok = pedidoDAO.cambiarEstadoPedido(idPedido, idUsuario, 3);
                 result.put("ok", ok);
-                result.put("msg", ok ? "Solicitud de cancelación enviada. El administrador la revisará pronto."
-                                     : "No se pudo enviar la solicitud");
+                result.put("msg", ok ? "Pedido cancelado correctamente"
+                                     : "No se pudo cancelar el pedido");
 
             } else if (nuevoEstado == 1) {
-                // ── REACTIVAR (recompra) ──────────────────────────────────────
+                // ── REACTIVAR (recompra) ───────────────────────────────────
                 String idMetodoParam = request.getParameter("idMetodo");
                 if (idMetodoParam == null || idMetodoParam.isBlank()) {
                     response.setStatus(HttpServletResponse.SC_BAD_REQUEST);

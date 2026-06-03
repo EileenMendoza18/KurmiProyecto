@@ -10,7 +10,7 @@ async function cargarModulos() {
     if (!tieneSesion) return;
 
     inicializarFiltros();
-    cargarPedidos('1'); // Inicia en Pendiente
+    cargarPedidos(1); // Inicia en Pendiente
 }
 cargarModulos();
 
@@ -35,15 +35,11 @@ function inicializarFiltros() {
         btn.addEventListener('click', () => {
             document.querySelectorAll('.filtro__btn').forEach(b => b.classList.remove('filtro__btn--activo'));
             btn.classList.add('filtro__btn--activo');
-
-            const estado = btn.dataset.estado;
-            if (estado === 'devoluciones') {
-                cargarMisDevoluciones();
-            } else {
-                cargarPedidos(estado);
-            }
+            cargarPedidos(parseInt(btn.dataset.estado));
         });
     });
+
+    // Activar botón Pendiente por defecto
     const btnPendiente = document.querySelector('.filtro__btn[data-estado="1"]');
     if (btnPendiente) btnPendiente.classList.add('filtro__btn--activo');
 }
@@ -61,15 +57,8 @@ async function cargarPedidos(estado) {
         grid.innerHTML = '';
 
         if (!pedidos || pedidos.length === 0) {
-            const etiquetas = {
-                '1':          'pedidos pendientes',
-                'en_proceso': 'pedidos en proceso',
-                '11':         'solicitudes de cancelación',
-                '8':          'pedidos entregados',
-                '9':          'pedidos en devolución',
-                '3':          'pedidos cancelados'
-            };
-            grid.innerHTML = `<p class="pedidos__vacio">😕 No tienes ${etiquetas[estado] || 'pedidos'} aún.</p>`;
+            const etiquetas = { 1: 'pedidos pendientes', 2: 'pedidos completados', 3: 'pedidos cancelados' };
+            grid.innerHTML = '<p class="pedidos__vacio">😕 No tienes ' + (etiquetas[estado] || 'pedidos') + ' aún.</p>';
             return;
         }
 
@@ -85,7 +74,7 @@ async function cargarPedidos(estado) {
 }
 
 // ── Crear tarjeta de pedido ───────────────────────────────────────────────────
-function crearTarjetaPedido(pedido, filtroActivo) {
+function crearTarjetaPedido(pedido, estado) {
     const card = document.createElement('div');
     card.className = 'pedido__card';
 
@@ -105,14 +94,6 @@ function crearTarjetaPedido(pedido, filtroActivo) {
     fecha.className = 'pedido__fecha';
     fecha.textContent = 'Pedido del ' + (pedido.fechaPedido || '');
 
-    const badgeCfg = estadoBadgeConfig(pedido.estadoPedido);
-    const badge = document.createElement('span');
-    badge.className = 'pedido__estado-badge';
-    badge.textContent = pedido.nombreEstado || '';
-    badge.style.cssText = `background:${badgeCfg.bg};color:${badgeCfg.color};
-        padding:3px 10px;border-radius:20px;font-size:.72rem;font-weight:600;
-        display:inline-block;margin-bottom:4px;`;
-
     const detalle = document.createElement('p');
     detalle.className = 'pedido__detalle';
     detalle.textContent = 'Total productos: ' + (pedido.totalProductos || 0);
@@ -122,14 +103,13 @@ function crearTarjetaPedido(pedido, filtroActivo) {
     total.textContent = 'Total: $' + Number(pedido.totalPago).toLocaleString('es-CO');
 
     info.appendChild(fecha);
-    info.appendChild(badge);
     info.appendChild(detalle);
     info.appendChild(total);
     card.appendChild(img);
     card.appendChild(info);
 
-    // Botón cancelar — SOLO en Pendiente (1)
-    if (filtroActivo === '1' && pedido.estadoPedido === 1) {
+    // ── Botón cancelar — SOLO en Pendiente (1) ──
+    if (estado === 1) {
         const btnCancelar = document.createElement('button');
         btnCancelar.className = 'btn__pedido-cancelar';
         btnCancelar.textContent = 'Cancelar pedido';
@@ -140,600 +120,45 @@ function crearTarjetaPedido(pedido, filtroActivo) {
         card.appendChild(btnCancelar);
     }
 
-    // Botón devolver — SOLO en Entregado (8) y si no pasó más de 24 horas
-    if (filtroActivo === '8' && pedido.estadoPedido === 8) {
-        const fechaEntrega = new Date(pedido.fechaPedido + 'T00:00:00');
-        const ahora        = new Date();
-        const diffHoras    = (ahora - fechaEntrega) / (1000 * 60 * 60);
-
-        if (diffHoras <= 24) {
-            const btnDevolver = document.createElement('button');
-            btnDevolver.className = 'btn__pedido-devolver';
-            btnDevolver.innerHTML = '↩ Solicitar devolución';
-            btnDevolver.addEventListener('click', e => {
-                e.stopPropagation();
-                abrirFormDevolucion(pedido.idPedido, pedido.fechaPedido);
-            });
-            card.appendChild(btnDevolver);
-        }
-    }
-
-    // Botón factura — aparece en TODOS los pedidos sin importar el estado
-    const btnFactura = document.createElement('button');
-    btnFactura.className = 'btn__pedido-factura';
-    btnFactura.innerHTML = '🧾 Ver factura';
-    btnFactura.addEventListener('click', e => {
-        e.stopPropagation();
-        generarFacturaPDF(pedido);
-    });
-    card.appendChild(btnFactura);
-
-    card.addEventListener('click', () => abrirModal(pedido, filtroActivo));
+    card.addEventListener('click', () => abrirModal(pedido, estado));
     return card;
 }
 
-// ── Factura descargable ───────────────────────────────────────────────────────
-function generarFacturaPDF(pedido) {
-    const badgeCfg  = estadoBadgeConfig(pedido.estadoPedido);
-    const estado    = pedido.nombreEstado || '—';
-    const fecha     = pedido.fechaPedido  || '—';
-    const metodo    = pedido.metodoPago   || 'No registrado';
-    const total     = Number(pedido.totalPago).toLocaleString('es-CO');
-    const receptor  = pedido.receptor  || pedido.nombreReceptor  || '—';
-    const direccion = pedido.direccion || pedido.direccionEnvio   || '—';
-    const telefono  = pedido.telefono  || pedido.telefonoEnvio    || '—';
-
-    const filasProductos = (pedido.productos || []).map(p => `
-        <tr>
-            <td>${p.nombre || '—'}</td>
-            <td style="text-align:center">${p.cantidad}</td>
-            <td style="text-align:right">$${Number(p.precio || 0).toLocaleString('es-CO')}</td>
-            <td style="text-align:right">$${Number(p.precioTotal || 0).toLocaleString('es-CO')}</td>
-        </tr>
-    `).join('');
-
-    const html = `<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <title>Factura Pedido #${pedido.idPedido} — Kurmi</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Segoe UI', Arial, sans-serif; color: #2d2d2d; background: #fff; padding: 40px; }
-        .factura { max-width: 720px; margin: 0 auto; }
-
-        /* Encabezado */
-        .factura__header {
-            display: flex; justify-content: space-between; align-items: flex-start;
-            margin-bottom: 32px; padding-bottom: 20px;
-            border-bottom: 3px solid #7C4DFF;
-        }
-        .factura__marca h1 { font-size: 2rem; color: #7C4DFF; font-weight: 800; letter-spacing: -1px; }
-        .factura__marca p  { font-size: .82rem; color: #888; margin-top: 2px; }
-        .factura__num      { text-align: right; }
-        .factura__num h2   { font-size: 1.1rem; font-weight: 700; color: #463877; }
-        .factura__num p    { font-size: .82rem; color: #888; margin-top: 2px; }
-
-        /* Badge estado */
-        .estado-badge {
-            display: inline-block; padding: 4px 14px;
-            border-radius: 20px; font-size: .78rem; font-weight: 700;
-            background: ${badgeCfg.bg}; color: ${badgeCfg.color};
-            margin-top: 4px;
-        }
-
-        /* Dos columnas de info */
-        .factura__info-grid {
-            display: grid; grid-template-columns: 1fr 1fr; gap: 24px;
-            margin-bottom: 28px;
-        }
-        .info-bloque h3   { font-size: .72rem; font-weight: 700; color: #a68fc0;
-                            text-transform: uppercase; letter-spacing: .06em; margin-bottom: 8px; }
-        .info-bloque p    { font-size: .88rem; color: #333; line-height: 1.6; }
-
-        /* Tabla de productos */
-        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-        thead tr { background: #F4EEFF; }
-        thead th {
-            text-align: left; padding: 10px 12px;
-            font-size: .78rem; font-weight: 700; color: #463877;
-            text-transform: uppercase; letter-spacing: .04em;
-        }
-        tbody tr { border-bottom: 1px solid #f0ecff; }
-        tbody td { padding: 10px 12px; font-size: .88rem; color: #333; }
-        tbody tr:hover { background: #faf8ff; }
-
-        /* Total */
-        .factura__total {
-            display: flex; justify-content: flex-end; margin-top: 8px;
-        }
-        .total-box {
-            background: #F4EEFF; border-radius: 12px; padding: 14px 24px;
-            text-align: right; min-width: 200px;
-        }
-        .total-box p { font-size: .82rem; color: #888; margin-bottom: 4px; }
-        .total-box strong { font-size: 1.4rem; color: #7C4DFF; font-weight: 800; }
-
-        /* Pie */
-        .factura__footer {
-            margin-top: 40px; padding-top: 16px;
-            border-top: 1px solid #e8e0f7;
-            text-align: center; font-size: .75rem; color: #aaa;
-        }
-
-        /* Botón imprimir — solo visible en pantalla */
-        .btn-imprimir {
-            display: block; margin: 0 auto 32px;
-            padding: 12px 32px; background: #7C4DFF; color: #fff;
-            border: none; border-radius: 30px; font-size: .95rem;
-            font-weight: 700; cursor: pointer; transition: background .15s;
-        }
-        .btn-imprimir:hover { background: #6a3de8; }
-
-        @media print {
-            .btn-imprimir { display: none !important; }
-            body { padding: 20px; }
-        }
-    </style>
-</head>
-<body>
-<div class="factura">
-
-    <button class="btn-imprimir" onclick="window.print()">⬇ Descargar / Imprimir factura</button>
-
-    <div class="factura__header">
-        <div class="factura__marca">
-            <h1>Kurmi</h1>
-            <p>Tu jardín de deseos</p>
-        </div>
-        <div class="factura__num">
-            <h2>Factura #${pedido.idPedido}</h2>
-            <p>Fecha: ${fecha}</p>
-            <span class="estado-badge">${estado}</span>
-        </div>
-    </div>
-
-    <div class="factura__info-grid">
-        <div class="info-bloque">
-            <h3>Datos de entrega</h3>
-            <p><strong>Receptor:</strong> ${receptor}</p>
-            <p><strong>Dirección:</strong> ${direccion}</p>
-            <p><strong>Teléfono:</strong> ${telefono}</p>
-        </div>
-        <div class="info-bloque">
-            <h3>Pago</h3>
-            <p><strong>Método:</strong> ${metodo}</p>
-            <p><strong>Fecha:</strong> ${fecha}</p>
-        </div>
-    </div>
-
-    <table>
-        <thead>
-            <tr>
-                <th>Producto</th>
-                <th style="text-align:center">Cant.</th>
-                <th style="text-align:right">Precio unit.</th>
-                <th style="text-align:right">Subtotal</th>
-            </tr>
-        </thead>
-        <tbody>
-            ${filasProductos}
-        </tbody>
-    </table>
-
-    <div class="factura__total">
-        <div class="total-box">
-            <p>Total pagado</p>
-            <strong>$${total}</strong>
-        </div>
-    </div>
-
-    <div class="factura__footer">
-        <p>Kurmi — Gracias por tu compra 💜 &nbsp;·&nbsp; Este documento es tu comprobante de pago.</p>
-    </div>
-
-</div>
-</body>
-</html>`;
-
-    const ventana = window.open('', '_blank', 'width=800,height=700');
-    ventana.document.write(html);
-    ventana.document.close();
-}
-
-// ── Config de color por estado ────────────────────────────────────────────────
-function estadoBadgeConfig(estadoPedido) {
-    const configs = {
-        1:  { bg: '#e67e22', color: '#fff' }, // Pendiente
-        3:  { bg: '#e74c3c', color: '#fff' }, // Cancelado
-        4:  { bg: '#f39c12', color: '#fff' }, // Preparando
-        5:  { bg: '#3498db', color: '#fff' }, // En bodega
-        6:  { bg: '#9b59b6', color: '#fff' }, // Empacando
-        7:  { bg: '#1abc9c', color: '#fff' }, // Transportando
-        8:  { bg: '#2ecc71', color: '#fff' }, // Entregado
-        9:  { bg: '#c0392b', color: '#fff' }, // Devolución
-        10: { bg: '#8e44ad', color: '#fff' }, // Devolución Solicitada
-        11: { bg: '#f39c12', color: '#fff' }  // Cancelación Solicitada
-    };
-    return configs[estadoPedido] || { bg: '#aaa', color: '#fff' };
-}
-
-// ── Cancelar pedido — Modal con motivo ────────────────────────────────────────
-function confirmarCancelacion(idPedido) {
-    // Eliminar modal previo si existe
-    const previo = document.getElementById('modalCancelacionOverlay');
-    if (previo) previo.remove();
-
-    const overlay = document.createElement('div');
-    overlay.id = 'modalCancelacionOverlay';
-    overlay.className = 'modal__overlay';
-    overlay.innerHTML = `
-        <div class="modal__card cancel__card">
-            <button class="modal__cerrar" id="cancelModalCerrar">✕</button>
-            <h2 class="modal__titulo">❌ Cancelar pedido</h2>
-            <p class="cancel__subtitulo">Pedido #${idPedido} — indica el motivo de la cancelación.</p>
-
-            <label class="cancel__label">
-                Motivo <span style="color:#e74c3c">*</span>
-            </label>
-            <textarea id="cancelMotivo" class="cancel__textarea"
-                      placeholder="Ej: Cambié de opinión, compré el producto en otro lugar…"
-                      maxlength="500"></textarea>
-            <p class="cancel__contador"><span id="cancelContador">0</span>/500</p>
-
-            <p class="cancel__error hidden" id="cancelError"></p>
-
-            <div class="cancel__footer">
-                <button class="cancel__btn-volver"  id="cancelBtnVolver">Volver</button>
-                <button class="cancel__btn-confirmar" id="cancelBtnConfirmar">Enviar solicitud</button>
-            </div>
-        </div>
-    `;
-    document.body.appendChild(overlay);
-
-    const textarea  = document.getElementById('cancelMotivo');
-    const contador  = document.getElementById('cancelContador');
-    const errorEl   = document.getElementById('cancelError');
-    const btnConf   = document.getElementById('cancelBtnConfirmar');
-
-    const cerrar = () => overlay.remove();
-
-    textarea.addEventListener('input', () => {
-        contador.textContent = textarea.value.length;
-    });
-
-    document.getElementById('cancelModalCerrar').addEventListener('click', cerrar);
-    document.getElementById('cancelBtnVolver').addEventListener('click', cerrar);
-    overlay.addEventListener('click', e => { if (e.target === overlay) cerrar(); });
-
-    btnConf.addEventListener('click', async () => {
-        const motivo = textarea.value.trim();
-        if (!motivo) {
-            errorEl.textContent = '⚠ Por favor escribe el motivo antes de continuar.';
-            errorEl.classList.remove('hidden');
-            return;
-        }
-
-        btnConf.disabled = true;
-        btnConf.textContent = 'Enviando…';
-        errorEl.classList.add('hidden');
-
-        try {
-            const res = await fetch('/KurmiProyect/CambiarEstadoPedidoServlet', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: 'idPedido=' + encodeURIComponent(idPedido) +
-                      '&nuevoEstado=3' +
-                      '&motivo=' + encodeURIComponent(motivo)
-            });
-            const data = await res.json();
-            if (data.ok) {
-                cerrar();
-                mostrarNotificacion('✅ Solicitud enviada. El administrador la revisará pronto.');
-                cargarPedidos('1');
-            } else {
-                errorEl.textContent = '❌ ' + (data.msg || 'Error desconocido');
-                errorEl.classList.remove('hidden');
-                btnConf.disabled = false;
-                btnConf.textContent = 'Enviar solicitud';
-            }
-        } catch (e) {
-            errorEl.textContent = '❌ Error de red. Intenta de nuevo.';
-            errorEl.classList.remove('hidden');
-            btnConf.disabled = false;
-            btnConf.textContent = 'Enviar solicitud';
-        }
-    });
-}
-
-function mostrarNotificacion(msg) {
-    const n = document.createElement('div');
-    n.className = 'notificacion__toast';
-    n.textContent = msg;
-    document.body.appendChild(n);
-    setTimeout(() => n.classList.add('notificacion__toast--visible'), 50);
-    setTimeout(() => { n.classList.remove('notificacion__toast--visible'); setTimeout(() => n.remove(), 400); }, 3500);
-}
-
-// ═════════════════════════════════════════════════════════════════════════════
-// DEVOLUCIÓN — Formulario modal
-// ═════════════════════════════════════════════════════════════════════════════
-
-function abrirFormDevolucion(idPedido, fechaPedido) {
-    // Remover modal previo si existe
-    const previo = document.getElementById('devOverlay');
-    if (previo) previo.remove();
-
-    const overlay = document.createElement('div');
-    overlay.id = 'devOverlay';
-    overlay.className = 'modal__overlay';
-    overlay.innerHTML = `
-        <div class="modal__card dev__card" id="devCard">
-            <button class="modal__cerrar" id="devCerrar">✕</button>
-            <h2 class="modal__titulo">↩ Solicitar devolución</h2>
-            <p class="modal__fecha">Pedido del ${fechaPedido} &nbsp;·&nbsp; Tienes 24 horas para solicitar devoluciones.</p>
-
-            <div class="dev__form">
-                <!-- Motivo -->
-                <label class="dev__label">
-                    Motivo de la devolución <span class="dev__required">*</span>
-                </label>
-                <textarea id="devMotivo" class="dev__textarea"
-                          placeholder="Describe brevemente por qué deseas devolver el pedido…"
-                          maxlength="500"></textarea>
-                <p class="dev__contador"><span id="devContador">0</span>/500</p>
-
-                <!-- Imagen de prueba -->
-                <label class="dev__label" style="margin-top:14px;">
-                    Imagen de prueba <span class="dev__opcional">(opcional)</span>
-                </label>
-                <div class="dev__upload-wrap" id="devUploadWrap">
-                    <input type="file" id="devImagen" accept="image/*" class="dev__file-input">
-                    <label for="devImagen" class="dev__upload-btn">
-                        📎 Seleccionar imagen
-                    </label>
-                    <span class="dev__file-name" id="devFileName">Sin archivo seleccionado</span>
-                </div>
-                <div class="dev__preview-wrap" id="devPreviewWrap" style="display:none;">
-                    <img id="devPreview" class="dev__preview-img" src="" alt="Vista previa">
-                    <button class="dev__remove-img" id="devRemoveImg">✕ Quitar</button>
-                </div>
-
-                <!-- Error -->
-                <p class="dev__error hidden" id="devError"></p>
-
-                <!-- Botones -->
-                <div class="dev__footer">
-                    <button class="dev__btn-cancelar" id="devBtnCancelar">Cancelar</button>
-                    <button class="dev__btn-enviar" id="devBtnEnviar">
-                        Enviar solicitud
-                    </button>
-                </div>
-            </div>
-        </div>
-    `;
-
-    document.body.appendChild(overlay);
-
-    // Contador de caracteres
-    const textArea   = document.getElementById('devMotivo');
-    const contador   = document.getElementById('devContador');
-    textArea.addEventListener('input', () => {
-        contador.textContent = textArea.value.length;
-    });
-
-    // Vista previa de imagen
-    const inputImg    = document.getElementById('devImagen');
-    const fileName    = document.getElementById('devFileName');
-    const previewWrap = document.getElementById('devPreviewWrap');
-    const preview     = document.getElementById('devPreview');
-    const removeBtn   = document.getElementById('devRemoveImg');
-    const uploadWrap  = document.getElementById('devUploadWrap');
-
-    inputImg.addEventListener('change', () => {
-        const file = inputImg.files[0];
-        if (!file) return;
-        fileName.textContent = file.name;
-        const reader = new FileReader();
-        reader.onload = e => {
-            preview.src = e.target.result;
-            previewWrap.style.display = 'flex';
-            uploadWrap.style.display  = 'none';
-        };
-        reader.readAsDataURL(file);
-    });
-
-    removeBtn.addEventListener('click', () => {
-        inputImg.value = '';
-        fileName.textContent = 'Sin archivo seleccionado';
-        previewWrap.style.display = 'none';
-        uploadWrap.style.display  = 'flex';
-    });
-
-    // Cerrar modal
-    const cerrar = () => overlay.remove();
-    document.getElementById('devCerrar').addEventListener('click', cerrar);
-    document.getElementById('devBtnCancelar').addEventListener('click', cerrar);
-    overlay.addEventListener('click', e => { if (e.target === overlay) cerrar(); });
-
-    // Enviar formulario
-    document.getElementById('devBtnEnviar').addEventListener('click', () => {
-        enviarDevolucion(idPedido, overlay);
-    });
-}
-
-async function enviarDevolucion(idPedido, overlay) {
-    const motivo   = document.getElementById('devMotivo').value.trim();
-    const inputImg = document.getElementById('devImagen');
-    const errorEl  = document.getElementById('devError');
-    const btnEnviar = document.getElementById('devBtnEnviar');
-
-    errorEl.classList.add('hidden');
-    errorEl.textContent = '';
-
-    if (!motivo) {
-        errorEl.textContent = 'Por favor escribe el motivo de la devolución.';
-        errorEl.classList.remove('hidden');
-        return;
-    }
-
-    btnEnviar.disabled = true;
-    btnEnviar.textContent = 'Enviando…';
-
-    const formData = new FormData();
-    formData.append('accion', 'crearDevolucion');
-    formData.append('idPedido', idPedido);
-    formData.append('motivo', motivo);
-    if (inputImg.files[0]) {
-        formData.append('imagenPrueba', inputImg.files[0]);
-    }
+// ── Cancelar pedido ───────────────────────────────────────────────────────────
+async function confirmarCancelacion(idPedido) {
+    if (!confirm('¿Estás seguro de que deseas cancelar este pedido?')) return;
 
     try {
-        const res  = await fetch('/KurmiProyect/DevolucionServlet', {
+        const res = await fetch('/KurmiProyect/CambiarEstadoPedidoServlet', {
             method: 'POST',
-            body: formData
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: 'idPedido=' + encodeURIComponent(idPedido) + '&nuevoEstado=3'
         });
-        const data = await res.json();
 
+        const data = await res.json();
         if (data.ok) {
-            overlay.remove();
-            mostrarToast('✅ Solicitud de devolución enviada correctamente');
-            // Recargar la pestaña de entregados para reflejar el cambio de estado
-            cargarPedidos('8');
+            alert('Pedido cancelado correctamente.');
+            cargarPedidos(1); // Refresca la vista de Pendientes
         } else {
-            errorEl.textContent = data.error || 'No se pudo enviar la solicitud.';
-            errorEl.classList.remove('hidden');
-            btnEnviar.disabled = false;
-            btnEnviar.textContent = 'Enviar solicitud';
+            alert('No se pudo cancelar: ' + (data.msg || 'error desconocido'));
         }
     } catch (e) {
-        console.error('Error al enviar devolución:', e);
-        errorEl.textContent = 'Error de red. Intenta de nuevo.';
-        errorEl.classList.remove('hidden');
-        btnEnviar.disabled = false;
-        btnEnviar.textContent = 'Enviar solicitud';
+        console.error('Error al cancelar pedido:', e);
+        alert('Error de red al cancelar el pedido.');
     }
 }
 
-// ── Toast de notificación ─────────────────────────────────────────────────────
-function mostrarToast(mensaje) {
-    const toast = document.createElement('div');
-    toast.className = 'dev__toast';
-    toast.textContent = mensaje;
-    document.body.appendChild(toast);
-    setTimeout(() => toast.classList.add('dev__toast--visible'), 50);
-    setTimeout(() => {
-        toast.classList.remove('dev__toast--visible');
-        setTimeout(() => toast.remove(), 400);
-    }, 3500);
-}
+// ── Modal ─────────────────────────────────────────────────────────────────────
+function abrirModal(pedido, estado) {
+    const overlay   = document.getElementById('modalOverlay');
+    const titulo    = document.getElementById('modalTitulo');
+    const fecha     = document.getElementById('modalFecha');
+    const productos = document.getElementById('modalProductos');
+    const footer    = document.getElementById('modalFooter');
 
-// ═════════════════════════════════════════════════════════════════════════════
-// MIS DEVOLUCIONES — Apartado del cliente
-// ═════════════════════════════════════════════════════════════════════════════
-
-async function cargarMisDevoluciones() {
-    const grid = document.getElementById('pedidosGrid');
-    grid.innerHTML = '<p class="pedidos__cargando">Cargando solicitudes…</p>';
-
-    try {
-        const res  = await fetch('/KurmiProyect/DevolucionServlet?accion=misDevoluciones');
-        if (res.status === 401) { window.location.replace('/KurmiProyect/inicioSesion.html'); return; }
-        const data = await res.json();
-
-        grid.innerHTML = '';
-
-        if (!data.ok || !data.devoluciones || data.devoluciones.length === 0) {
-            grid.innerHTML = '<p class="pedidos__vacio">😕 Aún no has enviado solicitudes de devolución.</p>';
-            return;
-        }
-
-        data.devoluciones.forEach(dev => {
-            const card = crearTarjetaDevolucion(dev);
-            grid.appendChild(card);
-        });
-
-    } catch (e) {
-        console.error('Error cargando devoluciones:', e);
-        grid.innerHTML = '<p class="pedidos__vacio">Error al cargar solicitudes.</p>';
-    }
-}
-
-function crearTarjetaDevolucion(dev) {
-    const cfgEstado = {
-        'Pendiente': { bg: '#e67e22', color: '#fff', icon: '⏳' },
-        'Aprobada':  { bg: '#2ecc71', color: '#fff', icon: '✅' },
-        'Rechazada': { bg: '#e74c3c', color: '#fff', icon: '❌' }
-    };
-    const cfg = cfgEstado[dev.estado] || { bg: '#aaa', color: '#fff', icon: '?' };
-
-    const card = document.createElement('div');
-    card.className = 'pedido__card dev__solicitud-card';
-
-    const BASE_IMG = '/KurmiProyect/RESOURCES/img/';
-    const imgSrc   = dev.imagenPrueba
-        ? BASE_IMG + 'devoluciones/' + dev.imagenPrueba
-        : '../../RESOURCES/img/inicioHelado.png';
-
-    card.innerHTML = `
-        <img class="pedido__img" src="${imgSrc}" alt="Imagen devolución"
-             onerror="this.src='../../RESOURCES/img/inicioHelado.png'">
-        <div class="pedido__info">
-            <p class="pedido__fecha">Pedido del ${dev.fechaPedido ? dev.fechaPedido.substring(0, 10) : ''}</p>
-            <span style="background:${cfg.bg};color:${cfg.color};
-                padding:3px 10px;border-radius:20px;font-size:.72rem;font-weight:600;
-                display:inline-block;margin-bottom:6px;">
-                ${cfg.icon} ${dev.estado}
-            </span>
-            <p class="pedido__detalle" style="font-size:.82rem;">
-                <strong>Motivo:</strong> ${dev.motivo}
-            </p>
-            <p class="pedido__total">Total pedido: $${Number(dev.totalPago).toLocaleString('es-CO')}</p>
-            ${dev.motivoRespuesta ? `
-                <p class="dev__motivo-resp">
-                    <strong>Respuesta del administrador:</strong><br>
-                    ${dev.motivoRespuesta}
-                </p>` : ''}
-            <p class="pedido__fecha" style="margin-top:6px;">
-                Solicitud enviada: ${dev.fechaSolicitud ? dev.fechaSolicitud.substring(0, 10) : ''}
-                ${dev.fechaRespuesta ? ' · Respondida: ' + dev.fechaRespuesta.substring(0, 10) : ''}
-            </p>
-        </div>
-    `;
-    return card;
-}
-
-// ── Modal (detalle de pedido — sin cambios) ───────────────────────────────────
-function abrirModal(pedido, filtroActivo) {
-    const overlay    = document.getElementById('modalOverlay');
-    const titulo     = document.getElementById('modalTitulo');
-    const fecha      = document.getElementById('modalFecha');
-    const badgeEl    = document.getElementById('modalEstadoBadge');
-    const productos  = document.getElementById('modalProductos');
-    const footer     = document.getElementById('modalFooter');
-
-    const etiquetasTitulo = {
-        '1':          'Pedido Pendiente',
-        'en_proceso': 'Pedido En Proceso',
-        '8':          'Pedido Entregado',
-        '9':          'Devolución',
-        '3':          'Pedido Cancelado'
-    };
-    titulo.textContent = etiquetasTitulo[filtroActivo] || 'Detalle del pedido';
-    fecha.textContent  = 'Fecha: ' + (pedido.fechaPedido || '') +
-                         '  ·  Pago: ' + (pedido.metodoPago || 'No registrado');
-
-    if (pedido.nombreEstado) {
-        const cfg = estadoBadgeConfig(pedido.estadoPedido);
-        badgeEl.innerHTML = `
-            <span style="background:${cfg.bg};color:${cfg.color};padding:4px 14px;
-                         border-radius:20px;font-size:.82rem;font-weight:600;
-                         display:inline-block;">
-                ${pedido.nombreEstado}
-            </span>`;
-    } else {
-        badgeEl.innerHTML = '';
-    }
+    const etiquetas = { 1: 'Pedido Pendiente', 2: 'Pedido Completado', 3: 'Pedido Cancelado' };
+    titulo.textContent = etiquetas[estado] || 'Pedido';
+    fecha.textContent  = 'Fecha: ' + (pedido.fechaPedido || '') + '  ·  Pago: ' + (pedido.metodoPago || 'No registrado');
 
     productos.innerHTML = '';
     footer.innerHTML    = '';
@@ -774,7 +199,8 @@ function abrirModal(pedido, filtroActivo) {
     footer.appendChild(spanTotal);
 
     // Botón recomprar — solo en Cancelado (3)
-    if (filtroActivo === '3') {
+    if (estado === 3) {
+        // Selector de método de pago
         const selectMetodo = document.createElement('select');
         selectMetodo.id = 'selectMetodoRecompra';
         selectMetodo.style.cssText = 'padding:6px 10px;border-radius:8px;border:1px solid #c4b5e8;font-size:0.9rem;';
@@ -800,7 +226,7 @@ function abrirModal(pedido, filtroActivo) {
     overlay.classList.remove('hidden');
 }
 
-// ── Recomprar ─────────────────────────────────────────────────────────────────
+// ── Recomprar: solo cambia estado del pedido cancelado → Pendiente ────────────
 async function recomprarPedido(idPedido, idMetodo) {
     try {
         const res = await fetch('/KurmiProyect/CambiarEstadoPedidoServlet', {
@@ -814,7 +240,7 @@ async function recomprarPedido(idPedido, idMetodo) {
         if (data.ok) {
             alert('¡Pedido reactivado! Ya aparece en Pendientes.');
             document.getElementById('modalOverlay').classList.add('hidden');
-            cargarPedidos('3');
+            cargarPedidos(3); // Refrescar vista Cancelados
         } else {
             alert('No se pudo reactivar: ' + (data.msg || 'error desconocido'));
         }

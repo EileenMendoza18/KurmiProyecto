@@ -69,29 +69,6 @@ function mapearDatosTarjeta(tarjetaClonada, prod) {
     if (pDesc) pDesc.textContent = prod.descripcion;
     if (pPrecio) pPrecio.textContent = `$${precioReal.toLocaleString()}`;
 
-    // Guardar datos completos en el elemento para el modal
-    tarjetaClonada.dataset.prod = JSON.stringify({
-        idProducto:       idReal,
-        nombre:           nombreReal,
-        precio:           precioReal,
-        descripcion:      prod.descripcion      || '',
-        unidadMedida:     prod.unidadMedida     || prod.medida || '',
-        fechaVencimiento: prod.fechaVencimiento || '',
-        categoria:        prod.categoria        || '',
-        nombreSabor:      prod.nombreSabor      || '',
-        proveedor:        prod.proveedor        || '',
-        imagen:           prod.imagen           || 'inicioHelado.png'
-    });
-
-    // Click en la tarjeta (no en los botones) abre el modal de detalle
-    tarjetaClonada.style.cursor = 'pointer';
-    tarjetaClonada.addEventListener('click', (e) => {
-        // No abrir modal si el click fue en un botón de acción
-        if (e.target.closest('button')) return;
-        const datos = JSON.parse(tarjetaClonada.dataset.prod);
-        abrirModalDetalle(datos);
-    });
-
     // Se asocia el evento del click para redireccionar al formulario de pago
     const btnComprar = tarjetaClonada.querySelector('button:not([class])');
     if (btnComprar) {
@@ -241,81 +218,26 @@ async function cargarCategoriasGaleria(contenedorId) {
 async function cargarCategoriasAside(contenedorId) {
     try {
         const responseCat = await fetch('/KurmiProyect/ObtenerCategoriasServlet');
-        const categorias = await responseCat.json();
+        const categorias = await responseCat.json(); 
 
         const contenedor = document.getElementById(contenedorId);
-        const contenedorIconos = document.getElementById('contenedorIconosAside');
         if (!contenedor) return;
 
-        contenedor.innerHTML = '';
-        if (contenedorIconos) contenedorIconos.innerHTML = '';
-
-        // SVG genérico de postre (cupcake)
-        const iconoPostre = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="26" height="26" fill="none">
-            <path d="M20 36 c-2-8 0-16 12-18 12 2 14 10 12 18Z" fill="#DCD6F7" stroke="#463877" stroke-width="2"/>
-            <rect x="18" y="36" width="28" height="14" rx="4" fill="#B1B2FF" stroke="#463877" stroke-width="2"/>
-            <circle cx="32" cy="28" r="4" fill="#ff9eb5" stroke="#463877" stroke-width="1.5"/>
-            <line x1="32" y1="24" x2="32" y2="18" stroke="#463877" stroke-width="2" stroke-linecap="round"/>
-        </svg>`;
+        contenedor.innerHTML = ''; 
 
         categorias.forEach(nombreCat => {
-            // --- Icono lateral ---
-            if (contenedorIconos) {
-                const divIcono = document.createElement('div');
-                divIcono.innerHTML = iconoPostre;
-                divIcono.style.cursor = 'pointer';
-                divIcono.title = nombreCat;
-                divIcono.addEventListener('click', () => {
-                    window.location.href = `Productos.html?categoria=${encodeURIComponent(nombreCat)}`;
-                });
-                contenedorIconos.appendChild(divIcono);
-            }
-
-            // --- Texto lateral ---
             const divOpcion = document.createElement('div');
             const pTexto = document.createElement('p');
+            
             pTexto.textContent = nombreCat;
             divOpcion.appendChild(pTexto);
-            divOpcion.style.cursor = 'pointer';
+            divOpcion.style.cursor = 'pointer'; // Cambia el cursor a una mano al pasar el mouse
+            
             divOpcion.addEventListener('click', () => {
+                // Redirige a la pantalla de productos individuales filtrando por la categoría
                 window.location.href = `Productos.html?categoria=${encodeURIComponent(nombreCat)}`;
             });
             contenedor.appendChild(divOpcion);
-        });
-
-        // --- Lógica de abrir/cerrar el aside ---
-        const aside = document.querySelector('aside.menu-lateral');
-        const toggle = document.getElementById('asideToggle');
-        const letras = document.getElementById(contenedorId);
-
-        function abrirAside() {
-            letras.style.display = 'flex';
-        }
-        function cerrarAside() {
-            letras.style.display = 'none';
-        }
-
-        // Click en el botón toggle abre/cierra
-        if (toggle) {
-            toggle.addEventListener('click', (e) => {
-                e.stopPropagation();
-                letras.style.display === 'flex' ? cerrarAside() : abrirAside();
-            });
-        }
-
-        // Click en cualquier icono del menudos abre
-        if (contenedorIconos) {
-            contenedorIconos.addEventListener('click', (e) => {
-                e.stopPropagation();
-                abrirAside();
-            });
-        }
-
-        // Click afuera del aside cierra
-        document.addEventListener('click', (e) => {
-            if (aside && !aside.contains(e.target)) {
-                cerrarAside();
-            }
         });
 
     } catch (error) {
@@ -430,24 +352,11 @@ async function cargarSeccionesTienda(contenedorId) {
     try {
         const response = await fetch('/KurmiProyect/ObtenerProductosPorCategoriaServlet');
         const productos = await response.json();
+        
+        console.log("Productos recibidos del Servlet:", productos);
 
         // Guardar globalmente para el buscador
         todosLosProductosTienda = productos;
-
-        // Poblar el select de proveedores aquí, cuando los datos ya están disponibles
-        const selectProv = document.getElementById('filtroProveedorTienda');
-        if (selectProv) {
-            while (selectProv.options.length > 1) selectProv.remove(1);
-            const proveedoresUnicos = [...new Set(
-                productos.map(p => p.proveedor).filter(p => p != null && String(p).trim() !== '' && p !== 'null')
-            )].sort();
-            proveedoresUnicos.forEach(nombre => {
-                const opt = document.createElement('option');
-                opt.value = nombre;
-                opt.textContent = nombre;
-                selectProv.appendChild(opt);
-            });
-        }
 
         // 1. Agrupar los productos por su nombre de categoría
         const categoriasMap = {};
@@ -460,40 +369,55 @@ async function cargarSeccionesTienda(contenedorId) {
         }
 
         const contenedorPadre = document.getElementById(contenedorId);
-        if (!contenedorPadre) return;
-        contenedorPadre.innerHTML = '';
+        if (!contenedorPadre) {
+            console.error("No se encontró el contenedor padre con ID:", contenedorId);
+            return;
+        }
+        contenedorPadre.innerHTML = ''; // Limpiar contenedor de carga
 
+        // 2. Traer la plantilla HTML de la tarjeta de producto
         const responseTemplate = await fetch('/KurmiProyect/components/tarjetaProducto.html');
         const templateHTML = await responseTemplate.text();
         const parser = new DOMParser();
         const docTemplate = parser.parseFromString(templateHTML, 'text/html');
-        plantillaTarjetaTienda = docTemplate.querySelector('.tarjeta');
+        plantillaTarjetaTienda = docTemplate.querySelector('.tarjeta'); // Guardar globalmente
 
-        if (!plantillaTarjetaTienda) return;
+        if (!plantillaTarjetaTienda) {
+            console.error("No se encontró la clase '.tarjeta' dentro de tarjetaProducto.html");
+            return;
+        }
 
+        // 3. Iterar por cada categoría agrupada y construir sus bloques independientes
         for (const [nombreCategoria, listaProductos] of Object.entries(categoriasMap)) {
+            
+            // CONSTRUCCIÓN DEL BLOQUE DE LA CATEGORÍA (Aquí se soluciona el ReferenceError)
             const seccionBloque = document.createElement('section');
             seccionBloque.className = 'categoria-bloque';
             seccionBloque.style.marginBottom = '40px';
 
+            // Crear el título de la categoría (Ej: "Postres de cuchara", "Postres fritos")
             const tituloCat = document.createElement('h2');
             tituloCat.textContent = nombreCategoria;
             tituloCat.className = 'categoria-titulo';
             tituloCat.style.fontSize = '1.6rem';
-            tituloCat.style.color = '#4A3B53';
+            tituloCat.style.color = '#4A3B53'; // Tono morado oscuro acorde a tu paleta pastel
             tituloCat.style.marginBottom = '20px';
             tituloCat.style.fontWeight = '600';
             seccionBloque.appendChild(tituloCat);
-
+            
+            // Crear la rejilla (Grid) donde se alinearán las tarjetas de esta categoría
             const gridTarjetas = document.createElement('div');
             gridTarjetas.className = 'tienda-productos-grid';
+            
 
+            // Inyectar cada producto correspondiente a esta sección
             for (const prod of listaProductos) {
                 const nuevaTarjeta = plantillaTarjetaTienda.cloneNode(true);
                 mapearDatosTarjeta(nuevaTarjeta, prod);
                 gridTarjetas.appendChild(nuevaTarjeta);
             }
 
+            // Unir la rejilla al bloque contenedor y este al contenedor de la página
             seccionBloque.appendChild(gridTarjetas);
             contenedorPadre.appendChild(seccionBloque);
         }
@@ -888,61 +812,37 @@ function actualizarResumenCarrito() {
 
 // ─── BUSCADOR EN TIEMPO REAL ──────────────────────────────────────────────────
 function inicializarBuscador() {
-    const inputBuscador  = document.querySelector('.buscador-input');
-    const selectProv     = document.getElementById('filtroProveedorTienda');
-    const contenedor     = document.getElementById('contenedorTiendaCategorias');
+    const inputBuscador = document.querySelector('.buscador-input');
+    const contenedor    = document.getElementById('contenedorTiendaCategorias');
     if (!inputBuscador || !contenedor) return;
 
-    // Poblar el select de proveedores con los únicos disponibles
-    if (selectProv) {
-        const proveedoresUnicos = [...new Set(
-            todosLosProductosTienda
-                .map(p => p.proveedor)
-                .filter(p => p != null && p !== 'null' && p.trim() !== '' && p !== '--' && p !== '—')
-        )].sort();
+    inputBuscador.addEventListener('input', () => {
+        const termino = inputBuscador.value.trim().toLowerCase();
 
-        // Limpiar opciones previas (excepto la primera "Todos")
-        while (selectProv.options.length > 1) selectProv.remove(1);
-
-        proveedoresUnicos.forEach(nombre => {
-            const opt = document.createElement('option');
-            opt.value = nombre;
-            opt.textContent = nombre;
-            selectProv.appendChild(opt);
-        });
-    }
-
-    function aplicarFiltrosTienda() {
-        const termino    = inputBuscador.value.trim().toLowerCase();
-        const proveedor  = selectProv ? selectProv.value : '';
-
-        // Sin filtros → vista normal por categorías
-        if (!termino && !proveedor) {
+        // Sin texto → restaurar vista por categorías normal
+        if (!termino) {
             renderizarPorCategorias(todosLosProductosTienda, contenedor);
             return;
         }
 
+        // Filtrar por nombre o categoría
         const filtrados = todosLosProductosTienda.filter(p => {
-            const coincideTexto = !termino || (
-                (p.nombre || '').toLowerCase().includes(termino) ||
-                (p.categoria || '').toLowerCase().includes(termino) ||
-                (p.nombreSabor || '').toLowerCase().includes(termino)
-            );
-            const provProd = (p.proveedor ?? '').trim();
-            const coincideProveedor = !proveedor || provProd === proveedor;
-            return coincideTexto && coincideProveedor;
+            const nombre    = (p.nombre    || '').toLowerCase();
+            const categoria = (p.categoria || '').toLowerCase();
+            const sabor     = (p.nombreSabor || '').toLowerCase();
+            return nombre.includes(termino) || categoria.includes(termino) || sabor.includes(termino);
         });
 
         if (filtrados.length === 0) {
             contenedor.innerHTML = `
                 <div class="buscador__sin-resultados">
-                    <p>😕 No encontramos productos con "<strong>${inputBuscador.value.trim() || proveedor}</strong>"</p>
-                    <p>Intenta con otro nombre, categoría o proveedor.</p>
+                    <p>😕 No encontramos productos con "<strong>${inputBuscador.value.trim()}</strong>"</p>
+                    <p>Intenta con otro nombre o categoría.</p>
                 </div>`;
             return;
         }
 
-        // Mostrar resultados como sección plana
+        // Mostrar resultados como una sección plana sin agrupar
         contenedor.innerHTML = '';
         const seccion = document.createElement('section');
         seccion.className = 'categoria-bloque';
@@ -951,12 +851,12 @@ function inicializarBuscador() {
         const titulo = document.createElement('h2');
         titulo.className = 'categoria-titulo';
         titulo.style.cssText = 'font-size:1.4rem;color:#4A3B53;margin-bottom:20px;font-weight:600;';
-        const labelFiltro = proveedor ? `Proveedor: ${proveedor}` : `"${inputBuscador.value.trim()}"`;
-        titulo.textContent = `Resultados para ${labelFiltro} (${filtrados.length})`;
+        titulo.textContent = `Resultados para "${inputBuscador.value.trim()}" (${filtrados.length})`;
         seccion.appendChild(titulo);
 
         const grid = document.createElement('div');
         grid.className = 'tienda-productos-grid';
+        
 
         for (const prod of filtrados) {
             const tarjeta = plantillaTarjetaTienda.cloneNode(true);
@@ -966,10 +866,7 @@ function inicializarBuscador() {
 
         seccion.appendChild(grid);
         contenedor.appendChild(seccion);
-    }
-
-    inputBuscador.addEventListener('input', aplicarFiltrosTienda);
-    if (selectProv) selectProv.addEventListener('change', aplicarFiltrosTienda);
+    });
 }
 
 // Renderiza los productos agrupados por categoría (restaurar vista original)
@@ -1004,244 +901,4 @@ function renderizarPorCategorias(productos, contenedor) {
         seccion.appendChild(grid);
         contenedor.appendChild(seccion);
     }
-}
-// ─────────────────────────────────────────────────────────────────────────────
-// MODAL DE DETALLE DE PRODUCTO
-// ─────────────────────────────────────────────────────────────────────────────
-
-function inyectarEstilosModal() {
-    if (document.getElementById('estilos-modal-detalle')) return;
-    const style = document.createElement('style');
-    style.id = 'estilos-modal-detalle';
-    style.textContent = `
-        .modal-detalle-overlay {
-            position: fixed;
-            inset: 0;
-            background: rgba(74, 59, 83, 0.55);
-            backdrop-filter: blur(3px);
-            z-index: 9999;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 16px;
-            animation: fadeInOverlay .18s ease;
-        }
-        @keyframes fadeInOverlay { from { opacity: 0; } to { opacity: 1; } }
-        .modal-detalle {
-            background: #fff;
-            border-radius: 20px;
-            max-width: 520px;
-            width: 100%;
-            box-shadow: 0 12px 48px rgba(74,59,83,.22);
-            overflow: hidden;
-            animation: slideUpModal .22s ease;
-            display: flex;
-            flex-direction: column;
-        }
-        @keyframes slideUpModal {
-            from { transform: translateY(28px); opacity: 0; }
-            to   { transform: translateY(0);    opacity: 1; }
-        }
-        .modal-detalle__img-wrap {
-            position: relative;
-            width: 100%;
-            height: 220px;
-            background: #F4EEFF;
-            overflow: hidden;
-            flex-shrink: 0;
-        }
-        .modal-detalle__img-wrap img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-        .modal-detalle__cerrar {
-            position: absolute;
-            top: 12px;
-            right: 14px;
-            background: rgba(255,255,255,.85);
-            border: none;
-            border-radius: 50%;
-            width: 32px;
-            height: 32px;
-            font-size: 1rem;
-            cursor: pointer;
-            color: #4A3B53;
-            box-shadow: 0 2px 8px rgba(0,0,0,.15);
-            transition: background .15s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .modal-detalle__cerrar:hover { background: #fff; }
-        .modal-detalle__body {
-            padding: 24px 28px 16px;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-        .modal-detalle__nombre {
-            font-size: 1.35rem;
-            font-weight: 700;
-            color: #4A3B53;
-            margin: 0;
-        }
-        .modal-detalle__precio {
-            font-size: 1.45rem;
-            font-weight: 800;
-            color: #7C4DFF;
-            margin: 0;
-        }
-        .modal-detalle__desc {
-            font-size: .9rem;
-            color: #666;
-            line-height: 1.5;
-            margin: 0;
-        }
-        .modal-detalle__grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 8px 16px;
-            margin-top: 4px;
-        }
-        .modal-detalle__campo { display: flex; flex-direction: column; gap: 2px; }
-        .modal-detalle__label {
-            font-size: .72rem;
-            font-weight: 700;
-            color: #a68fc0;
-            text-transform: uppercase;
-            letter-spacing: .04em;
-        }
-        .modal-detalle__valor { font-size: .88rem; color: #333; font-weight: 500; }
-        .modal-detalle__footer {
-            padding: 0 28px 24px;
-            display: flex;
-            gap: 10px;
-        }
-        .modal-detalle__btn-comprar {
-            flex: 1;
-            padding: 12px;
-            background: #7C4DFF;
-            color: #fff;
-            border: none;
-            border-radius: 12px;
-            font-size: .95rem;
-            font-weight: 700;
-            cursor: pointer;
-            transition: background .15s;
-        }
-        .modal-detalle__btn-comprar:hover { background: #6a3de8; }
-        .modal-detalle__btn-carrito {
-            padding: 12px 16px;
-            background: #F4EEFF;
-            color: #7C4DFF;
-            border: 2px solid #7C4DFF;
-            border-radius: 12px;
-            font-size: .95rem;
-            font-weight: 700;
-            cursor: pointer;
-            transition: background .15s;
-        }
-        .modal-detalle__btn-carrito:hover { background: #e8d8ff; }
-    `;
-    document.head.appendChild(style);
-}
-
-function abrirModalDetalle(prod) {
-    inyectarEstilosModal();
-    document.getElementById('modal-detalle-root')?.remove();
-
-    const BASE_IMG_MODAL = '/KurmiProyect/RESOURCES/img/';
-    const imgSrc = (prod.imagen && prod.imagen !== 'inicioHelado.png')
-        ? BASE_IMG_MODAL + prod.imagen
-        : BASE_IMG_MODAL + 'inicioHelado.png';
-    const fechaFormateada = prod.fechaVencimiento
-        ? prod.fechaVencimiento.substring(0, 10)
-        : '—';
-
-    const overlay = document.createElement('div');
-    overlay.className = 'modal-detalle-overlay';
-    overlay.id = 'modal-detalle-root';
-    overlay.innerHTML = `
-        <div class="modal-detalle" role="dialog" aria-modal="true">
-            <div class="modal-detalle__img-wrap">
-                <img src="${imgSrc}" alt="${prod.nombre}"
-                     onerror="this.src='${BASE_IMG_MODAL}inicioHelado.png'" />
-                <button class="modal-detalle__cerrar" id="btnCerrarModalDetalle" title="Cerrar">✕</button>
-            </div>
-            <div class="modal-detalle__body">
-                <p class="modal-detalle__nombre">${prod.nombre}</p>
-                <p class="modal-detalle__precio">$${Number(prod.precio).toLocaleString('es-CO')}</p>
-                <p class="modal-detalle__desc">${prod.descripcion || 'Sin descripción.'}</p>
-                <div class="modal-detalle__grid">
-                    <div class="modal-detalle__campo">
-                        <span class="modal-detalle__label">Categoría</span>
-                        <span class="modal-detalle__valor">${prod.categoria || '—'}</span>
-                    </div>
-                    <div class="modal-detalle__campo">
-                        <span class="modal-detalle__label">Sabor</span>
-                        <span class="modal-detalle__valor">${prod.nombreSabor || '—'}</span>
-                    </div>
-                    <div class="modal-detalle__campo">
-                        <span class="modal-detalle__label">Unidad de medida</span>
-                        <span class="modal-detalle__valor">${prod.unidadMedida || '—'}</span>
-                    </div>
-                    <div class="modal-detalle__campo">
-                        <span class="modal-detalle__label">Vence</span>
-                        <span class="modal-detalle__valor">${fechaFormateada}</span>
-                    </div>
-                    <div class="modal-detalle__campo" style="grid-column:span 2">
-                        <span class="modal-detalle__label">Proveedor</span>
-                        <span class="modal-detalle__valor">${prod.proveedor || '—'}</span>
-                    </div>
-                </div>
-            </div>
-            <div class="modal-detalle__footer">
-                <button class="modal-detalle__btn-carrito" id="mdBtnCarrito">🛒 Añadir al carrito</button>
-                <button class="modal-detalle__btn-comprar" id="mdBtnComprar">Comprar ahora</button>
-            </div>
-        </div>
-    `;
-
-    document.body.appendChild(overlay);
-
-    // Cerrar al click en fondo o en X
-    overlay.addEventListener('click', (e) => {
-        if (e.target === overlay || e.target.id === 'btnCerrarModalDetalle') overlay.remove();
-    });
-
-    // Cerrar con Escape
-    const onKeyDown = (e) => {
-        if (e.key === 'Escape') { overlay.remove(); document.removeEventListener('keydown', onKeyDown); }
-    };
-    document.addEventListener('keydown', onKeyDown);
-
-    // Botón comprar ahora
-    document.getElementById('mdBtnComprar').addEventListener('click', () => {
-        overlay.remove();
-        window.location.href = `formularioPago.html?id=${prod.idProducto}&nombre=${encodeURIComponent(prod.nombre)}&precio=${prod.precio}`;
-    });
-
-    // Botón añadir al carrito
-    document.getElementById('mdBtnCarrito').addEventListener('click', async () => {
-        try {
-            const res = await fetch(
-                `/KurmiProyect/CarritoServlet?idProducto=${prod.idProducto}&precio=${prod.precio}&cantidad=1`,
-                { method: 'POST' }
-            );
-            if (res.ok) {
-                const msg = (await res.text()).trim();
-                overlay.remove();
-                if (msg === 'NUEVO_AGREGADO') {
-                    mostrarNotificacionDinamica('carrito');
-                } else if (msg === 'CANTIDAD_INCREMENTADA') {
-                    alert('Este producto ya está en tu carrito. ¡Hemos sumado una unidad!');
-                } else if (msg === 'DEBES_INICIAR_SESION') {
-                    alert('Por favor, inicia sesión para añadir productos al carrito.');
-                }
-            }
-        } catch (err) {
-            console.error('Error al agregar al carrito desde modal:', err);
-        }
-    });
 }

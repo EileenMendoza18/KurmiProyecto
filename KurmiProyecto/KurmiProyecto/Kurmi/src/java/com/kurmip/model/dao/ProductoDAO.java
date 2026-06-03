@@ -144,22 +144,13 @@ public class ProductoDAO {
         List<ProductoDTO> lista = new ArrayList<>();
         String sql =
             "SELECT p.ID_Producto, p.Nombre_Producto, p.Valor_Producto, p.Descripcion_Producto, " +
-            "p.Imagen_Producto, p.Unidad_Medida, p.Fecha_vencimiento, " +
-            "c.Nombre_Categoria, s.Nombre_Sabor, " +
-            "CONCAT(u.Nombres, ' ', u.Apellidos) AS nombreProveedor, " +
+            "p.Imagen_Producto, " +
             "COALESCE(SUM(cd.Cantidad_producto), 0) AS totalVendido, " +
             "COALESCE((SELECT SUM(i.StockInicial + i.CantidadAnadida) FROM Inventario i WHERE i.ID_Producto = p.ID_Producto), 0) AS stockTotal " +
             "FROM Productos p " +
             "LEFT JOIN Carrito_Detalle cd ON p.ID_Producto = cd.ID_Producto AND cd.Estado_Carrito = 3 " +
-            "JOIN RelaCatSabor r ON p.ID_RelaCategSabor = r.ID_RelaCatSabor " +
-            "JOIN Categorias c ON r.ID_Categoria = c.ID_Categoria " +
-            "JOIN Sabores s ON r.ID_Sabor = s.ID_Sabor " +
-            "LEFT JOIN RelaProductoVendedor rpv ON rpv.ID_Productos = p.ID_Producto " +
-            "LEFT JOIN Usuario u ON u.UsuarioID = rpv.ID_Usuario " +
             "WHERE p.ID_Estado = 1 " +
-            "GROUP BY p.ID_Producto, p.Nombre_Producto, p.Valor_Producto, p.Descripcion_Producto, " +
-            "p.Imagen_Producto, p.Unidad_Medida, p.Fecha_vencimiento, " +
-            "c.Nombre_Categoria, s.Nombre_Sabor, u.Nombres, u.Apellidos " +
+            "GROUP BY p.ID_Producto, p.Nombre_Producto, p.Valor_Producto, p.Descripcion_Producto, p.Imagen_Producto " +
             "HAVING (SELECT COALESCE(SUM(i.StockInicial + i.CantidadAnadida),0) FROM Inventario i WHERE i.ID_Producto = p.ID_Producto) > 0 " +
             "ORDER BY totalVendido DESC, p.ID_Producto DESC " +
             "LIMIT ?";
@@ -175,11 +166,6 @@ public class ProductoDAO {
                 dto.setDescripcion(rs.getString("Descripcion_Producto"));
                 dto.setPrecio(rs.getDouble("Valor_Producto"));
                 dto.setStock(rs.getInt("stockTotal"));
-                dto.setCategoria(rs.getString("Nombre_Categoria"));
-                dto.setNombreSabor(rs.getString("Nombre_Sabor"));
-                dto.setMedida(rs.getString("Unidad_Medida"));
-                dto.setFechaVencimiento(rs.getString("Fecha_vencimiento"));
-                dto.setProveedor(rs.getString("nombreProveedor"));
                 dto.setImagen(leerImagen(rs));
                 lista.add(dto);
             }
@@ -193,16 +179,9 @@ public class ProductoDAO {
         List<ProductoDTO> lista = new ArrayList<>();
         String sql =
             "SELECT p.ID_Producto, p.Nombre_Producto, p.Valor_Producto, p.Descripcion_Producto, " +
-            "p.Imagen_Producto, p.ID_Estado, p.Unidad_Medida, p.Fecha_vencimiento, " +
-            "c.Nombre_Categoria, s.Nombre_Sabor, " +
-            "CONCAT(u.Nombres, ' ', u.Apellidos) AS nombreProveedor, " +
+            "p.Imagen_Producto, p.ID_Estado, " + 
             "COALESCE((SELECT SUM(i.StockInicial + i.CantidadAnadida) FROM Inventario i WHERE i.ID_Producto = p.ID_Producto), 0) AS stockTotal " +
             "FROM Productos p " +
-            "JOIN RelaCatSabor r ON p.ID_RelaCategSabor = r.ID_RelaCatSabor " +
-            "JOIN Categorias c ON r.ID_Categoria = c.ID_Categoria " +
-            "JOIN Sabores s ON r.ID_Sabor = s.ID_Sabor " +
-            "LEFT JOIN RelaProductoVendedor rpv ON rpv.ID_Productos = p.ID_Producto " +
-            "LEFT JOIN Usuario u ON u.UsuarioID = rpv.ID_Usuario " +
             "WHERE p.ID_Estado = 1 " +
             "AND (SELECT COALESCE(SUM(i.StockInicial + i.CantidadAnadida),0) FROM Inventario i WHERE i.ID_Producto = p.ID_Producto) > 0 " +
             "ORDER BY p.ID_Producto DESC LIMIT ?";
@@ -218,11 +197,6 @@ public class ProductoDAO {
                 dto.setDescripcion(rs.getString("Descripcion_Producto"));
                 dto.setStock(rs.getInt("stockTotal"));
                 dto.setIdEstado(rs.getInt("ID_Estado"));
-                dto.setCategoria(rs.getString("Nombre_Categoria"));
-                dto.setNombreSabor(rs.getString("Nombre_Sabor"));
-                dto.setMedida(rs.getString("Unidad_Medida"));
-                dto.setFechaVencimiento(rs.getString("Fecha_vencimiento"));
-                dto.setProveedor(rs.getString("nombreProveedor"));
                 dto.setImagen(leerImagen(rs));
                 lista.add(dto);
             }
@@ -236,19 +210,13 @@ public class ProductoDAO {
         List<ProductoDTO> lista = new ArrayList<>();
         String sql =
             "SELECT p.ID_Producto, p.Nombre_Producto, p.Valor_Producto, p.Descripcion_Producto, " +
-            "p.Imagen_Producto, p.Unidad_Medida, p.Fecha_vencimiento, " +
-            "c.Nombre_Categoria, s.Nombre_Sabor, " +
-            "COALESCE((SELECT CONCAT(u2.Nombres, ' ', u2.Apellidos) " +
-            "          FROM RelaProductoVendedor rpv2 " +
-            "          JOIN Usuario u2 ON u2.UsuarioID = rpv2.ID_Usuario " +
-            "          WHERE rpv2.ID_Productos = p.ID_Producto LIMIT 1), 'Sin proveedor') AS nombreProveedor, " +
+            "p.Imagen_Producto, c.Nombre_Categoria, s.Nombre_Sabor, " +
             "COALESCE((SELECT SUM(i.StockInicial + i.CantidadAnadida) FROM Inventario i WHERE i.ID_Producto = p.ID_Producto), 0) AS stockTotal " +
             "FROM Productos p " +
             "JOIN RelaCatSabor r ON p.ID_RelaCategSabor = r.ID_RelaCatSabor " +
             "JOIN Categorias c ON r.ID_Categoria = c.ID_Categoria " +
             "JOIN Sabores s ON r.ID_Sabor = s.ID_Sabor " +
-            "WHERE c.Nombre_Categoria = ? AND p.ID_Estado = 1 " +
-            "AND COALESCE((SELECT SUM(i2.StockInicial + i2.CantidadAnadida) FROM Inventario i2 WHERE i2.ID_Producto = p.ID_Producto), 0) > 0";
+            "WHERE c.Nombre_Categoria = ? AND p.ID_Estado = 1 HAVING stockTotal > 0";
         try {
             con = cn.getConexion();
             ps  = con.prepareStatement(sql);
@@ -263,9 +231,6 @@ public class ProductoDAO {
                 dto.setCategoria(rs.getString("Nombre_Categoria"));
                 dto.setNombreSabor(rs.getString("Nombre_Sabor"));
                 dto.setStock(rs.getInt("stockTotal"));
-                dto.setMedida(rs.getString("Unidad_Medida"));
-                dto.setFechaVencimiento(rs.getString("Fecha_vencimiento"));
-                dto.setProveedor(rs.getString("nombreProveedor"));
                 dto.setImagen(leerImagen(rs));
                 lista.add(dto);
             }
@@ -279,20 +244,13 @@ public class ProductoDAO {
         List<ProductoDTO> lista = new ArrayList<>();
         String sql =
             "SELECT p.ID_Producto, p.Nombre_Producto, p.Valor_Producto, p.Descripcion_Producto, " +
-            "p.Imagen_Producto, p.Unidad_Medida, p.Fecha_vencimiento, " +
-            "c.Nombre_Categoria, s.Nombre_Sabor, " +
-            "COALESCE((SELECT CONCAT(u2.Nombres, ' ', u2.Apellidos) " +
-            "          FROM RelaProductoVendedor rpv2 " +
-            "          JOIN Usuario u2 ON u2.UsuarioID = rpv2.ID_Usuario " +
-            "          WHERE rpv2.ID_Productos = p.ID_Producto LIMIT 1), 'Sin proveedor') AS nombreProveedor, " +
+            "p.Imagen_Producto, c.Nombre_Categoria, s.Nombre_Sabor, " +
             "COALESCE((SELECT SUM(i.StockInicial + i.CantidadAnadida) FROM Inventario i WHERE i.ID_Producto = p.ID_Producto), 0) AS stockTotal " +
             "FROM Productos p " +
             "JOIN RelaCatSabor r ON p.ID_RelaCategSabor = r.ID_RelaCatSabor " +
             "JOIN Categorias c ON r.ID_Categoria = c.ID_Categoria " +
             "JOIN Sabores s ON r.ID_Sabor = s.ID_Sabor " +
-            "WHERE p.ID_Estado = 1 " +
-            "AND COALESCE((SELECT SUM(i2.StockInicial + i2.CantidadAnadida) FROM Inventario i2 WHERE i2.ID_Producto = p.ID_Producto), 0) > 0 " +
-            "ORDER BY c.Nombre_Categoria ASC";
+            "WHERE p.ID_Estado = 1 HAVING stockTotal > 0 ORDER BY c.Nombre_Categoria ASC";
         try {
             con = cn.getConexion();
             ps  = con.prepareStatement(sql);
@@ -306,9 +264,6 @@ public class ProductoDAO {
                 dto.setCategoria(rs.getString("Nombre_Categoria"));
                 dto.setNombreSabor(rs.getString("Nombre_Sabor"));
                 dto.setStock(rs.getInt("stockTotal"));
-                dto.setMedida(rs.getString("Unidad_Medida"));
-                dto.setFechaVencimiento(rs.getString("Fecha_vencimiento"));
-                dto.setProveedor(rs.getString("nombreProveedor"));
                 dto.setImagen(leerImagen(rs));
                 lista.add(dto);
             }
@@ -435,19 +390,15 @@ public class ProductoDAO {
         String sql =
             "SELECT p.ID_Producto, p.Nombre_Producto, p.Valor_Producto, " +
             "p.Descripcion_Producto, p.Unidad_Medida, p.Imagen_Producto, " +
-            "p.Fecha_vencimiento, " +
             "c.Nombre_Categoria, s.Nombre_Sabor, " +
             "ep.Nombre AS estadoNombre, ep.ID_EstadoProducto AS idEstado, " +
             "COALESCE((SELECT SUM(i.StockInicial + i.CantidadAnadida) " +
-            "          FROM Inventario i WHERE i.ID_Producto = p.ID_Producto), 0) AS stockTotal, " +
-            "COALESCE(CONCAT(u.Nombres, ' ', u.Apellidos), '--') AS nombreProveedor " +
+            "          FROM Inventario i WHERE i.ID_Producto = p.ID_Producto), 0) AS stockTotal " +
             "FROM Productos p " +
             "JOIN RelaCatSabor r    ON p.ID_RelaCategSabor = r.ID_RelaCatSabor " +
             "JOIN Categorias c      ON r.ID_Categoria = c.ID_Categoria " +
             "JOIN Sabores s         ON r.ID_Sabor = s.ID_Sabor " +
             "JOIN EstadoProducto ep ON ep.ID_EstadoProducto = p.ID_Estado " +
-            "LEFT JOIN RelaProductoVendedor rpv ON rpv.ID_Productos = p.ID_Producto " +
-            "LEFT JOIN Usuario u ON u.UsuarioID = rpv.ID_Usuario " +
             "ORDER BY p.ID_Producto DESC";
         try {
             con = cn.getConexion();
@@ -466,8 +417,6 @@ public class ProductoDAO {
                 dto.setImagen(leerImagen(rs));
                 dto.setEstadoNombre(rs.getString("estadoNombre"));
                 dto.setIdEstado(rs.getInt("idEstado"));
-                dto.setFechaVencimiento(rs.getString("Fecha_vencimiento"));
-                dto.setProveedor(rs.getString("nombreProveedor"));
                 lista.add(dto);
             }
         } catch (Exception e) {

@@ -4,134 +4,22 @@ import { components } from '../../helpers/index.js';
 components('header', '../../components/header.html');
 components('footer', '../../components/footer.html');
 
-// =========================================================================
-// UTILIDADES DE VALIDACIÓN
-// =========================================================================
-
-/** Muestra u oculta el mensaje de error junto al campo */
-function setEstadoCampo(input, esValido, mensaje = "") {
-    const grupo = input.closest(".form-group");
-    if (!grupo) return;
-
-    input.classList.remove("campo-error", "campo-ok");
-
-    let msgEl = grupo.querySelector(".campo-mensaje-error");
-    if (!msgEl) {
-        msgEl = document.createElement("span");
-        msgEl.className = "campo-mensaje-error";
-        grupo.appendChild(msgEl);
-    }
-
-    if (esValido) {
-        input.classList.add("campo-ok");
-        msgEl.textContent = "";
-        msgEl.classList.remove("visible");
-    } else {
-        input.classList.add("campo-error");
-        msgEl.textContent = mensaje;
-        msgEl.classList.add("visible");
-    }
-}
-
-/**
- * Valida cada campo con las mismas reglas del formulario de registro.
- * No bloquea caracteres: solo evalúa y muestra el mensaje de error.
- */
-function validarCampo(input) {
-    const id    = input.id;
-    const valor = input.value.trim();
-
-    // ── Campo vacío (aplica a todos) ──────────────────────────────────────
-    if (valor === "") {
-        const mensajesVacio = {
-            nombre:   "El nombre es obligatorio.",
-            direccion: "La dirección es obligatoria.",
-            telefono:  "El teléfono es obligatorio.",
-            idMetodo:  "Selecciona un método de pago."
-        };
-        setEstadoCampo(input, false, mensajesVacio[id] || "Este campo es obligatorio.");
-        return false;
-    }
-
-    // ── Nombre del receptor ───────────────────────────────────────────────
-    // Solo letras y espacios, sin números, mínimo 3 caracteres
-    if (id === "nombre") {
-        if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/.test(valor)) {
-            setEstadoCampo(input, false, "Los nombres no pueden contener números.");
-            return false;
-        }
-        if (valor.length < 3) {
-            setEstadoCampo(input, false, "El nombre debe tener mínimo 3 caracteres.");
-            return false;
-        }
-    }
-
-    // ── Dirección ─────────────────────────────────────────────────────────
-    // Solo caracteres válidos, mínimo 6 caracteres, y debe contener al menos una letra
-    if (id === "direccion") {
-        if (!/^[a-zA-Z0-9\s.,#\-\/°áéíóúÁÉÍÓÚñÑ]+$/.test(valor)) {
-            setEstadoCampo(input, false, "Ingresa una dirección válida (Ejemplo: Calle 12 #34-56).");
-            return false;
-        }
-        if (valor.length < 6) {
-            setEstadoCampo(input, false, "La dirección debe tener mínimo 6 caracteres.");
-            return false;
-        }
-        if (!/[a-zA-ZáéíóúÁÉÍÓÚñÑ]/.test(valor)) {
-            setEstadoCampo(input, false, "La dirección debe contener al menos una palabra (Ejemplo: Calle 12 #34-56).");
-            return false;
-        }
-    }
-
-    // ── Teléfono ──────────────────────────────────────────────────────────
-    // Regla tomada del registro: exactamente 10 dígitos
-    if (id === "telefono") {
-        if (!/^\d{10}$/.test(valor)) {
-            setEstadoCampo(input, false, "El número de teléfono debe tener mínimo y máximo 10 caracteres.");
-            return false;
-        }
-    }
-
-    // ── Select método de pago ─────────────────────────────────────────────
-    if (id === "idMetodo") {
-        if (input.value === "") {
-            setEstadoCampo(input, false, "Selecciona un método de pago.");
-            return false;
-        }
-    }
-
-    setEstadoCampo(input, true);
-    return true;
-}
-
-/** Valida todos los campos y devuelve true si el formulario es correcto */
-function validarFormulario() {
-    const campos = ["nombre", "direccion", "telefono", "idMetodo"];
-    let todoValido = true;
-
-    campos.forEach(idCampo => {
-        const input = document.getElementById(idCampo);
-        if (input && !validarCampo(input)) {
-            todoValido = false;
-        }
-    });
-
-    return todoValido;
-}
-
 document.addEventListener("DOMContentLoaded", () => {
     const urlParams = new URLSearchParams(window.location.search);
 
+    // Parámetros de compra directa (Flujo desde tarjetas individuales)
     const idProd     = urlParams.get("id");
     const nombreProd = urlParams.get("nombre");
     const precioProd = urlParams.get("precio");
     const status     = urlParams.get("status");
 
+    // Elementos de la interfaz
     const bloquePago      = document.getElementById("bloquePago");
     const resumenCompra   = document.getElementById("resumenCompra");
     const mensajeError    = document.getElementById("mensajeError");
     const inputTotalPago  = document.getElementById("totalPago");
 
+    // Inputs ocultos de control (Exclusivos para flujo de producto directo)
     const hiddenId     = document.getElementById("hiddenId");
     const hiddenNombre = document.getElementById("hiddenNombre");
     const hiddenPrecio = document.getElementById("hiddenPrecio");
@@ -180,6 +68,9 @@ document.addEventListener("DOMContentLoaded", () => {
     // 3. DETERMINACIÓN DEL RESUMEN DE COMPRA
     // =========================================================================
     if (idProd && nombreProd && precioProd) {
+        // -----------------------------------------------------------------
+        // FLUJO A: COMPRA DIRECTA DESDE TARJETA DE PRODUCTO
+        // -----------------------------------------------------------------
         const valorUnitario = parseFloat(precioProd);
         if (inputTotalPago) inputTotalPago.value = valorUnitario;
 
@@ -192,6 +83,12 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
     } else {
+        // -----------------------------------------------------------------
+        // FLUJO B: COMPRA DESDE CARRITO  |  FLUJO C: RECOMPRA DESDE PEDIDO CANCELADO
+        // La diferencia entre B y C se determina por la bandera 'esRecompra'
+        // que se guarda en localStorage cuando el usuario hace "Comprar nuevamente"
+        // desde pedidos.js. Sin esa bandera, se trata como compra normal del carrito.
+        // -----------------------------------------------------------------
         const esRecompra = localStorage.getItem("esRecompra") === "true";
 
         const listaProductos =
@@ -220,6 +117,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         if (inputTotalPago) inputTotalPago.value = totalCalculado;
 
+        // Setear idCarrito
         const inputIdCarrito = document.getElementById("idCarrito");
         if (inputIdCarrito) {
             if (!esRecompra) {
@@ -227,6 +125,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 inputIdCarrito.value = carritoValido ? carritoValido.idCarrito : 0;
                 console.log("idCarrito enviado al servlet:", inputIdCarrito.value);
             } else {
+                // En recompra se usa el carrito original del pedido cancelado
                 inputIdCarrito.value = localStorage.getItem("recompraIdCarrito") || 0;
                 console.log("recompra idCarrito original:", inputIdCarrito.value);
             }
@@ -237,6 +136,12 @@ document.addEventListener("DOMContentLoaded", () => {
                 `${resumenTexto} | Total: $${totalCalculado.toLocaleString('es-CO')}`;
         }
 
+        // -----------------------------------------------------------------
+        // En recompra: solo enviar la bandera esRecompra y la fechaPedidoOriginal.
+        // El DAO usará el idCarrito del pedido cancelado para encontrar los
+        // productos ya existentes en Carrito_Detalle — NO se insertan filas nuevas.
+        // En compra normal: no se necesitan campos extra.
+        // -----------------------------------------------------------------
         const formPago = document.querySelector('form');
         if (formPago) {
             formPago.querySelectorAll('[name^="checkout_"], [name="esRecompra"], [name="fechaPedidoOriginal"]').forEach(el => el.remove());
@@ -248,6 +153,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 flagInput.value    = 'true';
                 formPago.appendChild(flagInput);
 
+                // Fecha del pedido cancelado original para que el DAO cruce Carrito_Detalle
                 const fechaInput   = document.createElement('input');
                 fechaInput.type    = 'hidden';
                 fechaInput.name    = 'fechaPedidoOriginal';
@@ -255,57 +161,5 @@ document.addEventListener("DOMContentLoaded", () => {
                 formPago.appendChild(fechaInput);
             }
         }
-    }
-
-    // =========================================================================
-    // VALIDACIÓN EN TIEMPO REAL — muestra mensajes al salir del campo
-    // y los corrige en cuanto el usuario escribe lo correcto
-    // =========================================================================
-    const camposValidar = ["nombre", "direccion", "telefono", "idMetodo"];
-
-    camposValidar.forEach(idCampo => {
-        const input = document.getElementById(idCampo);
-        if (!input) return;
-
-        // Validar al perder el foco (incluso si está vacío)
-        input.addEventListener("blur", () => {
-            validarCampo(input);
-        });
-
-        // Revalidar mientras escribe solo si ya tiene un error visible
-        const eventoCambio = (idCampo === "idMetodo") ? "change" : "input";
-        input.addEventListener(eventoCambio, () => {
-            if (input.classList.contains("campo-error")) {
-                validarCampo(input);
-            }
-        });
-    });
-
-    // =========================================================================
-    // INTERCEPCIÓN DEL SUBMIT — bloquea el envío si hay errores
-    // =========================================================================
-    const formPagoEl = document.getElementById("formPago");
-    if (formPagoEl) {
-        formPagoEl.addEventListener("submit", (e) => {
-            const esValido = validarFormulario();
-
-            if (!esValido) {
-                e.preventDefault();
-
-                if (mensajeError) {
-                    mensajeError.innerText = "⚠️ Por favor corrige los campos marcados antes de continuar.";
-                    mensajeError.style.display = "block";
-                }
-
-                // Scroll y foco al primer campo con error
-                const primerError = formPagoEl.querySelector(".campo-error");
-                if (primerError) {
-                    primerError.scrollIntoView({ behavior: "smooth", block: "center" });
-                    primerError.focus();
-                }
-            } else {
-                if (mensajeError) mensajeError.style.display = "none";
-            }
-        });
     }
 });
