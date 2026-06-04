@@ -1499,7 +1499,10 @@ function tarjetaSolicitudProveedor(s) {
         ? `<p class="sol-card__fecha">Respondida: ${s.fechaRespuesta}</p>` : '';
 
     return `
-        <div class="sol-card sol-card--${s.estado.toLowerCase()}">
+        <div class="sol-card sol-card--${s.estado.toLowerCase()}" style="
+    background-color: #deceed;
+    padding: 15px;
+    border-radius: 11px;">
             <div class="sol-card__header">
                 <div style="display:flex;align-items:center;gap:10px;">
                     <span class="sol-card__tipo">${tipoIcono} ${s.tipo}</span>
