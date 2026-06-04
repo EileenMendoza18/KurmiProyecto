@@ -6,14 +6,18 @@ import com.kurmip.model.dao.CategoriaDAO;
 import com.kurmip.model.dao.SolicitudDAO;
 import com.kurmip.model.dto.UsuarioDTO;
 import jakarta.servlet.ServletException;
+import jakarta.servlet.annotation.MultipartConfig;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
-
+import jakarta.servlet.http.Part;
+import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.PrintWriter;
+import java.nio.file.Files;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -22,6 +26,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 /**
  * SolicitudesServlet
@@ -40,7 +45,15 @@ import java.util.Map;
  *  └── todasSolicitudes     → Admin ve todas las solicitudes pendientes/históricas
  */
 @WebServlet(name = "SolicitudesServlet", urlPatterns = {"/SolicitudesServlet"})
+@MultipartConfig(
+    fileSizeThreshold = 1024 * 1024,
+    maxFileSize       = 5  * 1024 * 1024,
+    maxRequestSize    = 10 * 1024 * 1024
+)
 public class SolicitudesServlet extends HttpServlet {
+
+    private static final String   CARPETA_IMG = "RESOURCES/img";
+    private static final String[] EXTS_OK     = {"jpg", "jpeg", "png", "webp", "gif"};
 
     // -------------------------------------------------------------------------
     // GET — Listar solicitudes
@@ -68,6 +81,21 @@ public class SolicitudesServlet extends HttpServlet {
             String accion = param(request, "accion");
 
             switch (accion) {
+
+                // -----------------------------------------------------------------
+                // Admin: listar categorías y sabores existentes (para el formulario directo)
+                // -----------------------------------------------------------------
+                case "listar" -> {
+                    if (usuario.getIdRol() != 2) {
+                        response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                        resp.put("ok", false); resp.put("error", "Acceso denegado");
+                        out.print(new Gson().toJson(resp)); return;
+                    }
+                    CategoriaDAO dao = new CategoriaDAO();
+                    resp.put("categorias", dao.obtenerCategoriasConId());
+                    resp.put("sabores",    dao.obtenerSaboresConId());
+                    out.print(new Gson().toJson(resp));
+                }
 
                 // -----------------------------------------------------------------
                 // Proveedor: ver sus propias solicitudes
@@ -226,6 +254,72 @@ public class SolicitudesServlet extends HttpServlet {
                     out.print(new Gson().toJson(resp));
                 }
 
+                case "crearDirecto" -> {
+                    // Admin crea una categoría/sabor directamente, sin solicitud de proveedor.
+                    // Reutiliza la misma lógica de crearDesdeAprobacion pero sin idSolicitud.
+                    if (usuario.getIdRol() != 2) {
+                        response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                        resp.put("ok", false); resp.put("error", "Solo administradores");
+                        out.print(new Gson().toJson(resp)); return;
+                    }
+
+                    String tipo        = param(request, "tipo");
+                    String nomCat      = param(request, "nombreCat");
+                    String descCat     = param(request, "descCat");
+                    String nomSabor    = param(request, "nombreSabor");
+                    String descSabor   = param(request, "descSabor");
+                    String idCatExStr  = param(request, "idCatExistente");
+                    String idSaborExStr= param(request, "idSaborExistente");
+
+                    if (tipo.isEmpty()) {
+                        resp.put("ok", false); resp.put("error", "El parámetro 'tipo' es requerido (Categoria | Sabor | Ambos)");
+                        out.print(new Gson().toJson(resp)); return;
+                    }
+
+                    SolicitudDAO solDAO = new SolicitudDAO();
+                    int idCat   = -1;
+                    int idSabor = -1;
+
+                    if (tipo.equals("Categoria") || tipo.equals("Ambos")) {
+                        if (nomCat.isEmpty()) {
+                            resp.put("ok", false); resp.put("error", "El nombre de la categoría es obligatorio.");
+                            out.print(new Gson().toJson(resp)); return;
+                        }
+                        // Guardar imagen si viene
+                        String nombreFoto = guardarImagenCategoria(request, response, out, resp);
+                        if ("_ERROR_".equals(nombreFoto)) return; // formato inválido, ya respondió
+                        idCat = solDAO.insertarCategoriaConFoto(nomCat, descCat, nombreFoto);
+                    }
+
+                    if (tipo.equals("Sabor") || tipo.equals("Ambos")) {
+                        if (nomSabor.isEmpty()) {
+                            resp.put("ok", false); resp.put("error", "El nombre del sabor es obligatorio.");
+                            out.print(new Gson().toJson(resp)); return;
+                        }
+                        idSabor = solDAO.insertarSabor(nomSabor, descSabor);
+                    }
+
+                    // Crear relación (misma lógica que crearDesdeAprobacion)
+                    if (tipo.equals("Ambos") && idCat > 0 && idSabor > 0) {
+                        solDAO.insertarRelacion(idCat, idSabor);
+                    } else if (tipo.equals("Categoria") && idCat > 0 && !idSaborExStr.isEmpty()) {
+                        int idSaborEx = Integer.parseInt(idSaborExStr);
+                        if (idSaborEx > 0) solDAO.insertarRelacion(idCat, idSaborEx);
+                    } else if (tipo.equals("Sabor") && idSabor > 0 && !idCatExStr.isEmpty()) {
+                        int idCatEx = Integer.parseInt(idCatExStr);
+                        if (idCatEx > 0) solDAO.insertarRelacion(idCatEx, idSabor);
+                    }
+
+                    boolean todoOk = (tipo.equals("Categoria") && idCat > 0)
+                                  || (tipo.equals("Sabor")     && idSabor > 0)
+                                  || (tipo.equals("Ambos")     && idCat > 0 && idSabor > 0);
+
+                    resp.put("ok", todoOk);
+                    if (todoOk) resp.put("mensaje", "Creado y relacionado correctamente.");
+                    else { response.setStatus(500); resp.put("error", "Error al insertar en la base de datos."); }
+                    out.print(new Gson().toJson(resp));
+                }
+
                 case "crearDesdeAprobacion" -> {
     if (usuario.getIdRol() != 2) { /* 403 */ return; }
 
@@ -247,7 +341,14 @@ public class SolicitudesServlet extends HttpServlet {
             resp.put("ok", false); resp.put("error", "Nombre de categoría requerido");
             out.print(new Gson().toJson(resp)); return;
         }
-        idCat = solDAO.insertarCategoria(nomCat, descCat);
+        // Intentar guardar imagen si viene adjunta
+        String nombreImg = guardarImagenCategoria(request, response, out, resp);
+        if ("_ERROR_".equals(nombreImg)) return;  // respuesta ya enviada
+        if (nombreImg != null) {
+            idCat = solDAO.insertarCategoriaConFoto(nomCat, descCat, nombreImg);
+        } else {
+            idCat = solDAO.insertarCategoria(nomCat, descCat);
+        }
     }
     if (tipo.equals("Sabor") || tipo.equals("Ambos")) {
         if (nomSabor.isEmpty()) {
@@ -572,5 +673,52 @@ public class SolicitudesServlet extends HttpServlet {
         try { if (rs  != null) rs.close();  } catch (Exception ignored) {}
         try { if (ps  != null) ps.close();  } catch (Exception ignored) {}
         try { if (con != null) con.close(); } catch (Exception ignored) {}
+    }
+
+    /**
+     * Guarda la imagen de categoría (campo "imagenCat") en RESOURCES/img.
+     * Retorna el nombre del archivo guardado, null si no viene imagen, o "_ERROR_" si el formato es inválido.
+     */
+    private String guardarImagenCategoria(HttpServletRequest request, HttpServletResponse response,
+                                          PrintWriter out, Map<String, Object> resp)
+            throws IOException, ServletException {
+        Part filePart = null;
+        try { filePart = request.getPart("imagenCat"); } catch (Exception ignored) {}
+        if (filePart == null || filePart.getSize() == 0) return null;
+
+        String original = new File(filePart.getSubmittedFileName()).getName();
+        int dot = original.lastIndexOf('.');
+        String ext = (dot == -1) ? "" : original.substring(dot + 1).toLowerCase();
+
+        boolean extValida = false;
+        for (String e : EXTS_OK) if (e.equals(ext)) { extValida = true; break; }
+        if (!extValida) {
+            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+            resp.put("ok", false);
+            resp.put("error", "Formato de imagen no permitido. Use: jpg, jpeg, png, webp o gif");
+            out.print(new Gson().toJson(resp));
+            return "_ERROR_";
+        }
+
+        String nombreImg = "cat_" + UUID.randomUUID().toString().replace("-", "").substring(0, 10) + "." + ext;
+
+        String buildWeb  = getServletContext().getRealPath("");
+        String rutaBuild = buildWeb + CARPETA_IMG.replace("/", File.separator);
+        String rutaFuente = buildWeb
+                .replace("build" + File.separator + "web" + File.separator, "")
+                + "web" + File.separator
+                + CARPETA_IMG.replace("/", File.separator);
+
+        File dirBuild  = new File(rutaBuild);
+        File dirFuente = new File(rutaFuente);
+        if (!dirBuild.exists())  dirBuild.mkdirs();
+        if (!dirFuente.exists()) dirFuente.mkdirs();
+
+        try (InputStream is = filePart.getInputStream()) {
+            byte[] bytes = is.readAllBytes();
+            Files.write(new File(dirBuild,  nombreImg).toPath(), bytes);
+            Files.write(new File(dirFuente, nombreImg).toPath(), bytes);
+        }
+        return nombreImg;
     }
 }
