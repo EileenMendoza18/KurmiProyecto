@@ -343,78 +343,6 @@ function cerrarModalEstado() {
 
 // ── Modal de detalle de producto (vista similar al cliente + datos de admin) ──
 function abrirModalDetalleAdmin(prod) {
-    // Inyectar estilos solo una vez
-    if (!document.getElementById('estilos-modal-detalle-admin')) {
-        const style = document.createElement('style');
-        style.id = 'estilos-modal-detalle-admin';
-        style.textContent = `
-            .mda-overlay {
-                position: fixed; inset: 0;
-                background: rgba(74,59,83,.55);
-                backdrop-filter: blur(3px);
-                z-index: 9999;
-                display: flex; align-items: center; justify-content: center;
-                padding: 16px;
-                animation: mdaFadeIn .18s ease;
-            }
-            @keyframes mdaFadeIn { from { opacity:0 } to { opacity:1 } }
-            .mda-modal {
-                background: #fff; border-radius: 20px;
-                max-width: 540px; width: 100%;
-                box-shadow: 0 12px 48px rgba(74,59,83,.22);
-                overflow: hidden;
-                animation: mdaSlideUp .22s ease;
-                display: flex; flex-direction: column;
-                max-height: 92vh; overflow-y: auto;
-            }
-            @keyframes mdaSlideUp {
-                from { transform:translateY(28px); opacity:0 }
-                to   { transform:translateY(0);    opacity:1 }
-            }
-            .mda-img-wrap {
-                position: relative; width: 100%; height: 220px;
-                background: #F4EEFF; overflow: hidden; flex-shrink: 0;
-            }
-            .mda-img-wrap img { width:100%; height:100%; object-fit:cover; }
-            .mda-cerrar {
-                position: absolute; top:12px; right:14px;
-                background: rgba(255,255,255,.85); border: none;
-                border-radius: 50%; width:32px; height:32px;
-                font-size:1rem; cursor:pointer; color:#4A3B53;
-                box-shadow: 0 2px 8px rgba(0,0,0,.15);
-                display:flex; align-items:center; justify-content:center;
-            }
-            .mda-cerrar:hover { background:#fff; }
-            .mda-body { padding: 24px 28px 16px; display:flex; flex-direction:column; gap:10px; }
-            .mda-nombre { font-size:1.35rem; font-weight:700; color:#4A3B53; margin:0; }
-            .mda-precio { font-size:1.45rem; font-weight:800; color:#7C4DFF; margin:0; }
-            .mda-desc   { font-size:.9rem; color:#666; line-height:1.5; margin:0; }
-            .mda-grid {
-                display: grid; grid-template-columns: 1fr 1fr;
-                gap: 8px 16px; margin-top:4px;
-            }
-            .mda-campo { display:flex; flex-direction:column; gap:2px; }
-            .mda-label {
-                font-size:.72rem; font-weight:700; color:#a68fc0;
-                text-transform:uppercase; letter-spacing:.04em;
-            }
-            .mda-valor { font-size:.88rem; color:#333; font-weight:500; }
-            .mda-badge-row { display:flex; align-items:center; gap:8px; }
-            .mda-footer {
-                padding: 0 28px 24px; display:flex; gap:10px; flex-wrap: wrap;
-            }
-            .mda-btn-estado {
-                flex:1; padding:12px;
-                background: #7C4DFF; color:#fff;
-                border:none; border-radius:12px;
-                font-size:.95rem; font-weight:700; cursor:pointer;
-                transition: background .15s;
-            }
-            .mda-btn-estado:hover { background:#6a3de8; }
-        `;
-        document.head.appendChild(style);
-    }
-
     document.getElementById('mda-root')?.remove();
 
     const BASE_IMG_MODAL = '/KurmiProyect/RESOURCES/img/';
@@ -1749,7 +1677,7 @@ function mostrarPaso2Creacion() {
                <input type="file" id="paso2-imagenCat" accept="image/png,image/jpeg,image/webp,image/gif"
                       style="display:none;" />
                <div class="p2-upload-placeholder" id="p2-upload-placeholder">
-                   <span class="p2-upload-icon">📷</span>
+                   <span class="p2-upload-icon"></span>
                    <span>Haz clic para seleccionar una imagen</span>
                    <small>PNG, JPG, WEBP · Máx. 5 MB</small>
                </div>
@@ -2631,52 +2559,6 @@ function renderTablaPagos(filas) {
     }).join('');
 
     contenedor.innerHTML = `
-        <style>
-            #tablaPagosProveedores table {
-                width: 100%;
-                border-collapse: collapse;
-                font-size: .88rem;
-                background: #fff;
-                border-radius: 14px;
-                overflow: hidden;
-                box-shadow: 0 2px 12px rgba(74,59,83,.08);
-            }
-            #tablaPagosProveedores thead tr {
-                background: #f0e8ff;
-                color: #4A3B53;
-            }
-            #tablaPagosProveedores th {
-                padding: 12px 14px;
-                text-align: left;
-                font-weight: 700;
-                font-size: .8rem;
-                text-transform: uppercase;
-                letter-spacing: .04em;
-            }
-            #tablaPagosProveedores td {
-                padding: 12px 14px;
-                border-bottom: 1px solid #f5f0ff;
-                vertical-align: top;
-                color: #333;
-            }
-            #tablaPagosProveedores tr:last-child td { border-bottom: none; }
-            #tablaPagosProveedores tr:hover td { background: #faf7ff; }
-            .td-monto { font-size: 1rem; color: #7C4DFF; }
-            .pago-prods-wrap { display: flex; flex-direction: column; gap: 6px; }
-            .pago-prod-item {
-                display: flex; flex-direction: column; gap: 1px;
-                background: #f8f5ff; border-radius: 8px; padding: 6px 10px;
-            }
-            .pago-prod-nombre { font-weight: 600; color: #4A3B53; font-size:.85rem; }
-            .pago-prod-detalle { color: #888; font-size:.78rem; }
-            .pago-prod-sub { font-size:.82rem; color:#555; }
-            .badge { padding: 4px 10px; border-radius: 20px; font-size:.78rem; font-weight:700; }
-            .badge--verde    { background:#e6f9f0; color:#1a7a4a; }
-            .badge--rojo     { background:#ffe8e8; color:#c0392b; }
-            .badge--amarillo { background:#fff8e1; color:#b7860b; }
-            .badge--azul     { background:#e8f0ff; color:#2962ff; }
-            .badge--morado   { background:#f0e8ff; color:#7C4DFF; }
-        </style>
         <table>
             <thead>
                 <tr>
@@ -2730,13 +2612,13 @@ async function renderSeccionGestionCatSabor() {
         <!-- Botones de acción compactos -->
         <div class="cs-acciones-bar">
             <button class="cs-btn-accion" id="btnElegirCategoria">
-                <span class="cs-btn-icon">🗂️</span> Nueva Categoría
+                <span class="cs-btn-icon">️</span> Nueva Categoría
             </button>
             <button class="cs-btn-accion" id="btnElegirSabor">
-                <span class="cs-btn-icon">🍦</span> Nuevo Sabor
+                <span class="cs-btn-icon"></span> Nuevo Sabor
             </button>
             <button class="cs-btn-accion" id="btnElegirAmbos">
-                <span class="cs-btn-icon">✨</span> Categoría + Sabor
+                <span class="cs-btn-icon"></span> Categoría + Sabor
             </button>
         </div>
 
@@ -2750,7 +2632,7 @@ async function renderSeccionGestionCatSabor() {
         <div class="cs-listas-wrap">
             <div class="cs-lista-panel">
                 <div class="cs-lista-header">
-                    <span class="cs-lista-icon">🗂️</span>
+                    <span class="cs-lista-icon"></span>
                     <h3>Categorías registradas</h3>
                     <span class="cs-lista-badge" id="cs-badge-cats">0</span>
                 </div>
@@ -2761,7 +2643,7 @@ async function renderSeccionGestionCatSabor() {
 
             <div class="cs-lista-panel">
                 <div class="cs-lista-header">
-                    <span class="cs-lista-icon">🍦</span>
+                    <span class="cs-lista-icon"></span>
                     <h3>Sabores registrados</h3>
                     <span class="cs-lista-badge" id="cs-badge-sabores">0</span>
                 </div>
@@ -2862,7 +2744,7 @@ function _mostrarFormCS(tipo) {
                 <input type="file" id="cs-imagenCat" accept="image/png,image/jpeg,image/webp,image/gif"
                        style="display:none;" />
                 <div class="cs-upload-placeholder" id="cs-upload-placeholder">
-                    <span class="cs-upload-icon">📷</span>
+                    <span class="cs-upload-icon"></span>
                     <span>Haz clic para seleccionar una imagen</span>
                     <small>PNG, JPG, WEBP, GIF · Máx. 5 MB</small>
                 </div>
