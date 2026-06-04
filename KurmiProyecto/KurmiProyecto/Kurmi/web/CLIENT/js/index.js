@@ -211,11 +211,22 @@ async function cargarCategoriasGaleria(contenedorId) {
 
         contenedor.innerHTML = ''; 
 
-        categorias.forEach(nombreCat => {
+        categorias.forEach(cat => {
+            // cat ahora es { nombre, foto } — compatible con el nuevo CategoriaDAO
+            const nombreCat = typeof cat === 'string' ? cat : cat.nombre;
+            const fotoFile  = typeof cat === 'string' ? 'categorias.jpg' : (cat.foto || 'categorias.jpg');
+
             const nuevaCat = plantillaOriginal.cloneNode(true);
 
             const pNombre = nuevaCat.querySelector('p');
             if (pNombre) pNombre.textContent = nombreCat;
+
+            // Poner la foto propia de la categoría
+            const imgEl = nuevaCat.querySelector('img');
+            if (imgEl) {
+                imgEl.src = `../../RESOURCES/img/${fotoFile}`;
+                imgEl.alt = nombreCat;
+            }
 
             nuevaCat.setAttribute('data-categoria', nombreCat.trim());
             nuevaCat.style.cursor = 'pointer';
@@ -252,7 +263,10 @@ async function cargarCategoriasAside(contenedorId) {
         // SVG genérico de postre (cupcake)
         const iconoPostre = `<img src="../../RESOURCES/img/postreAside.png" alt="Toggle">`;
 
-        categorias.forEach(nombreCat => {
+        categorias.forEach(cat => {
+            // cat ahora es { nombre, foto } — extraemos solo el nombre para el aside
+            const nombreCat = typeof cat === 'string' ? cat : cat.nombre;
+
             // --- Icono lateral ---
             if (contenedorIconos) {
                 const divIcono = document.createElement('div');

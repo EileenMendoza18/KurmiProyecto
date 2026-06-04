@@ -29,12 +29,14 @@ function configurarNavegacion() {
             btn.classList.add('nav__btn--activo');
             const seccion = btn.dataset.seccion;
             if      (seccion === 'productos') renderSeccionProductos();
+            else if (seccion === 'gestionCatSabor') renderSeccionGestionCatSabor();
             else if (seccion === 'clientes')  renderSeccionClientes();
             else if (seccion === 'pedidos') renderSeccionPedidos();
             else if (seccion === 'perfil')    renderSeccionPerfil();
             else if (seccion === 'solicitudes') renderSeccionSolicitudesAdmin();
             else if (seccion === 'cancelaciones') renderSeccionCancelacionesAdmin();
             else if (seccion === 'devoluciones') renderSeccionDevolucionesAdmin();
+            else if (seccion === 'pagosProveedores') renderSeccionPagosProveedores();
         });
     });
 }
@@ -1727,24 +1729,46 @@ async function guardarRespuestaSolicitud() {
 function mostrarPaso2Creacion() {
     const sol = todasLasSolicitudes.find(s => s.idSolicitud === solicitudSeleccionadaId);
     if (!sol) return;
-    const camposCat = (sol.tipo === 'Categoria' || sol.tipo === 'Ambos')
-    ? `<label class="sol-label">Nombre de la categoría <span class="sol-required">*</span></label>
-       <input id="paso2-nombreCat" class="sol-input" type="text"
-              value="${sol.nombreCat ?? ''}" maxlength="50" />
-       <label class="sol-label" style="margin-top:10px;display:block;">Descripción de la categoría</label>
-       <input id="paso2-descCat" class="sol-input" type="text"
-              placeholder="Ej: Postres horneados, cremas…" maxlength="100" />`
+
+    const conFotoCat = sol.tipo === 'Categoria' || sol.tipo === 'Ambos';
+
+    const camposCat = conFotoCat
+    ? `<div class="p2-grupo">
+           <label class="sol-label">Nombre de la categoría <span class="sol-required">*</span></label>
+           <input id="paso2-nombreCat" class="sol-input" type="text"
+                  value="${sol.nombreCat ?? ''}" maxlength="50" />
+       </div>
+       <div class="p2-grupo">
+           <label class="sol-label">Descripción de la categoría</label>
+           <input id="paso2-descCat" class="sol-input" type="text"
+                  placeholder="Ej: Postres horneados, cremas…" maxlength="100" />
+       </div>
+       <div class="p2-grupo">
+           <label class="sol-label">Foto de la categoría</label>
+           <div class="p2-upload-area" id="p2-upload-area">
+               <input type="file" id="paso2-imagenCat" accept="image/png,image/jpeg,image/webp,image/gif"
+                      style="display:none;" />
+               <div class="p2-upload-placeholder" id="p2-upload-placeholder">
+                   <span class="p2-upload-icon">📷</span>
+                   <span>Haz clic para seleccionar una imagen</span>
+                   <small>PNG, JPG, WEBP · Máx. 5 MB</small>
+               </div>
+               <img id="p2-preview-img" class="p2-preview-img" style="display:none;" alt="Vista previa" />
+           </div>
+       </div>`
     : '';
 
-const camposSabor = (sol.tipo === 'Sabor' || sol.tipo === 'Ambos')
-    ? `<label class="sol-label" style="margin-top:12px;display:block;">
-           Nombre del sabor <span class="sol-required">*</span>
-       </label>
-       <input id="paso2-nombreSabor" class="sol-input" type="text"
-              value="${sol.nombreSabor ?? ''}" maxlength="50" />
-       <label class="sol-label" style="margin-top:10px;display:block;">Descripción del sabor</label>
-       <input id="paso2-descSabor" class="sol-input" type="text"
-              placeholder="Ej: Fruta tropical, cítrico…" maxlength="100" />`
+    const camposSabor = (sol.tipo === 'Sabor' || sol.tipo === 'Ambos')
+    ? `<div class="p2-grupo">
+           <label class="sol-label">Nombre del sabor <span class="sol-required">*</span></label>
+           <input id="paso2-nombreSabor" class="sol-input" type="text"
+                  value="${sol.nombreSabor ?? ''}" maxlength="50" />
+       </div>
+       <div class="p2-grupo">
+           <label class="sol-label">Descripción del sabor</label>
+           <input id="paso2-descSabor" class="sol-input" type="text"
+                  placeholder="Ej: Fruta tropical, cítrico…" maxlength="100" />
+       </div>`
     : '';
 
     // Info de relación para tipo Categoria o Sabor
@@ -1757,7 +1781,7 @@ const camposSabor = (sol.tipo === 'Sabor' || sol.tipo === 'Ambos')
                🔗 Se relacionará con la categoría existente: <strong>${sol.nombreCatExistente}</strong>
            </div>`
         : '';
- 
+
     document.getElementById('solModalDetalle').innerHTML = `
         <div class="feedback feedback--ok" style="margin-bottom:14px;">
             Solicitud aprobada. Ahora crea la ${sol.tipo.toLowerCase()} en el catálogo:
@@ -1768,11 +1792,40 @@ const camposSabor = (sol.tipo === 'Sabor' || sol.tipo === 'Ambos')
         <span class="error-msg" id="error-paso2"></span>
     `;
 
-    // Ocultar botones de decisión, mostrar solo Confirmar
+    // Ocultar sección "Decisión" completa (label + botones + motivo)
+    const labelDecision = document.querySelector('.sol-label[for], .sol-label');
+    // Ocultar todo el bloque de decisión buscando el label de "Decisión"
+    const allLabels = document.querySelectorAll('.modal__body .sol-label');
+    allLabels.forEach(lbl => {
+        if (lbl.textContent.includes('Decisión')) {
+            lbl.style.display = 'none';
+        }
+    });
     document.querySelector('.sol-decision-btns').style.display = 'none';
     document.getElementById('sol-motivo-wrap').style.display   = 'none';
     document.getElementById('feedbackResponder').innerHTML      = '';
     document.getElementById('modalSolTitulo').textContent       = '➕ Crear en catálogo';
+
+    // Activar preview de imagen si aplica
+    if (conFotoCat) {
+        const inputImg   = document.getElementById('paso2-imagenCat');
+        const uploadArea = document.getElementById('p2-upload-area');
+        if (inputImg && uploadArea) {
+            uploadArea.addEventListener('click', () => inputImg.click());
+            inputImg.addEventListener('change', () => {
+                const file = inputImg.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = e => {
+                    document.getElementById('p2-upload-placeholder').style.display = 'none';
+                    const prev = document.getElementById('p2-preview-img');
+                    prev.src = e.target.result;
+                    prev.style.display = 'block';
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+    }
 
     const btnConfirmar = document.getElementById('confirmarResponder');
     btnConfirmar.disabled    = false;
@@ -1792,7 +1845,7 @@ async function crearDesdeAprobacion(sol) {
     const descCat     = document.getElementById('paso2-descCat')?.value.trim()     ?? '';
     const nombreSabor = document.getElementById('paso2-nombreSabor')?.value.trim() ?? '';
     const descSabor   = document.getElementById('paso2-descSabor')?.value.trim()   ?? '';
-    const errorEl     = document.getElementById('error-paso2');   // ← agregar esto
+    const errorEl     = document.getElementById('error-paso2');
 
     errorEl.textContent = '';
 
@@ -1806,21 +1859,28 @@ async function crearDesdeAprobacion(sol) {
     const btn = document.getElementById('confirmarResponder');
     btn.disabled = true;
 
+    // Usar FormData para poder enviar la imagen
+    const fd = new FormData();
+    fd.append('accion',           'crearDesdeAprobacion');
+    fd.append('idSolicitud',      solicitudSeleccionadaId);
+    fd.append('tipo',             sol.tipo);
+    fd.append('nombreCat',        nombreCat);
+    fd.append('descCat',          descCat);
+    fd.append('nombreSabor',      nombreSabor);
+    fd.append('descSabor',        descSabor);
+    fd.append('idCatExistente',   sol.idCatExistente   ?? '');
+    fd.append('idSaborExistente', sol.idSaborExistente ?? '');
+
+    // Adjuntar imagen si existe
+    const imgInput = document.getElementById('paso2-imagenCat');
+    if (imgInput && imgInput.files[0]) {
+        fd.append('imagenCat', imgInput.files[0]);
+    }
+
     try {
         const res = await fetch(`${BASE_URL}/SolicitudesServlet`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: new URLSearchParams({
-                accion:          'crearDesdeAprobacion',
-                idSolicitud:     solicitudSeleccionadaId,
-                tipo:            sol.tipo,
-                nombreCat,
-                descCat,
-                nombreSabor,
-                descSabor,
-                idCatExistente:   sol.idCatExistente   ?? '',
-                idSaborExistente: sol.idSaborExistente ?? ''
-            }).toString()
+            body: fd   // sin Content-Type: el browser lo agrega automáticamente con boundary
         });
 
         const data = await res.json();
@@ -2386,5 +2446,590 @@ async function enviarRespuestaCancelacion() {
         errorEl.classList.remove('hidden');
         btnC.disabled = false;
         btnC.textContent = 'Confirmar';
+    }
+}
+// ─────────────────────────────────────────────────────────────────────────────
+// SECCIÓN PAGOS A PROVEEDORES
+// ─────────────────────────────────────────────────────────────────────────────
+
+async function renderSeccionPagosProveedores() {
+    const main = document.getElementById('contenidoPrincipal');
+    main.innerHTML = `
+        <div class="seccion-header">
+            <h2>Pagos a proveedores</h2>
+        </div>
+
+        <!-- Resumen general -->
+        <div class="admin-stats-bar" id="statsPagos">
+            <div class="stat-card">
+                <div class="stat-card__icon"></div>
+                <div class="stat-card__info">
+                    <span class="stat-card__label">Total pagado a proveedores</span>
+                    <span class="stat-card__valor" id="statTotalPagado">—</span>
+                    <span class="stat-card__sub" id="statTotalPedidosProv">Cargando...</span>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-card__icon"></div>
+                <div class="stat-card__info">
+                    <span class="stat-card__label">Proveedores con cobros</span>
+                    <span class="stat-card__valor" id="statProveedoresUnicos">—</span>
+                    <span class="stat-card__sub">proveedores distintos</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filtros -->
+        <div class="filtros-bar">
+            <input type="text" id="filtroPagoProv" class="filtro-input"
+                   placeholder="Buscar proveedor o pedido…"/>
+            <select id="filtroEstadoPago" class="filtro-select">
+                <option value="">Todos los estados</option>
+                <option value="Pendiente">Pendiente</option>
+                <option value="Completado">Completado</option>
+                <option value="Cancelado">Cancelado</option>
+            </select>
+            <button class="btn-limpiar" id="btnLimpiarPagosFiltros">✕ Limpiar</button>
+        </div>
+
+        <p class="contador-resultados" id="contadorPagos"></p>
+
+        <!-- Tabla de pagos -->
+        <div id="tablaPagosProveedores" style="overflow-x:auto; margin-top:12px;">
+            <p class="cargando">Cargando pagos…</p>
+        </div>
+    `;
+
+    document.getElementById('filtroPagoProv').addEventListener('input', filtrarPagos);
+    document.getElementById('filtroEstadoPago').addEventListener('change', filtrarPagos);
+    document.getElementById('btnLimpiarPagosFiltros').addEventListener('click', () => {
+        document.getElementById('filtroPagoProv').value = '';
+        document.getElementById('filtroEstadoPago').value = '';
+        filtrarPagos();
+    });
+
+    await cargarPagosProveedores();
+}
+
+// Datos cacheados para el filtrado
+let _filasPagos = [];
+
+async function cargarPagosProveedores() {
+    const contenedor = document.getElementById('tablaPagosProveedores');
+    try {
+        // Reutilizamos el endpoint de pedidos del admin con todos los estados (-1)
+        const res = await fetch(`${BASE_URL}/PedidosAdminServlet?filtro=todos`);
+        if (!res.ok) throw new Error('Error al obtener pedidos');
+        const pedidos = await res.json();
+
+        // Construimos una fila por cada proveedor dentro de cada pedido
+        const filas = [];
+        for (const pedido of pedidos) {
+            if (!pedido.proveedores || pedido.proveedores.length === 0) continue;
+
+            for (const prov of pedido.proveedores) {
+                // Calcular subtotal que corresponde a este proveedor
+                const subtotalProv = (prov.productos || [])
+                    .reduce((acc, p) => acc + (p.subtotal || 0), 0);
+
+                // Derivar estado del pago a partir del estado del pedido (igual que el backend)
+                // 1 = Pendiente, 2 = Completado (entregado=8), 3 = Cancelado (3 o 11)
+                let estadoPago, nombreEstadoPago;
+                if (pedido.estadoPedido === 8) {
+                    estadoPago = 2; nombreEstadoPago = 'Completado';
+                } else if (pedido.estadoPedido === 3 || pedido.estadoPedido === 11) {
+                    estadoPago = 3; nombreEstadoPago = 'Cancelado';
+                } else {
+                    estadoPago = 1; nombreEstadoPago = 'Pendiente';
+                }
+
+                filas.push({
+                    idPedido:           pedido.idPedido,
+                    fechaPedido:        pedido.fechaPedido,
+                    estadoPedido:       pedido.estadoPedido,
+                    estadoPago:         estadoPago,
+                    nombreEstadoPago:   nombreEstadoPago,
+                    metodoPago:         pedido.metodoPago    || '—',
+                    totalPedido:        pedido.totalPago     || 0,
+                    cliente:            pedido.cliente       || '—',
+                    proveedor:          prov.nombre          || '—',
+                    productos:          prov.productos       || [],
+                    subtotal:           subtotalProv
+                });
+            }
+        }
+
+        _filasPagos = filas;
+        renderTablaPagos(filas);
+        actualizarStatsPagos(filas);
+
+    } catch (e) {
+        console.error('Error cargando pagos a proveedores:', e);
+        if (contenedor) contenedor.innerHTML = `<p class="error-txt">No se pudieron cargar los pagos. Intenta de nuevo.</p>`;
+    }
+}
+
+function actualizarStatsPagos(filas) {
+    const totalPagado = filas
+        .filter(f => f.estadoPago === 2)
+        .reduce((acc, f) => acc + f.subtotal, 0);
+
+    const provUnicos = new Set(filas.map(f => f.proveedor)).size;
+
+    const elTotal = document.getElementById('statTotalPagado');
+    const elSub   = document.getElementById('statTotalPedidosProv');
+    const elProv  = document.getElementById('statProveedoresUnicos');
+
+    if (elTotal) elTotal.textContent = `$${totalPagado.toLocaleString('es-CO')}`;
+    if (elSub)   elSub.textContent   = `${filas.length} registros en total`;
+    if (elProv)  elProv.textContent  = provUnicos;
+}
+
+function renderTablaPagos(filas) {
+    const contenedor = document.getElementById('tablaPagosProveedores');
+    const contador   = document.getElementById('contadorPagos');
+    if (!contenedor) return;
+
+    if (contador) contador.textContent = `${filas.length} registro${filas.length !== 1 ? 's' : ''}`;
+
+    if (filas.length === 0) {
+        contenedor.innerHTML = `<p style="color:#888;text-align:center;padding:40px;">No hay pagos que coincidan con los filtros.</p>`;
+        return;
+    }
+
+    const filasBadge = (f) => {
+        const colores = {
+            1: ['#fff8e1','#b7860b'],  // Pendiente
+            2: ['#e6f9f0','#1a7a4a'],  // Completado
+            3: ['#ffe8e8','#c0392b'],  // Cancelado
+        };
+        const [bg, color] = colores[f.estadoPago] || ['#f5f5f5','#555'];
+        return `<span style="padding:4px 10px;border-radius:20px;font-size:.78rem;font-weight:700;background:${bg};color:${color}">${f.nombreEstadoPago}</span>`;
+    };
+
+    const rows = filas.map(f => {
+        const productosHtml = f.productos.map(p =>
+            `<div class="pago-prod-item">
+                <span class="pago-prod-nombre">${p.nombre}</span>
+                <span class="pago-prod-detalle">x${p.cantidad} · $${Number(p.precio).toLocaleString('es-CO')} c/u</span>
+                <span class="pago-prod-sub">Subtotal: <strong>$${Number(p.subtotal).toLocaleString('es-CO')}</strong></span>
+             </div>`
+        ).join('');
+
+        return `
+        <tr>
+            <td><strong>#${f.idPedido}</strong><br><small>${f.fechaPedido}</small></td>
+            <td>${f.cliente}</td>
+            <td><strong>${f.proveedor}</strong></td>
+            <td>
+                <div class="pago-prods-wrap">${productosHtml || '<em>Sin productos</em>'}</div>
+            </td>
+            <td class="td-monto"><strong>$${f.subtotal.toLocaleString('es-CO')}</strong></td>
+            <td>${f.metodoPago}</td>
+            <td>${filasBadge(f)}</td>
+        </tr>`;
+    }).join('');
+
+    contenedor.innerHTML = `
+        <style>
+            #tablaPagosProveedores table {
+                width: 100%;
+                border-collapse: collapse;
+                font-size: .88rem;
+                background: #fff;
+                border-radius: 14px;
+                overflow: hidden;
+                box-shadow: 0 2px 12px rgba(74,59,83,.08);
+            }
+            #tablaPagosProveedores thead tr {
+                background: #f0e8ff;
+                color: #4A3B53;
+            }
+            #tablaPagosProveedores th {
+                padding: 12px 14px;
+                text-align: left;
+                font-weight: 700;
+                font-size: .8rem;
+                text-transform: uppercase;
+                letter-spacing: .04em;
+            }
+            #tablaPagosProveedores td {
+                padding: 12px 14px;
+                border-bottom: 1px solid #f5f0ff;
+                vertical-align: top;
+                color: #333;
+            }
+            #tablaPagosProveedores tr:last-child td { border-bottom: none; }
+            #tablaPagosProveedores tr:hover td { background: #faf7ff; }
+            .td-monto { font-size: 1rem; color: #7C4DFF; }
+            .pago-prods-wrap { display: flex; flex-direction: column; gap: 6px; }
+            .pago-prod-item {
+                display: flex; flex-direction: column; gap: 1px;
+                background: #f8f5ff; border-radius: 8px; padding: 6px 10px;
+            }
+            .pago-prod-nombre { font-weight: 600; color: #4A3B53; font-size:.85rem; }
+            .pago-prod-detalle { color: #888; font-size:.78rem; }
+            .pago-prod-sub { font-size:.82rem; color:#555; }
+            .badge { padding: 4px 10px; border-radius: 20px; font-size:.78rem; font-weight:700; }
+            .badge--verde    { background:#e6f9f0; color:#1a7a4a; }
+            .badge--rojo     { background:#ffe8e8; color:#c0392b; }
+            .badge--amarillo { background:#fff8e1; color:#b7860b; }
+            .badge--azul     { background:#e8f0ff; color:#2962ff; }
+            .badge--morado   { background:#f0e8ff; color:#7C4DFF; }
+        </style>
+        <table>
+            <thead>
+                <tr>
+                    <th>Pedido</th>
+                    <th>Cliente</th>
+                    <th>Proveedor</th>
+                    <th>Productos entregados</th>
+                    <th>Monto</th>
+                    <th>Método de pago</th>
+                    <th>Estado pedido</th>
+                </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+        </table>
+    `;
+}
+
+function filtrarPagos() {
+    const texto   = (document.getElementById('filtroPagoProv')?.value   || '').toLowerCase().trim();
+    const estado  = (document.getElementById('filtroEstadoPago')?.value || '').toLowerCase().trim();
+
+    const filtradas = _filasPagos.filter(f => {
+        const coincideTexto = !texto || (
+            f.proveedor.toLowerCase().includes(texto) ||
+            String(f.idPedido).includes(texto) ||
+            f.cliente.toLowerCase().includes(texto)
+        );
+        const coincideEstado = !estado || f.nombreEstadoPago.toLowerCase().includes(estado);
+        return coincideTexto && coincideEstado;
+    });
+
+    renderTablaPagos(filtradas);
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// SECCIÓN GESTIÓN DE CATEGORÍAS Y SABORES — Admin directo
+// ═════════════════════════════════════════════════════════════════════════════
+
+let _catSaborData = { categorias: [], sabores: [] };
+
+async function renderSeccionGestionCatSabor() {
+    const main = document.getElementById('contenidoPrincipal');
+    main.innerHTML = `
+        <div class="seccion-header">
+            <h2>Categorías y Sabores</h2>
+            <p style="color:#888;font-size:.9rem;margin-top:4px;">
+                Gestiona las categorías y sabores del catálogo.
+            </p>
+        </div>
+
+        <!-- Botones de acción compactos -->
+        <div class="cs-acciones-bar">
+            <button class="cs-btn-accion" id="btnElegirCategoria">
+                <span class="cs-btn-icon">🗂️</span> Nueva Categoría
+            </button>
+            <button class="cs-btn-accion" id="btnElegirSabor">
+                <span class="cs-btn-icon">🍦</span> Nuevo Sabor
+            </button>
+            <button class="cs-btn-accion" id="btnElegirAmbos">
+                <span class="cs-btn-icon">✨</span> Categoría + Sabor
+            </button>
+        </div>
+
+        <!-- Formulario dinámico -->
+        <div id="cs-formulario" class="cs-formulario-wrap" style="display:none;"></div>
+
+        <!-- Feedback global -->
+        <div id="cs-feedback" style="display:none;"></div>
+
+        <!-- Listas existentes -->
+        <div class="cs-listas-wrap">
+            <div class="cs-lista-panel">
+                <div class="cs-lista-header">
+                    <span class="cs-lista-icon">🗂️</span>
+                    <h3>Categorías registradas</h3>
+                    <span class="cs-lista-badge" id="cs-badge-cats">0</span>
+                </div>
+                <div id="cs-lista-categorias" class="cs-lista-items">
+                    <p class="cs-lista-cargando">Cargando…</p>
+                </div>
+            </div>
+
+            <div class="cs-lista-panel">
+                <div class="cs-lista-header">
+                    <span class="cs-lista-icon">🍦</span>
+                    <h3>Sabores registrados</h3>
+                    <span class="cs-lista-badge" id="cs-badge-sabores">0</span>
+                </div>
+                <div id="cs-lista-sabores" class="cs-lista-items">
+                    <p class="cs-lista-cargando">Cargando…</p>
+                </div>
+            </div>
+        </div>
+    `;
+
+    // Cargar datos de categorías y sabores
+    await _cargarListasCatSabor();
+    _renderizarListasExistentes();
+
+    document.getElementById('btnElegirCategoria').addEventListener('click', () => _mostrarFormCS('Categoria'));
+    document.getElementById('btnElegirSabor').addEventListener('click',     () => _mostrarFormCS('Sabor'));
+    document.getElementById('btnElegirAmbos').addEventListener('click',     () => _mostrarFormCS('Ambos'));
+}
+
+function _renderizarListasExistentes() {
+    const cats   = _catSaborData.categorias ?? [];
+    const sabores = _catSaborData.sabores   ?? [];
+
+    const elCats   = document.getElementById('cs-lista-categorias');
+    const elSabores = document.getElementById('cs-lista-sabores');
+    const badgeCats   = document.getElementById('cs-badge-cats');
+    const badgeSabores = document.getElementById('cs-badge-sabores');
+
+    if (!elCats || !elSabores) return;
+
+    badgeCats.textContent   = cats.length;
+    badgeSabores.textContent = sabores.length;
+
+    if (cats.length === 0) {
+        elCats.innerHTML = '<p class="cs-lista-vacia">Sin categorías registradas aún.</p>';
+    } else {
+        elCats.innerHTML = cats.map(c => `
+            <div class="cs-lista-item">
+                <span class="cs-lista-nombre">${c.nombreCategoria}</span>
+                ${c.descripcion ? `<span class="cs-lista-desc">${c.descripcion}</span>` : ''}
+            </div>
+        `).join('');
+    }
+
+    if (sabores.length === 0) {
+        elSabores.innerHTML = '<p class="cs-lista-vacia">Sin sabores registrados aún.</p>';
+    } else {
+        elSabores.innerHTML = sabores.map(s => `
+            <div class="cs-lista-item">
+                <span class="cs-lista-nombre">${s.nombreSabor}</span>
+                ${s.descripcion ? `<span class="cs-lista-desc">${s.descripcion}</span>` : ''}
+            </div>
+        `).join('');
+    }
+}
+
+async function _cargarListasCatSabor() {
+    try {
+        const res  = await fetch(`${BASE_URL}/SolicitudesServlet?accion=listar`);
+        if (!res.ok) return;
+        _catSaborData = await res.json();
+    } catch (e) {
+        console.error('Error cargando categorías/sabores:', e);
+    }
+}
+
+function _mostrarFormCS(tipo) {
+    // Marcar el botón activo
+    document.querySelectorAll('.cs-btn-accion').forEach(c => c.classList.remove('cs-btn-accion--activo'));
+    const mapId = { Categoria: 'btnElegirCategoria', Sabor: 'btnElegirSabor', Ambos: 'btnElegirAmbos' };
+    document.getElementById(mapId[tipo])?.classList.add('cs-btn-accion--activo');
+
+    const contenedor = document.getElementById('cs-formulario');
+    const feedback   = document.getElementById('cs-feedback');
+    feedback.style.display = 'none';
+    feedback.innerHTML = '';
+
+    // Builds selects
+    const opsCat   = _catSaborData.categorias.map(c =>
+        `<option value="${c.idCategoria}">${c.nombreCategoria}</option>`).join('');
+    const opsSabor = _catSaborData.sabores.map(s =>
+        `<option value="${s.idSabor}">${s.nombreSabor}</option>`).join('');
+
+    const campoCat = `
+        <div class="cs-grupo">
+            <label class="cs-label">Nombre de la categoría <span class="cs-req">*</span></label>
+            <input id="cs-nombreCat" class="cs-input" type="text" maxlength="60"
+                   placeholder="Ej: Helados artesanales" />
+        </div>
+        <div class="cs-grupo">
+            <label class="cs-label">Descripción de la categoría</label>
+            <input id="cs-descCat" class="cs-input" type="text" maxlength="120"
+                   placeholder="Ej: Elaborados con frutas naturales…" />
+        </div>
+        <div class="cs-grupo">
+            <label class="cs-label">Foto de la categoría</label>
+            <div class="cs-upload-area" id="cs-upload-area">
+                <input type="file" id="cs-imagenCat" accept="image/png,image/jpeg,image/webp,image/gif"
+                       style="display:none;" />
+                <div class="cs-upload-placeholder" id="cs-upload-placeholder">
+                    <span class="cs-upload-icon">📷</span>
+                    <span>Haz clic para seleccionar una imagen</span>
+                    <small>PNG, JPG, WEBP, GIF · Máx. 5 MB</small>
+                </div>
+                <img id="cs-preview-img" class="cs-preview-img" style="display:none;" alt="Vista previa" />
+            </div>
+        </div>`;
+
+    const campoSabor = `
+        <div class="cs-grupo">
+            <label class="cs-label">Nombre del sabor <span class="cs-req">*</span></label>
+            <input id="cs-nombreSabor" class="cs-input" type="text" maxlength="60"
+                   placeholder="Ej: Maracuyá con coco" />
+        </div>
+        <div class="cs-grupo">
+            <label class="cs-label">Descripción del sabor</label>
+            <input id="cs-descSabor" class="cs-input" type="text" maxlength="120"
+                   placeholder="Ej: Tropical, con notas cítricas y cremosas…" />
+        </div>`;
+
+    const selectSaborExistente = tipo === 'Categoria' ? `
+        <div class="cs-grupo">
+            <label class="cs-label">Sabor existente a relacionar <span class="cs-req">*</span></label>
+            ${_catSaborData.sabores.length === 0
+                ? `<p class="cs-aviso-vacio">⚠️ No hay sabores registrados aún.</p>`
+                : `<select id="cs-idSaborExistente" class="cs-select">
+                       <option value="">— Selecciona un sabor —</option>
+                       ${opsSabor}
+                   </select>`}
+        </div>` : '';
+
+    const selectCatExistente = tipo === 'Sabor' ? `
+        <div class="cs-grupo">
+            <label class="cs-label">Categoría existente a relacionar <span class="cs-req">*</span></label>
+            ${_catSaborData.categorias.length === 0
+                ? `<p class="cs-aviso-vacio">⚠️ No hay categorías registradas aún.</p>`
+                : `<select id="cs-idCatExistente" class="cs-select">
+                       <option value="">— Selecciona una categoría —</option>
+                       ${opsCat}
+                   </select>`}
+        </div>` : '';
+
+    const titulos = {
+        Categoria: 'Nueva Categoría',
+        Sabor:     'Nuevo Sabor',
+        Ambos:     'Nueva Categoría y Sabor'
+    };
+
+    contenedor.innerHTML = `
+        <div class="cs-form-card">
+            <h3 class="cs-form-titulo">${titulos[tipo]}</h3>
+
+            ${tipo === 'Categoria' || tipo === 'Ambos' ? campoCat : ''}
+            ${tipo === 'Categoria' ? selectSaborExistente : ''}
+            ${tipo === 'Sabor' || tipo === 'Ambos' ? campoSabor : ''}
+            ${tipo === 'Sabor' ? selectCatExistente : ''}
+
+            <span class="cs-error" id="cs-error-msg"></span>
+
+            <div class="cs-form-footer">
+                <button class="btn-secundario" id="cs-btn-cancelar">Cancelar</button>
+                <button class="btn-primario"   id="cs-btn-guardar">Guardar</button>
+            </div>
+        </div>
+    `;
+
+    contenedor.style.display = 'block';
+
+    // Preview de imagen
+    const inputImg   = document.getElementById('cs-imagenCat');
+    const uploadArea = document.getElementById('cs-upload-area');
+    if (inputImg && uploadArea) {
+        uploadArea.addEventListener('click', () => inputImg.click());
+        inputImg.addEventListener('change', () => {
+            const file = inputImg.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = e => {
+                document.getElementById('cs-upload-placeholder').style.display = 'none';
+                const prev = document.getElementById('cs-preview-img');
+                prev.src = e.target.result;
+                prev.style.display = 'block';
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+
+    document.getElementById('cs-btn-cancelar').addEventListener('click', () => {
+        contenedor.style.display = 'none';
+        document.querySelectorAll('.cs-btn-accion').forEach(c => c.classList.remove('cs-btn-accion--activo'));
+    });
+
+    document.getElementById('cs-btn-guardar').addEventListener('click', () => _enviarFormCS(tipo));
+}
+
+async function _enviarFormCS(tipo) {
+    const errorEl = document.getElementById('cs-error-msg');
+    errorEl.textContent = '';
+
+    const nombreCat   = document.getElementById('cs-nombreCat')?.value.trim()   ?? '';
+    const descCat     = document.getElementById('cs-descCat')?.value.trim()     ?? '';
+    const nombreSabor = document.getElementById('cs-nombreSabor')?.value.trim() ?? '';
+    const descSabor   = document.getElementById('cs-descSabor')?.value.trim()   ?? '';
+
+    // Validaciones
+    if ((tipo === 'Categoria' || tipo === 'Ambos') && !nombreCat) {
+        errorEl.textContent = 'El nombre de la categoría es obligatorio.'; return;
+    }
+    if ((tipo === 'Sabor' || tipo === 'Ambos') && !nombreSabor) {
+        errorEl.textContent = 'El nombre del sabor es obligatorio.'; return;
+    }
+    if (tipo === 'Categoria') {
+        const sel = document.getElementById('cs-idSaborExistente');
+        if (!sel || !sel.value) { errorEl.textContent = 'Selecciona un sabor existente.'; return; }
+    }
+    if (tipo === 'Sabor') {
+        const sel = document.getElementById('cs-idCatExistente');
+        if (!sel || !sel.value) { errorEl.textContent = 'Selecciona una categoría existente.'; return; }
+    }
+
+    const fd = new FormData();
+    fd.append('accion', 'crearDirecto');
+    fd.append('tipo', tipo);
+
+    if (tipo === 'Categoria' || tipo === 'Ambos') {
+        fd.append('nombreCat', nombreCat);
+        fd.append('descCat',   descCat);
+        const img = document.getElementById('cs-imagenCat')?.files[0];
+        if (img) fd.append('imagenCat', img);
+    }
+    if (tipo === 'Categoria') {
+        fd.append('idSaborExistente', document.getElementById('cs-idSaborExistente').value);
+    }
+    if (tipo === 'Sabor' || tipo === 'Ambos') {
+        fd.append('nombreSabor', nombreSabor);
+        fd.append('descSabor',   descSabor);
+    }
+    if (tipo === 'Sabor') {
+        fd.append('idCatExistente', document.getElementById('cs-idCatExistente').value);
+    }
+
+    const btn = document.getElementById('cs-btn-guardar');
+    btn.disabled = true;
+    btn.textContent = 'Guardando…';
+
+    try {
+        const res  = await fetch(`${BASE_URL}/SolicitudesServlet`, { method: 'POST', body: fd });
+        const data = await res.json();
+
+        if (data.ok) {
+            document.getElementById('cs-formulario').style.display = 'none';
+            document.querySelectorAll('.cs-opcion-card').forEach(c => c.classList.remove('cs-opcion-card--activo'));
+
+            const fb = document.getElementById('cs-feedback');
+            fb.innerHTML = `<div class="feedback feedback--ok cs-feedback-ok">✅ ${data.mensaje}</div>`;
+            fb.style.display = 'block';
+
+            // Recargar lista para próximo uso y actualizar vistas
+            await _cargarListasCatSabor();
+            _renderizarListasExistentes();
+        } else {
+            errorEl.textContent = data.error ?? 'Error desconocido.';
+            btn.disabled    = false;
+            btn.textContent = 'Guardar';
+        }
+    } catch (e) {
+        errorEl.textContent = 'Error de conexión: ' + e.message;
+        btn.disabled    = false;
+        btn.textContent = 'Guardar';
     }
 }

@@ -265,6 +265,27 @@ public class SolicitudDAO {
     return -1;
 }
 
+    /** Inserta una categoría incluyendo una foto opcional (nombre de archivo). */
+    public int insertarCategoriaConFoto(String nombre, String descripcion, String nombreFoto) {
+        String sql = "INSERT INTO Categorias (Nombre_Categoria, Descripcion, Foto_Categoria) VALUES (?, ?, ?)";
+        try {
+            con = cn.getConexion();
+            ps  = con.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
+            ps.setString(1, nombre);
+            ps.setString(2, (descripcion == null || descripcion.isBlank()) ? null : descripcion);
+            ps.setString(3, (nombreFoto  == null || nombreFoto.isBlank())  ? null : nombreFoto);
+            ps.executeUpdate();
+            rs = ps.getGeneratedKeys();
+            if (rs.next()) return rs.getInt(1);
+        } catch (Exception e) {
+            // Si la columna Foto_Categoria no existe, reintentamos sin ella
+            System.err.println("insertarCategoriaConFoto → " + e.getMessage() + " — reintentando sin foto");
+            cerrar();
+            return insertarCategoria(nombre, descripcion);
+        } finally { cerrar(); }
+        return -1;
+    }
+
 public int insertarSabor(String nombre, String descripcion) {
     String sql = "INSERT INTO Sabores (Nombre_Sabor, Descripcion) VALUES (?, ?)";
     try {
