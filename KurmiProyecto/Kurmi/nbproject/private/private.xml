@@ -3,36 +3,38 @@
     <editor-bookmarks xmlns="http://www.netbeans.org/ns/editor-bookmarks/2" lastBookmarkId="0"/>
     <open-files xmlns="http://www.netbeans.org/ns/projectui-open-files/2">
         <group>
+            <file>file:/C:/proyectoKurmiADSO/KurmiProyecto/KurmiProyecto/Kurmi/src/java/com/kurmip/model/dao/ProductoDAO.java</file>
+            <file>file:/C:/proyectoKurmiADSO/KurmiProyecto/KurmiProyecto/Kurmi/src/java/com/kurmip/model/dao/CarritoDAO.java</file>
+            <file>file:/C:/proyectoKurmiADSO/KurmiProyecto/KurmiProyecto/Kurmi/src/java/com/kurmip/model/dao/UsuarioDAO.java</file>
+            <file>file:/C:/proyectoKurmiADSO/KurmiProyecto/KurmiProyecto/Kurmi/src/java/com/kurmip/controller/GestionProductoServlet.java</file>
+            <file>file:/C:/proyectoKurmiADSO/KurmiProyecto/KurmiProyecto/Kurmi/src/java/com/kurmip/model/dao/DAOUtil.java</file>
+            <file>file:/C:/proyectoKurmiADSO/KurmiProyecto/KurmiProyecto/Kurmi/src/java/com/kurmip/model/dao/SolicitudDAO.java</file>
+            <file>file:/C:/proyectoKurmiADSO/KurmiProyecto/KurmiProyecto/Kurmi/src/java/com/kurmip/controller/AdminServlet.java</file>
+            <file>file:/C:/proyectoKurmiADSO/KurmiProyecto/KurmiProyecto/Kurmi/src/java/com/kurmip/controller/SessionFilter.java</file>
+            <file>file:/C:/proyectoKurmiADSO/KurmiProyecto/KurmiProyecto/Kurmi/src/java/com/kurmip/controller/CerrarSesionServlet.java</file>
+            <file>file:/C:/proyectoKurmiADSO/KurmiProyecto/KurmiProyecto/Kurmi/src/java/com/kurmip/controller/CatalogoServlet.java</file>
+            <file>file:/C:/proyectoKurmiADSO/KurmiProyecto/KurmiProyecto/Kurmi/src/java/com/kurmip/controller/PedidosServlet.java</file>
+            <file>file:/C:/proyectoKurmiADSO/KurmiProyecto/KurmiProyecto/Kurmi/src/java/com/kurmip/controller/PedidosAdminServlet.java</file>
+            <file>file:/C:/proyectoKurmiADSO/KurmiProyecto/KurmiProyecto/Kurmi/src/java/com/kurmip/controller/VentasProveedorServlet.java</file>
+            <file>file:/C:/proyectoKurmiADSO/KurmiProyecto/KurmiProyecto/Kurmi/src/java/com/kurmip/controller/CambiarEstadoPedidoServlet.java</file>
             <file>file:/C:/proyectoKurmiADSO/KurmiProyecto/KurmiProyecto/Kurmi/src/java/com/kurmip/controller/ProcesarCompraServlet.java</file>
             <file>file:/C:/proyectoKurmiADSO/KurmiProyecto/KurmiProyecto/Kurmi/src/java/com/kurmip/controller/CarritoServlet.java</file>
-            <file>file:/C:/proyectoKurmiADSO/KurmiProyecto/KurmiProyecto/Kurmi/src/java/com/kurmip/controller/PerfilServlet.java</file>
-            <file>file:/C:/proyectoKurmiADSO/KurmiProyecto/KurmiProyecto/Kurmi/src/java/com/kurmip/model/dto/ProductoDTO.java</file>
-            <file>file:/C:/proyectoKurmiADSO/KurmiProyecto/KurmiProyecto/Kurmi/src/java/com/kurmip/model/dao/ProductoDAO.java</file>
-            <file>file:/C:/proyectoKurmiADSO/KurmiProyecto/KurmiProyecto/Kurmi/src/java/com/kurmip/model/dao/UsuarioDAO.java</file>
-            <file>file:/C:/proyectoKurmiADSO/KurmiProyecto/KurmiProyecto/Kurmi/src/java/com/kurmip/controller/VentasProveedorServlet.java</file>
-            <file>file:/C:/proyectoKurmiADSO/KurmiProyecto/KurmiProyecto/Kurmi/src/java/com/kurmip/controller/PedidosServlet.java</file>
-            <file>file:/C:/proyectoKurmiADSO/KurmiProyecto/KurmiProyecto/Kurmi/src/java/com/kurmip/controller/FavoritosServlet.java</file>
-            <file>file:/C:/proyectoKurmiADSO/KurmiProyecto/KurmiProyecto/Kurmi/src/java/com/kurmip/model/dao/CarritoDAO.java</file>
-            <file>file:/C:/proyectoKurmiADSO/KurmiProyecto/KurmiProyecto/Kurmi/src/java/com/kurmip/model/dao/CategoriaDAO.java</file>
-            <file>file:/C:/proyectoKurmiADSO/KurmiProyecto/KurmiProyecto/Kurmi/web/CLIENT/html/inicio.html</file>
-            <file>file:/C:/proyectoKurmiADSO/KurmiProyecto/KurmiProyecto/Kurmi/web/ADMIN/css/admin.css</file>
-            <file>file:/C:/proyectoKurmiADSO/KurmiProyecto/KurmiProyecto/Kurmi/src/java/com/kurmip/controller/CambiarEstadoPedidoServlet.java</file>
-            <file>file:/C:/proyectoKurmiADSO/KurmiProyecto/KurmiProyecto/Kurmi/src/java/com/kurmip/controller/MarcarEntregadoServlet.java</file>
-            <file>file:/C:/proyectoKurmiADSO/KurmiProyecto/KurmiProyecto/Kurmi/src/java/com/kurmip/controller/RegistroServlet.java</file>
-            <file>file:/C:/proyectoKurmiADSO/KurmiProyecto/KurmiProyecto/Kurmi/src/java/com/kurmip/db/Conexion.java</file>
-            <file>file:/C:/proyectoKurmiADSO/KurmiProyecto/KurmiProyecto/Kurmi/web/PROVIDER/css/proveedor.css</file>
             <file>file:/C:/proyectoKurmiADSO/KurmiProyecto/KurmiProyecto/Kurmi/src/java/com/kurmip/config/Seguridad.java</file>
-            <file>file:/C:/proyectoKurmiADSO/KurmiProyecto/KurmiProyecto/Kurmi/src/java/com/kurmip/model/dto/UsuarioDTO.java</file>
-            <file>file:/C:/proyectoKurmiADSO/KurmiProyecto/KurmiProyecto/Kurmi/src/java/com/kurmip/model/dto/CategoriaDTO.java</file>
-            <file>file:/C:/proyectoKurmiADSO/KurmiProyecto/KurmiProyecto/Kurmi/src/java/com/kurmip/model/dto/CarritoDetalleDTO.java</file>
-            <file>file:/C:/proyectoKurmiADSO/KurmiProyecto/KurmiProyecto/Kurmi/web/PROVIDER/html/proveedor.html</file>
-            <file>file:/C:/proyectoKurmiADSO/KurmiProyecto/KurmiProyecto/Kurmi/src/java/com/kurmip/controller/SessionFilter.java</file>
-            <file>file:/C:/proyectoKurmiADSO/KurmiProyecto/KurmiProyecto/Kurmi/src/java/com/kurmip/model/dto/PedidoDTO.java</file>
-            <file>file:/C:/proyectoKurmiADSO/KurmiProyecto/KurmiProyecto/Kurmi/src/java/com/kurmip/model/dao/FavoritosDAO.java</file>
-            <file>file:/C:/proyectoKurmiADSO/KurmiProyecto/KurmiProyecto/Kurmi/web/CLIENT/html/pedidos.html</file>
-            <file>file:/C:/proyectoKurmiADSO/KurmiProyecto/KurmiProyecto/Kurmi/src/java/com/kurmip/model/dao/PedidoDAO.java</file>
+            <file>file:/C:/proyectoKurmiADSO/KurmiProyecto/KurmiProyecto/Kurmi/src/java/com/kurmip/controller/MarcarEntregadoServlet.java</file>
+            <file>file:/C:/proyectoKurmiADSO/KurmiProyecto/KurmiProyecto/Kurmi/src/java/com/kurmip/controller/PerfilServlet.java</file>
             <file>file:/C:/proyectoKurmiADSO/KurmiProyecto/KurmiProyecto/Kurmi/src/java/com/kurmip/controller/LoginServlet.java</file>
-            <file>file:/C:/proyectoKurmiADSO/KurmiProyecto/KurmiProyecto/Kurmi/src/java/com/kurmip/controller/CerrarSesionServlet.java</file>
+            <file>file:/C:/proyectoKurmiADSO/KurmiProyecto/KurmiProyecto/Kurmi/src/java/com/kurmip/controller/CancelacionesAdminServlet.java</file>
+            <file>file:/C:/proyectoKurmiADSO/KurmiProyecto/KurmiProyecto/Kurmi/src/java/com/kurmip/controller/ProductoServlet.java</file>
+            <file>file:/C:/proyectoKurmiADSO/KurmiProyecto/KurmiProyecto/Kurmi/src/java/com/kurmip/controller/RegistroServlet.java</file>
+            <file>file:/C:/proyectoKurmiADSO/KurmiProyecto/KurmiProyecto/Kurmi/src/java/com/kurmip/controller/FavoritosServlet.java</file>
+            <file>file:/C:/proyectoKurmiADSO/KurmiProyecto/KurmiProyecto/Kurmi/src/java/util/AuthHelper.java</file>
+            <file>file:/C:/proyectoKurmiADSO/KurmiProyecto/KurmiProyecto/Kurmi/web/registro.html</file>
+            <file>file:/C:/proyectoKurmiADSO/KurmiProyecto/KurmiProyecto/Kurmi/src/java/com/kurmip/model/dao/DevolucionDAO.java</file>
+            <file>file:/C:/proyectoKurmiADSO/KurmiProyecto/KurmiProyecto/Kurmi/src/java/com/kurmip/controller/DevolucionServlet.java</file>
+            <file>file:/C:/proyectoKurmiADSO/KurmiProyecto/KurmiProyecto/Kurmi/src/java/com/kurmip/model/dao/CategoriaDAO.java</file>
+            <file>file:/C:/proyectoKurmiADSO/KurmiProyecto/KurmiProyecto/Kurmi/src/java/com/kurmip/controller/SolicitudesServlet.java</file>
+            <file>file:/C:/proyectoKurmiADSO/KurmiProyecto/KurmiProyecto/Kurmi/src/java/com/kurmip/model/dao/PedidoDAO.java</file>
+            <file>file:/C:/proyectoKurmiADSO/KurmiProyecto/KurmiProyecto/Kurmi/src/java/com/kurmip/model/dao/FavoritosDAO.java</file>
         </group>
     </open-files>
 </project-private>

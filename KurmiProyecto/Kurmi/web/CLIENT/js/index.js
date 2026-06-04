@@ -211,19 +211,29 @@ async function cargarCategoriasGaleria(contenedorId) {
 
         contenedor.innerHTML = ''; 
 
-        categorias.forEach(nombreCat => {
+        categorias.forEach(cat => {
+            // cat ahora es { nombre, foto } — compatible con el nuevo CategoriaDAO
+            const nombreCat = typeof cat === 'string' ? cat : cat.nombre;
+            const fotoFile  = typeof cat === 'string' ? 'categorias.jpg' : (cat.foto || 'categorias.jpg');
+
             const nuevaCat = plantillaOriginal.cloneNode(true);
 
             const pNombre = nuevaCat.querySelector('p');
             if (pNombre) pNombre.textContent = nombreCat;
 
+            // Poner la foto propia de la categoría
+            const imgEl = nuevaCat.querySelector('img');
+            if (imgEl) {
+                imgEl.src = `../../RESOURCES/img/${fotoFile}`;
+                imgEl.alt = nombreCat;
+            }
+
             nuevaCat.setAttribute('data-categoria', nombreCat.trim());
             nuevaCat.style.cursor = 'pointer';
 
-            // 2. Evento exclusivo de redirección por categoría hacia tienda.html
+            // 2. Evento: abre el modal de productos por categoría
             nuevaCat.addEventListener('click', () => {
-                const urlDestino = `/KurmiProyect/CLIENT/html/tienda.html?cat=${encodeURIComponent(nombreCat.trim())}`;
-                window.location.href = urlDestino;
+                abrirModalCategoria(nombreCat.trim());
             });
             contenedor.appendChild(nuevaCat);
         });
@@ -253,7 +263,10 @@ async function cargarCategoriasAside(contenedorId) {
         // SVG genérico de postre (cupcake)
         const iconoPostre = `<img src="../../RESOURCES/img/postreAside.png" alt="Toggle">`;
 
-        categorias.forEach(nombreCat => {
+        categorias.forEach(cat => {
+            // cat ahora es { nombre, foto } — extraemos solo el nombre para el aside
+            const nombreCat = typeof cat === 'string' ? cat : cat.nombre;
+
             // --- Icono lateral ---
             if (contenedorIconos) {
                 const divIcono = document.createElement('div');
@@ -1014,7 +1027,7 @@ function inyectarEstilosModal() {
             inset: 0;
             background: rgba(74, 59, 83, 0.55);
             backdrop-filter: blur(3px);
-            z-index: 9999;
+            z-index: 20000;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -1239,4 +1252,329 @@ function abrirModalDetalle(prod) {
             console.error('Error al agregar al carrito desde modal:', err);
         }
     });
+}
+// ─────────────────────────────────────────────────────────────────────────────
+// MODAL DE PRODUCTOS POR CATEGORÍA
+// ─────────────────────────────────────────────────────────────────────────────
+
+function inyectarEstilosModalCategoria() {
+    if (document.getElementById('estilos-modal-categoria')) return;
+    const style = document.createElement('style');
+    style.id = 'estilos-modal-categoria';
+    style.textContent = `
+        .modal-cat-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(74, 59, 83, 0.6);
+            backdrop-filter: blur(4px);
+            z-index: 10000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+            animation: fadeInCatOverlay .2s ease;
+        }
+        @keyframes fadeInCatOverlay { from { opacity: 0; } to { opacity: 1; } }
+
+        .modal-cat {
+            background: #fff;
+            border-radius: 24px;
+            max-width: 860px;
+            width: 100%;
+            max-height: 90vh;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 16px 60px rgba(74,59,83,.28);
+            animation: slideUpCat .22s ease;
+            overflow: hidden;
+        }
+        @keyframes slideUpCat {
+            from { transform: translateY(32px); opacity: 0; }
+            to   { transform: translateY(0);    opacity: 1; }
+        }
+
+        .modal-cat__header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 22px 28px 16px;
+            border-bottom: 1px solid #f0e8ff;
+            flex-shrink: 0;
+        }
+        .modal-cat__titulo {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #4A3B53;
+            margin: 0;
+        }
+        .modal-cat__cerrar {
+            background: #F4EEFF;
+            border: none;
+            border-radius: 50%;
+            width: 36px;
+            height: 36px;
+            font-size: 1.1rem;
+            cursor: pointer;
+            color: #4A3B53;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background .15s;
+            flex-shrink: 0;
+        }
+        .modal-cat__cerrar:hover { background: #e4d4ff; }
+
+        .modal-cat__body {
+            overflow-y: auto;
+            padding: 24px 28px 16px;
+            flex: 1;
+        }
+
+        .modal-cat__grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            justify-content: center;
+        }
+
+        /* Scoped: tarjetas dentro del modal de categoría */
+        .modal-cat__grid .tarjeta {
+            background-color: #ffffff;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            border-radius: 10px;
+            width: 180px;
+            min-width: 160px;
+            max-width: 200px;
+            height: auto;
+            box-shadow: 0 2px 12px rgba(74,59,83,.10);
+            cursor: pointer;
+            transition: transform .15s, box-shadow .15s;
+        }
+        .modal-cat__grid .tarjeta:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(74,59,83,.18);
+        }
+        .modal-cat__grid .tarjeta > img {
+            width: 100%;
+            height: 140px !important;
+            object-fit: cover;
+            display: block;
+        }
+        .modal-cat__grid .tarjeta > div {
+            padding: 10px 12px;
+            display: flex;
+            flex-direction: column;
+            text-align: left;
+            gap: 6px;
+        }
+        .modal-cat__grid .tarjeta > div > p:nth-child(1) {
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: #4A3B53;
+            margin: 0;
+            line-height: 1.3;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        .modal-cat__grid .tarjeta > div > p:nth-child(2) {
+            font-size: 0.75rem;
+            color: #888;
+            margin: 0;
+            display: -webkit-box;
+            -webkit-line-clamp: 1;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        .modal-cat__grid .tarjeta > div > p:nth-child(3) {
+            font-size: 0.88rem;
+            font-weight: 700;
+            color: #7C4DFF;
+            margin: 0;
+        }
+        .modal-cat__grid .botones {
+            display: grid;
+            grid-template-columns: auto 28px 28px;
+            gap: 4px;
+            align-items: center;
+        }
+        .modal-cat__grid .botones button:nth-child(1) {
+            padding: 6px 10px;
+            font-size: 0.75rem;
+            border-radius: 7px;
+            border: none;
+            background-color: #B1B2FF;
+            color: #333;
+            cursor: pointer;
+            font-weight: 600;
+            white-space: nowrap;
+            transition: background .15s;
+        }
+        .modal-cat__grid .botones button:nth-child(1):hover { background-color: #9b9cff; }
+        .modal-cat__grid .like,
+        .modal-cat__grid .carrito {
+            width: 28px !important;
+            height: 28px !important;
+            border-radius: 50% !important;
+            overflow: hidden;
+            border: none;
+            background-color: #B1B2FF;
+            cursor: pointer;
+            padding: 5px !important;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background .15s;
+            margin-left: 0 !important;
+        }
+        .modal-cat__grid .like:hover,
+        .modal-cat__grid .carrito:hover { background-color: #9b9cff; }
+        .modal-cat__grid .like img,
+        .modal-cat__grid .carrito img {
+            width: 100% !important;
+            height: 100% !important;
+            object-fit: contain;
+        }
+
+        .modal-cat__vacio {
+            text-align: center;
+            padding: 40px 20px;
+            color: #888;
+            font-size: 1rem;
+        }
+
+        .modal-cat__spinner {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 60px 20px;
+        }
+        .modal-cat__spinner::after {
+            content: '';
+            width: 40px;
+            height: 40px;
+            border: 4px solid #F4EEFF;
+            border-top-color: #7C4DFF;
+            border-radius: 50%;
+            animation: spinCat .7s linear infinite;
+        }
+        @keyframes spinCat { to { transform: rotate(360deg); } }
+
+        .modal-cat__footer {
+            padding: 16px 28px 24px;
+            display: flex;
+            justify-content: center;
+            border-top: 1px solid #f0e8ff;
+            flex-shrink: 0;
+        }
+        .modal-cat__btn-tienda {
+            padding: 14px 48px;
+            background: #7C4DFF;
+            color: #fff;
+            border: none;
+            border-radius: 14px;
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: background .15s, transform .12s;
+            box-shadow: 0 4px 18px rgba(124,77,255,.3);
+        }
+        .modal-cat__btn-tienda:hover {
+            background: #6a3de8;
+            transform: translateY(-1px);
+        }
+    `;
+    document.head.appendChild(style);
+}
+
+async function abrirModalCategoria(nombreCategoria) {
+    inyectarEstilosModalCategoria();
+    document.getElementById('modal-cat-root')?.remove();
+
+    // Crear overlay y estructura del modal
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-cat-overlay';
+    overlay.id = 'modal-cat-root';
+    overlay.innerHTML = `
+        <div class="modal-cat" role="dialog" aria-modal="true">
+            <div class="modal-cat__header">
+                <p class="modal-cat__titulo">${nombreCategoria}</p>
+                <button class="modal-cat__cerrar" id="btnCerrarModalCat" title="Cerrar">✕</button>
+            </div>
+            <div class="modal-cat__body" id="modalCatBody">
+                <div class="modal-cat__spinner"></div>
+            </div>
+            <div class="modal-cat__footer">
+                <button class="modal-cat__btn-tienda" id="btnIrTiendaCat">Ir a la tienda</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+
+    // Cerrar al click en fondo o en X
+    overlay.addEventListener('click', (e) => {
+        if (e.target === overlay || e.target.id === 'btnCerrarModalCat') overlay.remove();
+    });
+    const onKey = (e) => {
+        if (e.key === 'Escape') { overlay.remove(); document.removeEventListener('keydown', onKey); }
+    };
+    document.addEventListener('keydown', onKey);
+
+    // Botón "Ir a la tienda": verifica sesión primero
+    document.getElementById('btnIrTiendaCat').addEventListener('click', async () => {
+        try {
+            const res = await fetch('/KurmiProyect/PerfilServlet?accion=sesionActiva');
+            const texto = (await res.text()).trim();
+            if (texto === 'SESION_ACTIVA') {
+                window.location.href = `/KurmiProyect/CLIENT/html/tienda.html?cat=${encodeURIComponent(nombreCategoria)}`;
+            } else {
+                window.location.href = '/KurmiProyect/inicioSesion.html';
+            }
+        } catch (e) {
+            // Si hay error de red, redirigir al login por precaución
+            window.location.href = '/KurmiProyect/index.html';
+        }
+    });
+
+    // Cargar productos de la categoría
+    try {
+        const response = await fetch(`/KurmiProyect/ProductoServlet?accion=porCategoria&categoria=${encodeURIComponent(nombreCategoria)}`);
+        const productos = await response.json();
+
+        const body = document.getElementById('modalCatBody');
+        if (!body) return;
+
+        if (!productos || productos.length === 0) {
+            body.innerHTML = `<div class="modal-cat__vacio"><p>No hay productos disponibles en esta categoría aún.</p></div>`;
+            return;
+        }
+
+        // Cargar plantilla de tarjeta
+        const responseTemplate = await fetch('../../components/tarjetaProducto.html');
+        const templateHTML = await responseTemplate.text();
+        const parser = new DOMParser();
+        const docTemplate = parser.parseFromString(templateHTML, 'text/html');
+        const plantilla = docTemplate.querySelector('.tarjeta');
+        if (!plantilla) return;
+
+        const grid = document.createElement('div');
+        grid.className = 'modal-cat__grid';
+
+        for (const prod of productos) {
+            const tarjeta = plantilla.cloneNode(true);
+            mapearDatosTarjeta(tarjeta, prod);
+            grid.appendChild(tarjeta);
+        }
+
+        body.innerHTML = '';
+        body.appendChild(grid);
+
+    } catch (error) {
+        const body = document.getElementById('modalCatBody');
+        if (body) body.innerHTML = `<div class="modal-cat__vacio"><p>Ocurrió un error al cargar los productos.</p></div>`;
+        console.error('Error cargando productos por categoría en modal:', error);
+    }
 }

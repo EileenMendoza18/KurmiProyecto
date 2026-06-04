@@ -68,17 +68,20 @@ public class CategoriaDAO {
         return lista;
     }
 
-    public List<String> obtenerCategorias() {
-        List<String> lista = new ArrayList<>();
-        // SQL: Extrae únicamente la columna de texto Nombre_Categoria desde la tabla Categorias.
-        // Se utiliza para obtener una lista simple y directa de nombres (cadenas de texto), ideal para etiquetas o listados planos donde no se requiera el ID numérico.
-        String sql = "SELECT Nombre_Categoria FROM Categorias";
+    public List<java.util.Map<String, Object>> obtenerCategorias() {
+        List<java.util.Map<String, Object>> lista = new ArrayList<>();
+        // Extrae nombre y foto de cada categoría para mostrarlas en la galería del cliente.
+        // Usa IFNULL para devolver un fallback cuando aún no se ha subido foto.
+        String sql = "SELECT Nombre_Categoria, IFNULL(Foto_Categoria, 'categorias.jpg') AS Foto_Categoria FROM Categorias";
         try {
             con = cn.getConexion();
             ps = con.prepareStatement(sql);
             rs = ps.executeQuery();
             while (rs.next()) {
-                lista.add(rs.getString("Nombre_Categoria"));
+                java.util.Map<String, Object> row = new java.util.HashMap<>();
+                row.put("nombre", rs.getString("Nombre_Categoria"));
+                row.put("foto",   rs.getString("Foto_Categoria"));
+                lista.add(row);
             }
         } catch (Exception e) {
             System.err.println("Error al obtener categorías: " + e.getMessage());

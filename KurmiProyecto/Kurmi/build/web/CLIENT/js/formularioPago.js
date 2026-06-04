@@ -120,6 +120,38 @@ function validarFormulario() {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
+
+    // =========================================================================
+    // 0. PRE-RELLENAR CAMPOS CON DATOS DEL CLIENTE
+    // =========================================================================
+    (async () => {
+        try {
+            const res = await fetch('/KurmiProyect/PerfilServlet');
+            if (res.ok) {
+                const usuario = await res.json();
+
+                const inputNombre    = document.getElementById('nombre');
+                const inputDireccion = document.getElementById('direccion');
+                const inputTelefono  = document.getElementById('telefono');
+
+                // Solo pre-rellenar si el campo existe y el servidor envió el dato
+                if (inputNombre && !inputNombre.value) {
+                    const nombreCompleto = [usuario.nombres, usuario.apellidos]
+                        .filter(Boolean).join(' ').trim();
+                    if (nombreCompleto) inputNombre.value = nombreCompleto;
+                }
+                if (inputDireccion && !inputDireccion.value && usuario.direccion) {
+                    inputDireccion.value = usuario.direccion;
+                }
+                if (inputTelefono && !inputTelefono.value && usuario.telefono) {
+                    inputTelefono.value = usuario.telefono;
+                }
+            }
+        } catch (e) {
+            // Si no hay sesión o falla la petición, simplemente se dejan los campos vacíos
+            console.warn('No se pudieron cargar los datos del perfil:', e);
+        }
+    })();
     const urlParams = new URLSearchParams(window.location.search);
 
     const idProd     = urlParams.get("id");
