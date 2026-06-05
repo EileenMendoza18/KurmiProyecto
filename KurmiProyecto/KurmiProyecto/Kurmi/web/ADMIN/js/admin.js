@@ -9,6 +9,65 @@
  */
 
 const BASE_URL = '/KurmiProyect';
+
+// ── Caché de templates HTML ───────────────────────────────────────────────────
+const _tplCache = {};
+
+/**
+ * Carga un template HTML desde un parcial y devuelve el elemento raíz clonado.
+ * @param {string} path  - ruta al .html  (ej: '../partials/tarjeta-producto-admin.html')
+ * @param {string} selector - selector CSS del elemento raíz dentro del parcial
+ */
+async function loadTemplate(path, selector) {
+    if (!_tplCache[path]) {
+        const res  = await fetch(path);
+        const html = await res.text();
+
+        // <template> nativo parsea cualquier contenido (tr, td, div...)
+        // sin descartarlos, a diferencia de DOMParser con 'text/html'.
+        const tpl = document.createElement('template');
+        tpl.innerHTML = html;
+        _tplCache[path] = tpl.content;
+    }
+
+    const el = _tplCache[path].querySelector(selector);
+    if (!el) {
+        console.error(`[loadTemplate] Selector "${selector}" no encontrado en "${path}"`);
+        return document.createElement(selector.replace(/[^a-z]/gi, '') || 'div');
+    }
+    return el.cloneNode(true);
+}
+
+// ── Carga un parcial HTML en el elemento con el id dado ──────────────────────
+async function loadSection(containerId, path) {
+    const el = document.getElementById(containerId === 'main' ? 'contenidoPrincipal' : containerId);
+    if (!el) return;
+    try {
+        const res  = await fetch(path);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        el.innerHTML = await res.text();
+    } catch (e) {
+        console.error('loadSection error:', path, e);
+        el.innerHTML = `<p class="error-txt">No se pudo cargar la sección.</p>`;
+    }
+}
+
+/**
+ * Carga un parcial HTML directamente en un elemento DOM existente.
+ * A diferencia de loadSection, recibe el elemento directamente (no un ID).
+ */
+async function loadSectionFromTemplate(el, path) {
+    if (!el) return;
+    try {
+        const res = await fetch(path);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        el.innerHTML = await res.text();
+    } catch (e) {
+        console.error('loadSectionFromTemplate error:', path, e);
+        el.innerHTML = `<p class="error-txt">No se pudo cargar.</p>`;
+    }
+}
+
 const BASE_IMG = `${BASE_URL}/RESOURCES/img/`;
 const IMG_DEF  = `${BASE_URL}/RESOURCES/img/inicioHelado.png`;
 
@@ -54,89 +113,9 @@ async function cargarNombreAdmin() {
 // ─────────────────────────────────────────────────────────────────────────────
 // SECCIÓN VER PRODUCTOS
 // ─────────────────────────────────────────────────────────────────────────────
-function renderSeccionProductos() {
+async function renderSeccionProductos() {
     const main = document.getElementById('contenidoPrincipal');
-    main.innerHTML = `
-        <div class="seccion-header">
-            <h2>Todos los productos</h2>
-        </div>
-
-        <!-- Tarjetas de estadísticas -->
-        <div class="admin-stats-bar">
-            <div class="stat-card">
-                <div class="stat-card__icon"></div>
-                <div class="stat-card__info">
-                    <span class="stat-card__label">Total ventas acumuladas</span>
-                    <span class="stat-card__valor" id="statTotalVentas">—</span>
-                    <span class="stat-card__sub"   id="statEntregados">Cargando...</span>
-                </div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-card__icon"></div>
-                <div class="stat-card__info">
-                    <span class="stat-card__label">Pedidos totales</span>
-                    <span class="stat-card__valor" id="statTotalPedidos">—</span>
-                    <span class="stat-card__sub"   id="statPedidosSub">Cargando...</span>
-                </div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-card__icon"></div>
-                <div class="stat-card__info">
-                    <span class="stat-card__label">Total productos</span>
-                    <span class="stat-card__valor" id="statTotalProductos">—</span>
-                    <span class="stat-card__sub"   id="statDisponibles">Cargando...</span>
-                </div>
-            </div>
-        </div>
-
-        <!-- Filtros -->
-        <div class="filtros-bar">
-            <input  type="text" id="filtroNombre" class="filtro-input"
-                    placeholder="Buscar por nombre…" />
-            <select id="filtroEstado" class="filtro-select">
-                <option value="">Todos los estados</option>
-                <option value="Disponible">Disponible</option>
-                <option value="Agotado">Agotado</option>
-                <option value="Descontinuado">Descontinuado</option>
-            </select>
-            <select id="filtroProveedor" class="filtro-select">
-                <option value="">Todos los proveedores</option>
-            </select>
-            <button class="btn-limpiar" id="btnLimpiarFiltros">✕ Limpiar</button>
-        </div>
-
-        <p class="contador-resultados" id="contadorResultados"></p>
-
-        <div id="listaProductos" class="grid-productos">
-            <p class="cargando">Cargando productos…</p>
-        </div>
-
-        <!-- Modal cambio de estado -->
-        <div id="modalEstado" class="modal-overlay" style="display:none">
-            <div class="modal">
-                <div class="modal__header">
-                    <h3>Cambiar estado del producto</h3>
-                    <button class="modal__cerrar" id="cerrarModalEstado">✕</button>
-                </div>
-                <div class="modal__body">
-                    <p id="modalEstadoNombre" style="font-weight:700;color:var(--color-texto);font-size:1rem;"></p>
-                    <p style="font-size:.85rem;color:#888;margin-top:6px;">
-                        Estado actual: <strong id="modalEstadoActual"></strong>
-                    </p>
-                    <select class="modal-estado-select" id="selectNuevoEstado">
-                        <option value="1">Disponible</option>
-                        <option value="2">Agotado</option>
-                        <option value="3">Descontinuado</option>
-                    </select>
-                    <div id="feedbackEstado"></div>
-                </div>
-                <div class="modal__footer">
-                    <button class="btn-secundario" id="cancelarModalEstado">Cancelar</button>
-                    <button class="btn-primario"   id="confirmarCambioEstado">Guardar cambio</button>
-                </div>
-            </div>
-        </div>
-    `;
+    await loadSection('main', '../partials/seccion-productos.html');
 
     document.getElementById('filtroNombre').addEventListener('input',  aplicarFiltros);
     document.getElementById('filtroEstado').addEventListener('change', aplicarFiltros);
@@ -191,7 +170,7 @@ async function cargarTodosLosProductos() {
 
         todosLosProductos = data;
         actualizarStatsProductos(data);
-        renderProductosAdmin(data);
+        await renderProductosAdmin(data);
 
         // Poblar el select de proveedores con los únicos disponibles
         const selectProv = document.getElementById('filtroProveedor');
@@ -225,7 +204,7 @@ function actualizarStatsProductos(productos) {
 }
 
 // ── Renderizar grid ───────────────────────────────────────────────────────────
-function renderProductosAdmin(lista) {
+async function renderProductosAdmin(lista) {
     const contenedor = document.getElementById('listaProductos');
     const contador   = document.getElementById('contadorResultados');
 
@@ -236,7 +215,9 @@ function renderProductosAdmin(lista) {
     }
 
     contador.textContent = `${lista.length} producto${lista.length !== 1 ? 's' : ''} encontrado${lista.length !== 1 ? 's' : ''}`;
-    contenedor.innerHTML = lista.map(p => tarjetaProductoAdmin(p)).join('');
+    contenedor.innerHTML = '';
+    const tarjetas = await Promise.all(lista.map(p => tarjetaProductoAdmin(p)));
+    tarjetas.forEach(t => contenedor.appendChild(t));
 
     contenedor.querySelectorAll('.btn-estado').forEach(btn => {
         btn.addEventListener('click', (e) => {
@@ -258,7 +239,7 @@ function renderProductosAdmin(lista) {
 }
 
 // ── Tarjeta de producto ───────────────────────────────────────────────────────
-function tarjetaProductoAdmin(p) {
+async function tarjetaProductoAdmin(p) {
     const urlImg = (p.imagen && !['default.png', 'inicioHelado.png'].includes(p.imagen))
         ? BASE_IMG + p.imagen : IMG_DEF;
 
@@ -268,34 +249,39 @@ function tarjetaProductoAdmin(p) {
         'Descontinuado': 'badge--gris'
     }[p.estadoNombre] ?? 'badge--gris';
 
-    return `
-        <div class="tarjeta-prov" data-id="${p.idProducto}">
-            <div class="tarjeta-prov__img-wrap" style="position:relative">
-                <img src="${urlImg}" alt="${p.nombre}"
-                     onerror="this.src='${IMG_DEF}'"
-                     class="tarjeta-prov__img" />
-                <span class="badge ${badgeClass}">${p.estadoNombre ?? 'Sin estado'}</span>
-            </div>
-            <div class="tarjeta-prov__info">
-                <h3 class="tarjeta-prov__nombre">${p.nombre}</h3>
-                <p  class="tarjeta-prov__cat">${p.categoria ?? ''} · ${p.nombreSabor ?? ''}</p>
-                <p  class="tarjeta-prov__precio">$${Number(p.precio).toLocaleString('es-CO')}</p>
-                <p  class="tarjeta-prov__stock">Stock: <strong>${p.stock}</strong></p>
-                ${p.descripcion ? `<p class="tarjeta-prov__desc">${p.descripcion}</p>` : ''}
-            </div>
-            <div class="tarjeta-prov__acciones">
-                <button class="btn-estado"
-                        data-id="${p.idProducto}"
-                        title="Cambiar estado del producto">
-                    Cambiar estado
-                </button>
-            </div>
-        </div>
-    `;
+    const tpl = await loadTemplate('../partials/tarjeta-producto-admin.html', '.tarjeta-prov');
+
+    tpl.dataset.id = p.idProducto;
+
+    const img = tpl.querySelector('.tarjeta-prov__img');
+    img.src   = urlImg;
+    img.alt   = p.nombre ?? '';
+    img.onerror = function() { this.src = IMG_DEF; };
+
+    const badge = tpl.querySelector('.badge-estado');
+    badge.textContent = p.estadoNombre ?? 'Sin estado';
+    badge.classList.add(badgeClass);
+
+    tpl.querySelector('.tarjeta-prov__nombre').textContent = p.nombre ?? '';
+    tpl.querySelector('.tarjeta-prov__cat').textContent    = `${p.categoria ?? ''} · ${p.nombreSabor ?? ''}`;
+    tpl.querySelector('.tarjeta-prov__precio').textContent = `$${Number(p.precio).toLocaleString('es-CO')}`;
+    tpl.querySelector('.stock-valor').textContent          = p.stock;
+
+    const descEl = tpl.querySelector('.tarjeta-prov__desc');
+    if (p.descripcion) {
+        descEl.textContent = p.descripcion;
+    } else {
+        descEl.remove();
+    }
+
+    const btn = tpl.querySelector('.btn-estado');
+    btn.dataset.id = p.idProducto;
+
+    return tpl;
 }
 
 // ── Filtros ───────────────────────────────────────────────────────────────────
-function aplicarFiltros() {
+async function aplicarFiltros() {
     const termino    = document.getElementById('filtroNombre').value.trim().toLowerCase();
     const estado     = document.getElementById('filtroEstado').value;
     const proveedor  = document.getElementById('filtroProveedor').value;
@@ -305,14 +291,14 @@ function aplicarFiltros() {
         const coincideProveedor = !proveedor  || (p.proveedor ?? '') === proveedor;
         return coincideNombre && coincideEstado && coincideProveedor;
     });
-    renderProductosAdmin(filtrados);
+    await renderProductosAdmin(filtrados);
 }
 
-function limpiarFiltros() {
+async function limpiarFiltros() {
     document.getElementById('filtroNombre').value    = '';
     document.getElementById('filtroEstado').value    = '';
     document.getElementById('filtroProveedor').value = '';
-    renderProductosAdmin(todosLosProductos);
+    await renderProductosAdmin(todosLosProductos);
 }
 
 // ── Modal cambio de estado ────────────────────────────────────────────────────
@@ -342,7 +328,7 @@ function cerrarModalEstado() {
 }
 
 // ── Modal de detalle de producto (vista similar al cliente + datos de admin) ──
-function abrirModalDetalleAdmin(prod) {
+async function abrirModalDetalleAdmin(prod) {
     document.getElementById('mda-root')?.remove();
 
     const BASE_IMG_MODAL = '/KurmiProyect/RESOURCES/img/';
@@ -351,66 +337,31 @@ function abrirModalDetalleAdmin(prod) {
         : BASE_IMG_MODAL + 'inicioHelado.png';
     const fechaFormateada = prod.fechaVencimiento
         ? prod.fechaVencimiento.substring(0, 10) : '—';
-
     const badgeColor = {
         'Disponible':    '#22c55e',
         'Agotado':       '#ef4444',
         'Descontinuado': '#9ca3af'
     }[prod.estadoNombre] ?? '#9ca3af';
 
-    const overlay = document.createElement('div');
-    overlay.className = 'mda-overlay';
+    const overlay = await loadTemplate('../partials/modal-detalle-producto.html', '.mda-overlay');
     overlay.id = 'mda-root';
-    overlay.innerHTML = `
-        <div class="mda-modal" role="dialog" aria-modal="true">
-            <div class="mda-img-wrap">
-                <img src="${imgSrc}" alt="${prod.nombre}"
-                     onerror="this.src='${BASE_IMG_MODAL}inicioHelado.png'" />
-                <button class="mda-cerrar" id="mdaCerrar" title="Cerrar">✕</button>
-            </div>
-            <div class="mda-body">
-                <p class="mda-nombre">${prod.nombre}</p>
-                <p class="mda-precio">$${Number(prod.precio).toLocaleString('es-CO')}</p>
-                <p class="mda-desc">${prod.descripcion || 'Sin descripción.'}</p>
-                <div class="mda-grid">
-                    <div class="mda-campo">
-                        <span class="mda-label">Categoría</span>
-                        <span class="mda-valor">${prod.categoria || '—'}</span>
-                    </div>
-                    <div class="mda-campo">
-                        <span class="mda-label">Sabor</span>
-                        <span class="mda-valor">${prod.nombreSabor || '—'}</span>
-                    </div>
-                    <div class="mda-campo">
-                        <span class="mda-label">Unidad de medida</span>
-                        <span class="mda-valor">${prod.unidadMedida || '—'}</span>
-                    </div>
-                    <div class="mda-campo">
-                        <span class="mda-label">Vence</span>
-                        <span class="mda-valor">${fechaFormateada}</span>
-                    </div>
-                    <div class="mda-campo">
-                        <span class="mda-label">Stock</span>
-                        <span class="mda-valor">${prod.stock ?? '—'}</span>
-                    </div>
-                    <div class="mda-campo">
-                        <span class="mda-label">Estado</span>
-                        <span class="mda-valor mda-badge-row">
-                            <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${badgeColor};margin-right:5px;"></span>
-                            ${prod.estadoNombre ?? '—'}
-                        </span>
-                    </div>
-                    <div class="mda-campo" style="grid-column:span 2">
-                        <span class="mda-label">Proveedor</span>
-                        <span class="mda-valor">${prod.proveedor || '—'}</span>
-                    </div>
-                </div>
-            </div>
-            <div class="mda-footer">
-                <button class="mda-btn-estado" id="mdaBtnEstado">Cambiar estado</button>
-            </div>
-        </div>
-    `;
+
+    const img = overlay.querySelector('.mda-img');
+    img.src = imgSrc;
+    img.alt = prod.nombre;
+    img.onerror = () => { img.src = BASE_IMG_MODAL + 'inicioHelado.png'; };
+
+    overlay.querySelector('.mda-nombre').textContent        = prod.nombre;
+    overlay.querySelector('.mda-precio').textContent        = `$${Number(prod.precio).toLocaleString('es-CO')}`;
+    overlay.querySelector('.mda-desc').textContent          = prod.descripcion || 'Sin descripción.';
+    overlay.querySelector('.mda-val-categoria').textContent = prod.categoria    || '—';
+    overlay.querySelector('.mda-val-sabor').textContent     = prod.nombreSabor  || '—';
+    overlay.querySelector('.mda-val-unidad').textContent    = prod.unidadMedida || '—';
+    overlay.querySelector('.mda-val-vence').textContent     = fechaFormateada;
+    overlay.querySelector('.mda-val-stock').textContent     = prod.stock ?? '—';
+    overlay.querySelector('.mda-val-estado').textContent    = prod.estadoNombre ?? '—';
+    overlay.querySelector('.mda-val-proveedor').textContent = prod.proveedor    || '—';
+    overlay.querySelector('.mda-estado-dot').style.background = badgeColor;
 
     document.body.appendChild(overlay);
 
@@ -484,64 +435,9 @@ async function guardarCambioEstado() {
 // ─────────────────────────────────────────────────────────────────────────────
 let todosLosUsuarios = [];
 
-function renderSeccionClientes() {
+async function renderSeccionClientes() {
     const main = document.getElementById('contenidoPrincipal');
-    main.innerHTML = `
-        <div class="seccion-header">
-            <h2>Clientes y Proveedores</h2>
-        </div>
-
-        <!-- Filtros -->
-        <div class="filtros-bar">
-            <input type="text" id="filtroNombreUsuario" class="filtro-input"
-                   placeholder="Buscar por nombre o correo…" />
-            <select id="filtroRolUsuario" class="filtro-select">
-                <option value="">Todos los roles</option>
-                <option value="Cliente">Cliente</option>
-                <option value="Proveedor">Proveedor</option>
-            </select>
-            <select id="filtroEstadoUsuario" class="filtro-select">
-                <option value="">Todos los estados</option>
-                <option value="Activo">Activo</option>
-                <option value="Inactivo">Inactivo</option>
-                <option value="Pendiente">Pendiente</option>
-            </select>
-            <button class="btn-limpiar" id="btnLimpiarFiltrosUsuario">✕ Limpiar</button>
-        </div>
-
-        <p class="contador-resultados" id="contadorUsuarios"></p>
-
-        <div id="listaUsuarios" class="tabla-usuarios-wrap">
-            <p class="cargando">Cargando usuarios…</p>
-        </div>
-
-        <!-- Modal cambio de estado usuario -->
-        <div id="modalEstadoUsuario" class="modal-overlay" style="display:none">
-            <div class="modal">
-                <div class="modal__header">
-                    <h3>Cambiar estado del usuario</h3>
-                    <button class="modal__cerrar" id="cerrarModalUsuario">✕</button>
-                </div>
-                <div class="modal__body">
-                    <p id="modalUsuarioNombre" style="font-weight:700;color:var(--color-texto);font-size:1rem;"></p>
-                    <p style="font-size:.85rem;color:#888;margin-top:4px;">
-                        Rol: <strong id="modalUsuarioRol"></strong> &nbsp;|&nbsp;
-                        Estado actual: <strong id="modalUsuarioEstadoActual"></strong>
-                    </p>
-                    <select class="modal-estado-select" id="selectNuevoEstadoUsuario" style="margin-top:14px;">
-                        <option value="1">Activo</option>
-                        <option value="2">Inactivo</option>
-                        <option value="3">Pendiente</option>
-                    </select>
-                    <div id="feedbackEstadoUsuario"></div>
-                </div>
-                <div class="modal__footer">
-                    <button class="btn-secundario" id="cancelarModalUsuario">Cancelar</button>
-                    <button class="btn-primario"   id="confirmarCambioEstadoUsuario">Guardar cambio</button>
-                </div>
-            </div>
-        </div>
-    `;
+    await loadSection('main', '../partials/seccion-clientes.html');
 
     document.getElementById('filtroNombreUsuario').addEventListener('input',  aplicarFiltrosUsuarios);
     document.getElementById('filtroRolUsuario').addEventListener('change',    aplicarFiltrosUsuarios);
@@ -568,13 +464,13 @@ async function cargarTodosLosUsuarios() {
             return;
         }
         todosLosUsuarios = data;
-        renderTablaUsuarios(data);
+        await renderTablaUsuarios(data);
     } catch (e) {
         contenedor.innerHTML = `<p class="error-txt">No se pudo conectar: ${e.message}</p>`;
     }
 }
 
-function renderTablaUsuarios(lista) {
+async function renderTablaUsuarios(lista) {
     const contenedor = document.getElementById('listaUsuarios');
     const contador   = document.getElementById('contadorUsuarios');
 
@@ -586,31 +482,24 @@ function renderTablaUsuarios(lista) {
 
     contador.textContent = `${lista.length} usuario${lista.length !== 1 ? 's' : ''} encontrado${lista.length !== 1 ? 's' : ''}`;
 
-    contenedor.innerHTML = `
-        <table class="tabla-usuarios">
-            <thead>
-                <tr>
-                    <th>#</th>
-                    <th>Nombre</th>
-                    <th>Correo</th>
-                    <th>Teléfono</th>
-                    <th>Rol</th>
-                    <th>Estado</th>
-                    <th>Acción</th>
-                </tr>
-            </thead>
-            <tbody>
-                ${lista.map(u => filaUsuario(u)).join('')}
-            </tbody>
-        </table>
-    `;
+    const tabla = document.createElement('table');
+    tabla.className = 'tabla-usuarios';
+    const theadU = await loadTemplate('../partials/thead-usuarios.html', 'thead');
+    const tbodyU = document.createElement('tbody');
+    tabla.appendChild(theadU);
+    tabla.appendChild(tbodyU);
+    const filas = await Promise.all(lista.map(u => filaUsuario(u)));
+    filas.forEach(f => tbodyU.appendChild(f));
+
+    contenedor.innerHTML = '';
+    contenedor.appendChild(tabla);
 
     contenedor.querySelectorAll('.btn-estado-usuario').forEach(btn => {
         btn.addEventListener('click', () => abrirModalUsuario(Number(btn.dataset.id)));
     });
 }
 
-function filaUsuario(u) {
+async function filaUsuario(u) {
     const badgeClass = {
         'Activo':    'badge--verde',
         'Inactivo':  'badge--rojo',
@@ -619,25 +508,30 @@ function filaUsuario(u) {
 
     const rolClass = u.rolNombre === 'Proveedor' ? 'badge--morado' : 'badge--azul';
 
-    return `
-        <tr>
-            <td style="color:#aaa;font-size:.8rem;">${u.id}</td>
-            <td><strong>${u.nombres ?? ''} ${u.apellidos ?? ''}</strong></td>
-            <td style="font-size:.85rem;color:#666;">${u.correo ?? '—'}</td>
-            <td style="font-size:.85rem;color:#666;">${u.telefono ?? '—'}</td>
-            <td><span class="badge ${rolClass}" style="position:static;">${u.rolNombre ?? '—'}</span></td>
-            <td><span class="badge ${badgeClass}" style="position:static;">${u.estadoNombre ?? '—'}</span></td>
-            <td>
-                <button class="btn-estado btn-estado-usuario" data-id="${u.id}">
-                    Cambiar estado
-                </button>
-            </td>
-        </tr>
-    `;
+    const tpl = await loadTemplate('../partials/fila-usuario-admin.html', 'tr');
+
+    tpl.querySelector('.td-id-val').textContent  = u.id;
+    tpl.querySelector('.td-nombre').textContent  = `${u.nombres ?? ''} ${u.apellidos ?? ''}`;
+    tpl.querySelector('.td-correo').textContent  = u.correo ?? '—';
+    tpl.querySelector('.td-telefono').textContent = u.telefono ?? '—';
+
+    const badgeRol = tpl.querySelector('.badge-rol');
+    badgeRol.textContent = u.rolNombre ?? '—';
+    badgeRol.classList.add(rolClass);
+
+    const badgeEst = tpl.querySelector('.badge-estado');
+    badgeEst.textContent = u.estadoNombre ?? '—';
+    badgeEst.classList.add(badgeClass);
+
+    const btn = tpl.querySelector('.btn-estado-usuario');
+    btn.dataset.id = u.id;
+
+    return tpl;
+
 }
 
 // ── Filtros usuarios ──────────────────────────────────────────────────────────
-function aplicarFiltrosUsuarios() {
+async function aplicarFiltrosUsuarios() {
     const termino = document.getElementById('filtroNombreUsuario').value.trim().toLowerCase();
     const rol     = document.getElementById('filtroRolUsuario').value;
     const estado  = document.getElementById('filtroEstadoUsuario').value;
@@ -648,14 +542,14 @@ function aplicarFiltrosUsuarios() {
             && (!rol    || (u.rolNombre ?? '') === rol)
             && (!estado || (u.estadoNombre ?? '') === estado);
     });
-    renderTablaUsuarios(filtrados);
+    await renderTablaUsuarios(filtrados);
 }
 
-function limpiarFiltrosUsuarios() {
+async function limpiarFiltrosUsuarios() {
     document.getElementById('filtroNombreUsuario').value = '';
     document.getElementById('filtroRolUsuario').value    = '';
     document.getElementById('filtroEstadoUsuario').value = '';
-    renderTablaUsuarios(todosLosUsuarios);
+    await renderTablaUsuarios(todosLosUsuarios);
 }
 
 // ── Modal estado usuario ──────────────────────────────────────────────────────
@@ -721,9 +615,9 @@ async function guardarCambioEstadoUsuario() {
                 u.estadoNombre = { '1': 'Activo', '2': 'Inactivo', '3': 'Pendiente' }[nuevoEstado] ?? u.estadoNombre;
             }
 
-            setTimeout(() => {
+            setTimeout(async () => {
                 cerrarModalUsuario();
-                renderTablaUsuarios(todosLosUsuarios);
+                await renderTablaUsuarios(todosLosUsuarios);
             }, 900);
         } else {
             feedback.className   = 'feedback feedback--error';
@@ -752,49 +646,14 @@ async function renderSeccionPerfil() {
         if (res.status === 401) { window.location.replace(`${BASE_URL}/inicioSesion.html`); return; }
         const u = await res.json();
 
-        main.innerHTML = `
-            <div class="seccion-header">
-                <h2>Mi perfil</h2>
-            </div>
+        await loadSection('main', '../partials/seccion-perfil.html');
 
-            <div class="perfil-card">
-                <div class="perfil-card__fila">
-                    <div class="perfil-campo">
-                        <label>Nombres</label>
-                        <input id="adm-nombres" type="text" value="${u.nombres || ''}" readonly />
-                    </div>
-                    <div class="perfil-campo">
-                        <label>Apellidos</label>
-                        <input id="adm-apellidos" type="text" value="${u.apellidos || ''}" readonly />
-                    </div>
-                </div>
-                <div class="perfil-card__fila">
-                    <div class="perfil-campo">
-                        <label>Teléfono</label>
-                        <input id="adm-telefono" type="text" value="${u.telefono || ''}" readonly />
-                    </div>
-                    <div class="perfil-campo">
-                        <label>Correo electrónico</label>
-                        <input id="adm-correo" type="text" value="${u.correo || ''}" readonly />
-                    </div>
-                </div>
-                <div class="perfil-card__fila">
-                    <div class="perfil-campo">
-                        <label>Fecha de nacimiento</label>
-                        <input id="adm-fecha" type="date" value="${u.fechaNacimiento || ''}" readonly />
-                    </div>
-                    <div class="perfil-campo">
-                        <label>Dirección</label>
-                        <input id="adm-direccion" type="text" value="${u.direccion || ''}" readonly />
-                    </div>
-                </div>
-
-                <div class="perfil-card__acciones">
-                    <button class="btn-primario" id="btnActualizarPerfilAdmin">Actualizar datos</button>
-                    <button class="btn-cerrar-sesion" id="btnCerrarSesionAdmin">Cerrar sesión</button>
-                </div>
-            </div>
-        `;
+        document.getElementById('adm-nombres').value   = u.nombres         || '';
+        document.getElementById('adm-apellidos').value = u.apellidos        || '';
+        document.getElementById('adm-telefono').value  = u.telefono         || '';
+        document.getElementById('adm-correo').value    = u.correo           || '';
+        document.getElementById('adm-fecha').value     = u.fechaNacimiento  || '';
+        document.getElementById('adm-direccion').value = u.direccion        || '';
 
         configurarPerfilAdmin();
 
@@ -978,23 +837,7 @@ let pedidosFiltro = 'activos';
 
 async function renderSeccionPedidos() {
     const main = document.getElementById('contenidoPrincipal');
-    main.innerHTML = `
-        <div class="seccion-header">
-            <h2>Gestión de pedidos</h2>
-        </div>
-
-        <!-- Tabs filtro -->
-        <div class="ventas-tabs">
-            <button class="ventas-tab ventas-tab--activo" data-filtro="activos">En proceso</button>
-            <button class="ventas-tab" data-filtro="entregados">Entregados</button>
-            <button class="ventas-tab" data-filtro="cancelados"> Cancelados</button>
-            <button class="ventas-tab" data-filtro="todos">Todos</button>
-        </div>
-
-        <div id="listaPedidosAdmin" class="pedidos-admin-lista">
-            <p class="cargando">Cargando pedidos…</p>
-        </div>
-    `;
+    await loadSection('main', '../partials/seccion-pedidos.html');
 
     document.querySelectorAll('.ventas-tab').forEach(tab => {
         tab.addEventListener('click', () => {
@@ -1015,136 +858,145 @@ async function cargarPedidosAdmin(filtro) {
         const res = await fetch(`${BASE_URL}/PedidosAdminServlet?filtro=${filtro}`);
         if (!res.ok) throw new Error(`Error ${res.status}`);
         const pedidos = await res.json();
-        renderPedidosAdmin(pedidos);
+        await renderPedidosAdmin(pedidos);
     } catch (e) {
         contenedor.innerHTML = `<p class="error-txt">No se pudo cargar: ${e.message}</p>`;
     }
 }
 
-function renderPedidosAdmin(pedidos) {
+async function renderPedidosAdmin(pedidos) {
     const contenedor = document.getElementById('listaPedidosAdmin');
 
     if (!pedidos.length) {
-        contenedor.innerHTML = `<p class="vacio" style="padding:30px 0">No hay pedidos en esta categoría.</p>`;
+        contenedor.innerHTML = `<p class="vacio ped-vacio">No hay pedidos en esta categoría.</p>`;
         return;
     }
 
-    contenedor.innerHTML = pedidos.map(p => {
-        // Colores por estado general del pedido
-        const coloresEstado = {
-            1: '#e67e22', 4: '#e67e22', 5: '#3498db',
-            6: '#9b59b6', 7: '#1abc9c', 8: '#2ecc71', 9: '#e74c3c', 11: '#f39c12'
-        };
-        const colorEstado = coloresEstado[p.estadoPedido] ?? '#aaa';
+    const coloresEstado = {
+        1: '#e67e22', 4: '#e67e22', 5: '#3498db',
+        6: '#9b59b6', 7: '#1abc9c', 8: '#2ecc71', 9: '#e74c3c', 11: '#f39c12'
+    };
+    const estadosSiguientes = {
+        1: [{ v: 4, l: 'Pasar a Preparando' }],
+        4: [{ v: 5, l: 'Pasar a En bodega' }],
+        5: [{ v: 6, l: 'Pasar a Empacando' }],
+        6: [{ v: 7, l: 'Pasar a Transportando' }],
+        7: [{ v: 8, l: 'Marcar como Entregado' }]
+    };
 
-        // Estado de cada proveedor — ocultar si el pedido está cancelado o en cancelación solicitada
-        const esCancelado = p.estadoPedido === 3 || p.estadoPedido === 11;
-        const proveedoresHtml = !esCancelado ? p.proveedores.map(prov => {
-            const colorProv = prov.estadoItem >= 5 ? '#2ecc71' : '#e67e22';
-            const prodsProv = (prov.productos || []).map(pr => `
-                <div style="display:flex;justify-content:space-between;align-items:center;
-                            padding:3px 0 3px 12px;font-size:.78rem;color:#555;border-left:2px solid #e8e0f7;margin:2px 0;">
-                    <span>${pr.nombre} <span style="color:#aaa;">x${pr.cantidad}</span></span>
-                    <span style="color:#7C4DFF;font-weight:600;">$${Number(pr.subtotal).toLocaleString('es-CO')}</span>
-                </div>
-            `).join('');
-            return `
-                <div style="margin:6px 0;padding:8px;background:#fff;border-radius:8px;border:1px solid #f0ecff;">
-                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:${prodsProv ? '6px' : '0'};">
-                        <span style="color:#666;font-size:.82rem;">${prov.nombre}</span>
-                        <span style="background:${colorProv};color:#fff;padding:2px 8px;
-                                     border-radius:12px;font-size:.75rem;">
-                            ${prov.nombreEstado}
-                        </span>
-                    </div>
-                    ${prodsProv}
-                </div>
-            `;
-        }).join('') : '';
+    // Pre-cargar los tres sub-templates una sola vez
+    const tplPath = '../partials/tarjeta-pedido-admin.html';
+    await loadTemplate(tplPath, '.pedido-card'); // calienta caché
 
-        // Botones de avance de estado — solo si no está cancelado, entregado ni en devolución
+    contenedor.innerHTML = '';
+
+    for (const p of pedidos) {
+        const colorEstado  = coloresEstado[p.estadoPedido] ?? '#aaa';
+        const esCancelado  = p.estadoPedido === 3 || p.estadoPedido === 11;
         const puedeAvanzar = p.estadoPedido < 8 && p.estadoPedido !== 3 && p.estadoPedido !== 11;
-        const estadosSiguientes = {
-            1: [{ v: 4, l: 'Pasar a Preparando' }],
-            4: [{ v: 5, l: 'Pasar a En bodega' }],
-            5: [{ v: 6, l: 'Pasar a Empacando' }],
-            6: [{ v: 7, l: 'Pasar a Transportando' }],
-            7: [{ v: 8, l: 'Marcar como Entregado' }]
-        };
-        const botonesAvance = puedeAvanzar && estadosSiguientes[p.estadoPedido]
-            ? estadosSiguientes[p.estadoPedido].map(e => `
-                <button class="btn-avanzar-estado" 
-                        data-id="${p.idPedido}" 
-                        data-estado="${e.v}"
-                        ${!p.todosEnBodega && e.v > 5 ? 'disabled title="Espera que todos los proveedores estén en bodega"' : ''}>
-                    ${e.l}
-                </button>
-              `).join('')
-            : '';
 
-        return `
-        <div class="pedido-card" id="pedido-admin-${p.idPedido}">
-            <div class="pedido-card__header">
-                <span class="pedido-card__fecha">#${p.idPedido} · ${p.fechaPedido}</span>
-                <span style="background:${colorEstado};color:#fff;padding:3px 12px;
-                             border-radius:20px;font-size:.8rem;font-weight:600;">
-                    ${p.nombreEstado}
-                </span>
-                <span class="pedido-card__metodo">${p.metodoPago}</span>
-            </div>
+        const card = await loadTemplate(tplPath, '.pedido-card');
+        card.id = `pedido-admin-${p.idPedido}`;
 
-            <div class="pedido-card__receptor">
-                <strong>Cliente:</strong> ${p.cliente} &nbsp;|&nbsp;
-                <strong>Receptor:</strong> ${p.receptor} — ${p.direccion} — ${p.telefono}
-            </div>
+        // Header
+        card.querySelector('.pedido-card__fecha').textContent   = `#${p.idPedido} · ${p.fechaPedido}`;
+        const badgeEstado = card.querySelector('.pedido-estado-badge');
+        badgeEstado.textContent       = p.nombreEstado;
+        badgeEstado.style.background  = colorEstado;
+        card.querySelector('.pedido-card__metodo').textContent  = p.metodoPago;
 
-            <!-- Estado de cada proveedor — ocultar en cancelados -->
-            ${!esCancelado ? `
-            <div style="margin:10px 0;padding:10px;background:#f9f9f9;border-radius:8px;">
-                <p style="font-size:.8rem;color:#999;margin-bottom:6px;font-weight:600;">
-                    ESTADO POR PROVEEDOR:
-                </p>
-                ${proveedoresHtml || '<span style="color:#aaa;font-size:.8rem;">Sin proveedores registrados</span>'}
-                ${!p.todosEnBodega ? `
-                    <p style="color:#e67e22;font-size:.78rem;margin-top:6px;">
-                        ⚠ Esperando que todos los proveedores marquen sus productos en bodega
-                    </p>
-                ` : `
-                    <p style="color:#2ecc71;font-size:.78rem;margin-top:6px;">
-                        ✔ Todos los proveedores han entregado en bodega
-                    </p>
-                `}
-            </div>` : ''}
+        // Receptor
+        const receptor = card.querySelector('.pedido-card__receptor');
+        const fCliente  = document.createElement('strong'); fCliente.textContent  = 'Cliente:';
+        const fReceptor = document.createElement('strong'); fReceptor.textContent = 'Receptor:';
+        receptor.append(fCliente, ` ${p.cliente} `, document.createTextNode('\u00A0|\u00A0'),
+                        fReceptor, ` ${p.receptor} — ${p.direccion} — ${p.telefono}`);
 
-            <div class="pedido-card__footer" style="gap:8px;flex-wrap:wrap;">
-                <span>Total: <strong>$${Number(p.totalPago).toLocaleString('es-CO')}</strong></span>
-                <div style="display:flex;gap:8px;flex-wrap:wrap;">
-                    ${botonesAvance}
-                    <button class="btn-factura-admin" data-id="${p.idPedido}"
-                            style="padding:6px 16px;background:#7C4DFF;color:#fff;border:none;
-                                   border-radius:20px;font-size:.82rem;font-weight:600;cursor:pointer;">
-                        Ver factura
-                    </button>
-                </div>
-            </div>
-        </div>
-        `;
-    }).join('');
+        // Bloque proveedores
+        const provWrap = card.querySelector('.ped-proveedores-wrap');
+        if (esCancelado) {
+            provWrap.remove();
+        } else {
+            const listaProvEl = card.querySelector('.ped-proveedores-lista');
+            if (p.proveedores && p.proveedores.length) {
+                for (const prov of p.proveedores) {
+                    const colorProv  = prov.estadoItem >= 5 ? '#2ecc71' : '#e67e22';
+                    const bloqueEl   = await loadTemplate(tplPath, '.ped-prov-bloque--tpl');
+                    bloqueEl.classList.remove('ped-prov-bloque--tpl');
+                    bloqueEl.hidden  = false;
 
-    // Listeners botones avanzar estado
-    contenedor.querySelectorAll('.btn-avanzar-estado').forEach(btn => {
-        btn.addEventListener('click', () =>
-            cambiarEstadoPedidoAdmin(Number(btn.dataset.id), Number(btn.dataset.estado), btn));
-    });
+                    bloqueEl.querySelector('.ped-prov-nombre').textContent = prov.nombre;
+                    const badgeProv = bloqueEl.querySelector('.ped-prov-estado-badge');
+                    badgeProv.textContent      = prov.nombreEstado;
+                    badgeProv.style.background = colorProv;
 
-    // Listeners botones factura
-    contenedor.querySelectorAll('.btn-factura-admin').forEach(btn => {
-        const idPedido = Number(btn.dataset.id);
-        const pedido = pedidos.find(p => p.idPedido === idPedido);
-        if (pedido) btn.addEventListener('click', () => generarFacturaAdmin(pedido));
-    });
+                    if (prov.productos && prov.productos.length) {
+                        bloqueEl.querySelector('.ped-prov-header').classList.add('ped-prov-header--mb');
+                        const prodsEl = bloqueEl.querySelector('.ped-prov-productos');
+                        for (const pr of prov.productos) {
+                            const filaEl = await loadTemplate(tplPath, '.ped-prod-fila--tpl');
+                            filaEl.classList.remove('ped-prod-fila--tpl');
+                            filaEl.hidden = false;
+                            const cant = document.createElement('span');
+                            cant.className   = 'ped-prod-cantidad';
+                            cant.textContent = `x${pr.cantidad}`;
+                            const nombreSpan = filaEl.querySelector('.ped-prod-nombre-cant');
+                            nombreSpan.textContent = `${pr.nombre} `;
+                            nombreSpan.appendChild(cant);
+                            filaEl.querySelector('.ped-prod-subtotal').textContent =
+                                `$${Number(pr.subtotal).toLocaleString('es-CO')}`;
+                            prodsEl.appendChild(filaEl);
+                        }
+                    }
+                    listaProvEl.appendChild(bloqueEl);
+                }
+            } else {
+                const vacio = document.createElement('span');
+                vacio.className   = 'ped-proveedores-vacio';
+                vacio.textContent = 'Sin proveedores registrados';
+                listaProvEl.appendChild(vacio);
+            }
+
+            const avisoEspera = card.querySelector('.ped-aviso-espera');
+            const avisoOk     = card.querySelector('.ped-aviso-ok');
+            if (p.todosEnBodega) { avisoEspera.remove(); avisoOk.hidden = false; }
+            else                 { avisoOk.remove(); avisoEspera.hidden = false; }
+        }
+
+        // Total
+        card.querySelector('.ped-total').textContent =
+            `$${Number(p.totalPago).toLocaleString('es-CO')}`;
+
+        // Botones avance
+        const btnsAvance = card.querySelector('.ped-btns-avance');
+        if (puedeAvanzar && estadosSiguientes[p.estadoPedido]) {
+            for (const e of estadosSiguientes[p.estadoPedido]) {
+                const btnTpl = await loadTemplate(tplPath, '.btn-avanzar-estado--tpl');
+                btnTpl.classList.remove('btn-avanzar-estado--tpl');
+                btnTpl.hidden       = false;
+                btnTpl.dataset.id   = p.idPedido;
+                btnTpl.dataset.estado = e.v;
+                btnTpl.textContent  = e.l;
+                if (!p.todosEnBodega && e.v > 5) {
+                    btnTpl.disabled = true;
+                    btnTpl.title    = 'Espera que todos los proveedores estén en bodega';
+                }
+                btnTpl.addEventListener('click', () =>
+                    cambiarEstadoPedidoAdmin(Number(btnTpl.dataset.id), Number(btnTpl.dataset.estado), btnTpl));
+                btnsAvance.appendChild(btnTpl);
+            }
+        }
+
+        // Botón factura
+        const btnFactura = card.querySelector('.btn-factura-admin');
+        btnFactura.dataset.id = p.idPedido;
+        btnFactura.addEventListener('click', () => generarFacturaAdmin(p));
+
+        contenedor.appendChild(card);
+    }
 
 }
+
 
 // ── Factura admin ─────────────────────────────────────────────────────────────
 function generarFacturaAdmin(p) {
@@ -1166,9 +1018,9 @@ function generarFacturaAdmin(p) {
     const filas = (p.productos || []).map(prod => `
         <tr>
             <td>${prod.nombre || '—'}</td>
-            <td style="text-align:center">${prod.cantidad}</td>
-            <td style="text-align:right">$${Number(prod.precio || 0).toLocaleString('es-CO')}</td>
-            <td style="text-align:right">$${Number(prod.precioTotal || prod.subtotal || 0).toLocaleString('es-CO')}</td>
+            <td class="td-center">${prod.cantidad}</td>
+            <td class="td-right">$${Number(prod.precio || 0).toLocaleString('es-CO')}</td>
+            <td class="td-right">$${Number(prod.precioTotal || prod.subtotal || 0).toLocaleString('es-CO')}</td>
         </tr>
     `).join('');
 
@@ -1245,9 +1097,9 @@ function generarFacturaAdmin(p) {
         <thead>
             <tr>
                 <th>Producto</th>
-                <th style="text-align:center">Cant.</th>
-                <th style="text-align:right">Precio unit.</th>
-                <th style="text-align:right">Subtotal</th>
+                <th class="td-center">Cant.</th>
+                <th class="td-right">Precio unit.</th>
+                <th class="td-right">Subtotal</th>
             </tr>
         </thead>
         <tbody>${filas}</tbody>
@@ -1306,72 +1158,9 @@ let todasLasSolicitudes = [];
 // ─────────────────────────────────────────────────────────────────────────────
 // RENDER PRINCIPAL
 // ─────────────────────────────────────────────────────────────────────────────
-function renderSeccionSolicitudesAdmin() {
+async function renderSeccionSolicitudesAdmin() {
     const main = document.getElementById('contenidoPrincipal');
-    main.innerHTML = `
-        <div class="seccion-header">
-            <h2>Solicitudes de proveedores</h2>
-        </div>
- 
-        <!-- Tabs de estado -->
-        <div class="ventas-tabs">
-            <button class="ventas-tab ventas-tab--activo" data-estado="">Todas</button>
-            <button class="ventas-tab" data-estado="Pendiente">Pendientes</button>
-            <button class="ventas-tab" data-estado="Aprobado">Aprobadas</button>
-            <button class="ventas-tab" data-estado="Rechazado">Rechazadas</button>
-        </div>
- 
-        <p class="contador-resultados" id="contadorSolicitudesAdmin"></p>
- 
-        <div id="listaSolicitudesAdmin" class="solicitudes-lista">
-            <p class="cargando">Cargando solicitudes…</p>
-        </div>
- 
-        <!-- Modal responder solicitud -->
-        <div id="modalResponderSolicitud" class="modal-overlay" style="display:none">
-            <div class="modal modal--solicitud">
-                <div class="modal__header">
-                    <h3 id="modalSolTitulo">Responder solicitud</h3>
-                    <button class="modal__cerrar" id="cerrarModalResponder">✕</button>
-                </div>
-                <div class="modal__body">
- 
-                    <!-- Detalle de la solicitud -->
-                    <div class="sol-modal__detalle" id="solModalDetalle"></div>
- 
-                    <!-- Acción -->
-                    <label class="sol-label" style="margin-top:16px;display:block;">
-                        Decisión <span class="sol-required">*</span>
-                    </label>
-                    <div class="sol-decision-btns">
-                        <button class="sol-btn-decision sol-btn-aprobar" id="btnDecisionAprobar">
-                            Aprobar
-                        </button>
-                        <button class="sol-btn-decision sol-btn-rechazar" id="btnDecisionRechazar">
-                            Rechazar
-                        </button>
-                    </div>
- 
-                    <!-- Motivo (solo al rechazar) -->
-                    <div id="sol-motivo-wrap" style="display:none;margin-top:14px;">
-                        <label class="sol-label">
-                            Motivo del rechazo <span class="sol-required">*</span>
-                        </label>
-                        <textarea id="sol-motivoRechazo" class="sol-textarea"
-                                  placeholder="Indica brevemente por qué no se puede aprobar esta solicitud…"
-                                  maxlength="255" rows="3"></textarea>
-                        <span class="error-msg" id="error-sol-motivo"></span>
-                    </div>
- 
-                    <div id="feedbackResponder"></div>
-                </div>
-                <div class="modal__footer">
-                    <button class="btn-secundario" id="cancelarModalResponder">Cancelar</button>
-                    <button class="btn-primario"   id="confirmarResponder" disabled>Confirmar</button>
-                </div>
-            </div>
-        </div>
-    `;
+    await loadSection('main', '../partials/seccion-solicitudes.html');
  
     // Tabs
     document.querySelectorAll('[data-estado]').forEach(tab => {
@@ -1407,7 +1196,7 @@ async function cargarSolicitudesAdmin(estadoFiltro) {
         }
  
         todasLasSolicitudes = data.solicitudes ?? [];
-        renderListaSolicitudesAdmin(todasLasSolicitudes);
+        await renderListaSolicitudesAdmin(todasLasSolicitudes);
  
     } catch (e) {
         contenedor.innerHTML = `<p class="error-txt">No se pudo conectar: ${e.message}</p>`;
@@ -1415,31 +1204,30 @@ async function cargarSolicitudesAdmin(estadoFiltro) {
 }
  
 // ── Renderizar lista ──────────────────────────────────────────────────────────
-function renderListaSolicitudesAdmin(lista) {
+async function renderListaSolicitudesAdmin(lista) {
     const contenedor = document.getElementById('listaSolicitudesAdmin');
     const contador   = document.getElementById('contadorSolicitudesAdmin');
  
     if (!lista.length) {
         contador.textContent = '';
-        contenedor.innerHTML = `
-            <div class="sol-vacio">
-                <span class="sol-vacio__icono">:(</span>
-                <p>No hay solicitudes en esta categoría.</p>
-            </div>`;
+        contenedor.innerHTML = '';
+        contenedor.appendChild(await loadTemplate('../partials/sol-vacio.html', '.sol-vacio'));
         return;
     }
  
     contador.textContent = `${lista.length} solicitud${lista.length !== 1 ? 'es' : ''}`;
-    contenedor.innerHTML = lista.map(s => tarjetaSolicitudAdmin(s)).join('');
+    contenedor.innerHTML = '';
+    for (const s of lista) {
+        contenedor.appendChild(await tarjetaSolicitudAdmin(s));
+    }
  
-    // Botón responder — solo para pendientes
     contenedor.querySelectorAll('.btn-responder-sol').forEach(btn => {
         btn.addEventListener('click', () => abrirModalResponder(Number(btn.dataset.id)));
     });
 }
  
 // ── Tarjeta de solicitud (vista admin) ────────────────────────────────────────
-function tarjetaSolicitudAdmin(s) {
+async function tarjetaSolicitudAdmin(s) {
     const badgeClass = {
         'Pendiente': 'badge--amarillo',
         'Aprobado':  'badge--verde',
@@ -1451,71 +1239,63 @@ function tarjetaSolicitudAdmin(s) {
         'Aprobado':  ':)',
         'Rechazado': ':('
     }[s.estado] ?? '';
- 
-    const tipoIcono = {
-        'Categoria': '<img src="../../RESOURCES/img/postreAside.png" >',
-        'Sabor':     '<img src="../../RESOURCES/img/postreAside.png" >',
-        'Ambos':     '<img src="../../RESOURCES/img/postreAside.png" >'
-    }[s.tipo] ?? ':)';
- 
-    const filaCateg  = s.nombreCat   ? `<p class="sol-card__fila"><span class="sol-card__etiq">Categoría nueva:</span> ${s.nombreCat}</p>`   : '';
-    const filaSabor  = s.nombreSabor ? `<p class="sol-card__fila"><span class="sol-card__etiq">Sabor nuevo:</span> ${s.nombreSabor}</p>`     : '';
-    const filaRelCat = s.nombreCatExistente
-        ? `<p class="sol-card__fila"><span class="sol-card__etiq">Relacionar con categoría:</span> ${s.nombreCatExistente}</p>` : '';
-    const filaRelSabor = s.nombreSaborExistente
-        ? `<p class="sol-card__fila"><span class="sol-card__etiq">Relacionar con sabor:</span> ${s.nombreSaborExistente}</p>` : '';
-    const filaDesc   = s.descripcion ? `<p class="sol-card__fila"><span class="sol-card__etiq">Descripción:</span> ${s.descripcion}</p>` : '';
-    const filaMotivo = (s.estado === 'Rechazado' && s.motivoRechazo)
-        ? `<div class="sol-card__rechazo">
-               <span>💬 Motivo del rechazo:</span>
-               <p>${s.motivoRechazo}</p>
-           </div>`
-        : '';
-    const filaRespuesta = s.fechaRespuesta
-        ? `<p class="sol-card__fecha" style="margin-top:6px;">Respondida: ${s.fechaRespuesta}</p>`
-        : '';
- 
-    const btnResponder = s.estado === 'Pendiente'
-        ? `<button class="btn-estado btn-responder-sol" data-id="${s.idSolicitud}">
-                Responder
-           </button>`
-        : `<span style="font-size:.8rem;color:#aaa;">Ya respondida</span>`;
- 
-    return `
-        <div class="sol-card sol-card--${s.estado.toLowerCase()}">
-            <div class="sol-card__header">
-                <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-                    <span class="sol-card__tipo">${tipoIcono} ${s.tipo}</span>
-                    <span class="badge ${badgeClass}" style="position:static;">
-                        ${badgeIcon} ${s.estado}
-                    </span>
-                    <span class="sol-card__proveedor">
-                        ${s.nombreProveedor ?? '—'}
-                    </span>
-                </div>
-                <span class="sol-card__fecha">Enviada: ${s.fechaSolicitud ?? '—'}</span>
-            </div>
-            <div class="sol-card__body">
-                ${filaCateg}
-                ${filaRelSabor}
-                ${filaSabor}
-                ${filaRelCat}
-                ${filaDesc}
-                ${filaMotivo}
-                ${filaRespuesta}
-            </div>
-            <div class="sol-card__acciones">
-                ${btnResponder}
-            </div>
-        </div>
-    `;
+
+    const tpl = await loadTemplate('../partials/tarjeta-solicitud-admin.html', '.sol-card');
+    tpl.classList.add(`sol-card--${s.estado.toLowerCase()}`);
+
+    // Tipo + icono
+    const tipoTexto = tpl.querySelector('.sol-tipo-texto');
+    tipoTexto.textContent = ` ${s.tipo}`;
+    // el icono img ya está en el template
+
+    // Badge estado
+    const badge = tpl.querySelector('.badge-estado');
+    badge.textContent = `${badgeIcon} ${s.estado}`;
+    badge.classList.add(badgeClass);
+
+    tpl.querySelector('.sol-card__proveedor').textContent = s.nombreProveedor ?? '—';
+    tpl.querySelector('.sol-card__fecha').textContent     = `Enviada: ${s.fechaSolicitud ?? '—'}`;
+
+    // Filas opcionales
+    const mostrar = (selector, valor) => {
+        const el = tpl.querySelector(selector);
+        if (valor) { el.querySelector('[class*="sol-val"]').textContent = valor; el.hidden = false; }
+    };
+    mostrar('.sol-fila-cat',      s.nombreCat);
+    mostrar('.sol-fila-sabor',    s.nombreSabor);
+    mostrar('.sol-fila-relcat',   s.nombreCatExistente);
+    mostrar('.sol-fila-relsabor', s.nombreSaborExistente);
+    mostrar('.sol-fila-desc',     s.descripcion);
+
+    if (s.estado === 'Rechazado' && s.motivoRechazo) {
+        const rechazoEl = tpl.querySelector('.sol-fila-rechazo');
+        rechazoEl.querySelector('.sol-val-rechazo').textContent = s.motivoRechazo;
+        rechazoEl.hidden = false;
+    }
+    if (s.fechaRespuesta) {
+        const respEl = tpl.querySelector('.sol-fila-respuesta');
+        respEl.textContent = `Respondida: ${s.fechaRespuesta}`;
+        respEl.hidden = false;
+    }
+
+    // Botón / ya respondida
+    const btnR  = tpl.querySelector('.sol-btn-responder');
+    const yaRes = tpl.querySelector('.sol-ya-respondida');
+    if (s.estado === 'Pendiente') {
+        btnR.dataset.id = s.idSolicitud;
+        btnR.hidden = false;
+    } else {
+        yaRes.hidden = false;
+    }
+
+    return tpl;
 }
  
 // ── Modal responder ───────────────────────────────────────────────────────────
 let solicitudSeleccionadaId = null;
 let decisionSeleccionada    = null; // 'Aprobado' | 'Rechazado'
  
-function abrirModalResponder(idSolicitud) {
+async function abrirModalResponder(idSolicitud) {
     const sol = todasLasSolicitudes.find(s => s.idSolicitud === idSolicitud);
     if (!sol) return;
  
@@ -1526,21 +1306,22 @@ function abrirModalResponder(idSolicitud) {
     document.getElementById('modalSolTitulo').textContent = `Solicitud #${sol.idSolicitud}`;
  
     const tipoIcono = { 'Categoria': '<img src="../../RESOURCES/img/postreAside.png" >', 'Sabor': '<img src="../../RESOURCES/img/postreAside.png" >', 'Ambos': '<img src="../../RESOURCES/img/postreAside.png" >' }[sol.tipo] ?? ':)';
-    document.getElementById('solModalDetalle').innerHTML = `
-        <div class="sol-modal__fila">
-            <span class="sol-card__etiq">Proveedor:</span>
-            <strong>${sol.nombreProveedor ?? '—'}</strong>
-        </div>
-        <div class="sol-modal__fila">
-            <span class="sol-card__etiq">Tipo:</span> ${tipoIcono} ${sol.tipo}
-        </div>
-        ${sol.nombreCat   ? `<div class="sol-modal__fila"><span class="sol-card__etiq">Categoría nueva:</span> ${sol.nombreCat}</div>` : ''}
-        ${sol.nombreSaborExistente ? `<div class="sol-modal__fila"><span class="sol-card__etiq">→ Relacionar con sabor:</span> <strong>${sol.nombreSaborExistente}</strong></div>` : ''}
-        ${sol.nombreSabor ? `<div class="sol-modal__fila"><span class="sol-card__etiq">Sabor nuevo:</span> ${sol.nombreSabor}</div>` : ''}
-        ${sol.nombreCatExistente ? `<div class="sol-modal__fila"><span class="sol-card__etiq">→ Relacionar con categoría:</span> <strong>${sol.nombreCatExistente}</strong></div>` : ''}
-        ${sol.descripcion ? `<div class="sol-modal__fila"><span class="sol-card__etiq">Descripción:</span> ${sol.descripcion}</div>` : ''}
-        <div class="sol-modal__fila"><span class="sol-card__etiq">Enviada:</span> ${sol.fechaSolicitud ?? '—'}</div>
-    `;
+    const detalleEl = await loadTemplate('../partials/modal-detalle-solicitud.html', '.sol-modal__fila--proveedor');
+    const contenedorDetalle = detalleEl.parentElement || document.createDocumentFragment();
+    // Cargamos el fragmento completo del parcial
+    const fragSol = await loadTemplate('../partials/modal-detalle-solicitud.html', '.sol-modal__fila--proveedor');
+    // Usamos el parcial completo via loadSection en el contenedor
+    const solDetalle = document.getElementById('solModalDetalle');
+    await loadSectionFromTemplate(solDetalle, '../partials/modal-detalle-solicitud.html');
+
+    solDetalle.querySelector('.sol-val-proveedor').textContent = sol.nombreProveedor ?? '—';
+    solDetalle.querySelector('.sol-val-tipo').textContent      = sol.tipo;
+    if (sol.nombreCat)            { solDetalle.querySelector('.sol-fila-cat').hidden           = false; solDetalle.querySelector('.sol-val-cat').textContent              = sol.nombreCat; }
+    if (sol.nombreSaborExistente) { solDetalle.querySelector('.sol-fila-sabor-existente').hidden = false; solDetalle.querySelector('.sol-val-sabor-existente').textContent = sol.nombreSaborExistente; }
+    if (sol.nombreSabor)          { solDetalle.querySelector('.sol-fila-sabor').hidden          = false; solDetalle.querySelector('.sol-val-sabor').textContent            = sol.nombreSabor; }
+    if (sol.nombreCatExistente)   { solDetalle.querySelector('.sol-fila-cat-existente').hidden  = false; solDetalle.querySelector('.sol-val-cat-existente').textContent    = sol.nombreCatExistente; }
+    if (sol.descripcion)          { solDetalle.querySelector('.sol-fila-desc').hidden           = false; solDetalle.querySelector('.sol-val-desc').textContent             = sol.descripcion; }
+    solDetalle.querySelector('.sol-val-fecha').textContent = sol.fechaSolicitud ?? '—';
  
     // Reset botones de decisión
     document.getElementById('btnDecisionAprobar').classList.remove('sol-btn-decision--activo');
@@ -1654,88 +1435,51 @@ async function guardarRespuestaSolicitud() {
 }
 
 // ── Paso 2: formulario para crear la categoría/sabor ─────────────────────────
-function mostrarPaso2Creacion() {
+async function mostrarPaso2Creacion() {
     const sol = todasLasSolicitudes.find(s => s.idSolicitud === solicitudSeleccionadaId);
     if (!sol) return;
 
-    const conFotoCat = sol.tipo === 'Categoria' || sol.tipo === 'Ambos';
+    const conCamposCat = sol.tipo === 'Categoria' || sol.tipo === 'Ambos';
+    const conSabor     = sol.tipo === 'Sabor'     || sol.tipo === 'Ambos';
 
-    const camposCat = conFotoCat
-    ? `<div class="p2-grupo">
-           <label class="sol-label">Nombre de la categoría <span class="sol-required">*</span></label>
-           <input id="paso2-nombreCat" class="sol-input" type="text"
-                  value="${sol.nombreCat ?? ''}" maxlength="50" />
-       </div>
-       <div class="p2-grupo">
-           <label class="sol-label">Descripción de la categoría</label>
-           <input id="paso2-descCat" class="sol-input" type="text"
-                  placeholder="Ej: Postres horneados, cremas…" maxlength="100" />
-       </div>
-       <div class="p2-grupo">
-           <label class="sol-label">Foto de la categoría</label>
-           <div class="p2-upload-area" id="p2-upload-area">
-               <input type="file" id="paso2-imagenCat" accept="image/png,image/jpeg,image/webp,image/gif"
-                      style="display:none;" />
-               <div class="p2-upload-placeholder" id="p2-upload-placeholder">
-                   <span class="p2-upload-icon"></span>
-                   <span>Haz clic para seleccionar una imagen</span>
-                   <small>PNG, JPG, WEBP · Máx. 5 MB</small>
-               </div>
-               <img id="p2-preview-img" class="p2-preview-img" style="display:none;" alt="Vista previa" />
-           </div>
-       </div>`
-    : '';
+    const solDetalle = document.getElementById('solModalDetalle');
+    await loadSectionFromTemplate(solDetalle, '../partials/modal-paso2-solicitud.html');
 
-    const camposSabor = (sol.tipo === 'Sabor' || sol.tipo === 'Ambos')
-    ? `<div class="p2-grupo">
-           <label class="sol-label">Nombre del sabor <span class="sol-required">*</span></label>
-           <input id="paso2-nombreSabor" class="sol-input" type="text"
-                  value="${sol.nombreSabor ?? ''}" maxlength="50" />
-       </div>
-       <div class="p2-grupo">
-           <label class="sol-label">Descripción del sabor</label>
-           <input id="paso2-descSabor" class="sol-input" type="text"
-                  placeholder="Ej: Fruta tropical, cítrico…" maxlength="100" />
-       </div>`
-    : '';
+    solDetalle.querySelector('.p2-msg-aprobado').textContent =
+        `Solicitud aprobada. Ahora crea la ${sol.tipo.toLowerCase()} en el catálogo:`;
 
-    // Info de relación para tipo Categoria o Sabor
-    const infoRelacion = sol.tipo === 'Categoria' && sol.nombreSaborExistente
-        ? `<div class="feedback feedback--ok" style="margin-bottom:10px;font-size:.9rem;">
-               🔗 Se relacionará con el sabor existente: <strong>${sol.nombreSaborExistente}</strong>
-           </div>`
-        : sol.tipo === 'Sabor' && sol.nombreCatExistente
-        ? `<div class="feedback feedback--ok" style="margin-bottom:10px;font-size:.9rem;">
-               🔗 Se relacionará con la categoría existente: <strong>${sol.nombreCatExistente}</strong>
-           </div>`
-        : '';
+    if (sol.tipo === 'Categoria' && sol.nombreSaborExistente) {
+        const el = solDetalle.querySelector('.p2-relacion-sabor');
+        el.hidden = false;
+        el.querySelector('.p2-val-sabor-existente').textContent = sol.nombreSaborExistente;
+    }
+    if (sol.tipo === 'Sabor' && sol.nombreCatExistente) {
+        const el = solDetalle.querySelector('.p2-relacion-cat');
+        el.hidden = false;
+        el.querySelector('.p2-val-cat-existente').textContent = sol.nombreCatExistente;
+    }
 
-    document.getElementById('solModalDetalle').innerHTML = `
-        <div class="feedback feedback--ok" style="margin-bottom:14px;">
-            Solicitud aprobada. Ahora crea la ${sol.tipo.toLowerCase()} en el catálogo:
-        </div>
-        ${infoRelacion}
-        ${camposCat}
-        ${camposSabor}
-        <span class="error-msg" id="error-paso2"></span>
-    `;
+    solDetalle.querySelectorAll('.p2-grupo-cat').forEach(el => el.hidden = !conCamposCat);
+    solDetalle.querySelectorAll('.p2-grupo-sabor').forEach(el => el.hidden = !conSabor);
 
-    // Ocultar sección "Decisión" completa (label + botones + motivo)
-    const labelDecision = document.querySelector('.sol-label[for], .sol-label');
-    // Ocultar todo el bloque de decisión buscando el label de "Decisión"
-    const allLabels = document.querySelectorAll('.modal__body .sol-label');
-    allLabels.forEach(lbl => {
-        if (lbl.textContent.includes('Decisión')) {
-            lbl.style.display = 'none';
-        }
+    if (conCamposCat) {
+        const inputNomCat = document.getElementById('paso2-nombreCat');
+        if (inputNomCat) inputNomCat.value = sol.nombreCat ?? '';
+    }
+    if (conSabor) {
+        const inputNomSab = document.getElementById('paso2-nombreSabor');
+        if (inputNomSab) inputNomSab.value = sol.nombreSabor ?? '';
+    }
+
+    document.querySelectorAll('.modal__body .sol-label').forEach(lbl => {
+        if (lbl.textContent.includes('Decisión')) lbl.style.display = 'none';
     });
     document.querySelector('.sol-decision-btns').style.display = 'none';
     document.getElementById('sol-motivo-wrap').style.display   = 'none';
     document.getElementById('feedbackResponder').innerHTML      = '';
     document.getElementById('modalSolTitulo').textContent       = '➕ Crear en catálogo';
 
-    // Activar preview de imagen si aplica
-    if (conFotoCat) {
+    if (conCamposCat) {
         const inputImg   = document.getElementById('paso2-imagenCat');
         const uploadArea = document.getElementById('p2-upload-area');
         if (inputImg && uploadArea) {
@@ -1756,16 +1500,13 @@ function mostrarPaso2Creacion() {
     }
 
     const btnConfirmar = document.getElementById('confirmarResponder');
-    btnConfirmar.disabled    = false;
-    btnConfirmar.textContent = 'Crear';
-
-    // Reemplazar listener para que ahora llame a crearDesdeAprobacion
     const clonBtn = btnConfirmar.cloneNode(true);
     clonBtn.disabled    = false;
     clonBtn.textContent = 'Crear';
     btnConfirmar.parentNode.replaceChild(clonBtn, btnConfirmar);
     clonBtn.addEventListener('click', () => crearDesdeAprobacion(sol));
 }
+
 
 // ── Llamada al backend para insertar categoría/sabor ─────────────────────────
 async function crearDesdeAprobacion(sol) {
@@ -1814,10 +1555,10 @@ async function crearDesdeAprobacion(sol) {
         const data = await res.json();
 
         if (data.ok) {
-            document.getElementById('solModalDetalle').innerHTML += `
-                <div class="feedback feedback--ok" style="margin-top:10px;">
-                    ${sol.tipo} creada correctamente en el catálogo.
-                </div>`;
+            const fbOk = document.createElement('div');
+            fbOk.className   = 'feedback feedback--ok feedback--modal-bottom';
+            fbOk.textContent = `${sol.tipo} creada correctamente en el catálogo.`;
+            document.getElementById('solModalDetalle').appendChild(fbOk);
             btn.textContent = 'Cerrar';
             btn.disabled    = false;
             const clonCerrar = btn.cloneNode(true);
@@ -1847,73 +1588,9 @@ async function crearDesdeAprobacion(sol) {
 // ─────────────────────────────────────────────────────────────────────────────
 // RENDER PRINCIPAL
 // ─────────────────────────────────────────────────────────────────────────────
-function renderSeccionDevolucionesAdmin() {
+async function renderSeccionDevolucionesAdmin() {
     const contenido = document.getElementById('contenidoPrincipal');
-    contenido.innerHTML = `
-        <div class="ventas-header">
-            <h2 class="ventas-titulo">Solicitudes de Devolución</h2>
-        </div>
-
-        <!-- Pestañas de filtro -->
-        <div class="ventas-tabs">
-            <button class="ventas-tab ventas-tab--activo" data-filtro-dev="">Todas</button>
-            <button class="ventas-tab" data-filtro-dev="Pendiente">Pendientes</button>
-            <button class="ventas-tab" data-filtro-dev="Aprobada">Aprobadas</button>
-            <button class="ventas-tab" data-filtro-dev="Rechazada">Rechazadas</button>
-        </div>
-
-        <p class="contador-resultados" id="contadorDevAdmin"></p>
-
-        <div id="listaDevAdmin" class="solicitudes-lista">
-            <p class="cargando">Cargando solicitudes…</p>
-        </div>
-
-        <!-- ── Modal responder devolución ──────────────────────── -->
-        <div id="modalResponderDevolucion" class="modal-overlay" style="display:none">
-            <div class="modal modal--solicitud">
-                <div class="modal__header">
-                    <h3 id="modalDevTitulo">Responder devolución</h3>
-                    <button class="modal__cerrar" id="cerrarModalDev">✕</button>
-                </div>
-                <div class="modal__body">
-
-                    <!-- Detalle de la solicitud -->
-                    <div class="sol-modal__detalle" id="devModalDetalle"></div>
-
-                    <!-- Decisión -->
-                    <label class="sol-label" style="margin-top:16px;display:block;">
-                        Decisión <span class="sol-required">*</span>
-                    </label>
-                    <div class="sol-radio-group">
-                        <label class="sol-radio">
-                            <input type="radio" name="devDecision" value="Aprobada"> Aprobar devolución
-                        </label>
-                        <label class="sol-radio">
-                            <input type="radio" name="devDecision" value="Rechazada"> Rechazar devolución
-                        </label>
-                    </div>
-
-                    <!-- Motivo de rechazo (solo visible si se rechaza) -->
-                    <div id="dev-motivo-wrap" style="display:none;margin-top:14px;">
-                        <label class="sol-label">
-                            Motivo del rechazo <span class="sol-required">*</span>
-                        </label>
-                        <textarea id="dev-motivoRespuesta" class="sol-textarea"
-                                  placeholder="Indica brevemente por qué no se puede aprobar esta devolución…"
-                                  maxlength="255"></textarea>
-                    </div>
-
-                    <!-- Error -->
-                    <p class="sol-error hidden" id="devModalError"></p>
-                </div>
-
-                <div class="modal__footer">
-                    <button class="sol-btn-cancelar" id="devModalCancelar">Cancelar</button>
-                    <button class="sol-btn-confirmar" id="devModalConfirmar">Confirmar</button>
-                </div>
-            </div>
-        </div>
-    `;
+    await loadSection('main', '../partials/seccion-devoluciones.html');
 
     // Pestañas
     document.querySelectorAll('[data-filtro-dev]').forEach(tab => {
@@ -1977,9 +1654,9 @@ async function cargarDevolucionesAdmin(filtro) {
         }
 
         contenedor.innerHTML = '';
-        lista.forEach(dev => {
-            contenedor.appendChild(crearTarjetaDevAdmin(dev));
-        });
+        for (const dev of lista) {
+            contenedor.appendChild(await crearTarjetaDevAdmin(dev));
+        }
 
     } catch (e) {
         console.error('cargarDevolucionesAdmin:', e);
@@ -1990,7 +1667,7 @@ async function cargarDevolucionesAdmin(filtro) {
 // ─────────────────────────────────────────────────────────────────────────────
 // CREAR TARJETA DE DEVOLUCIÓN (panel admin)
 // ─────────────────────────────────────────────────────────────────────────────
-function crearTarjetaDevAdmin(dev) {
+async function crearTarjetaDevAdmin(dev) {
     const cfgEstado = {
         'Pendiente': { bg: '#e67e22', color: '#fff' },
         'Aprobada':  { bg: '#2ecc71', color: '#fff' },
@@ -1998,66 +1675,53 @@ function crearTarjetaDevAdmin(dev) {
     };
     const cfg = cfgEstado[dev.estado] || { bg: '#aaa', color: '#fff' };
 
-    const BASE_IMG = `${BASE_URL}/RESOURCES/img/`;
-    const imgSrc   = dev.imagenPrueba
-        ? BASE_IMG + 'devoluciones/' + dev.imagenPrueba
+    const imgSrc = dev.imagenPrueba
+        ? `${BASE_URL}/RESOURCES/img/devoluciones/${dev.imagenPrueba}`
         : null;
 
-    const tarjeta = document.createElement('div');
-    tarjeta.className = 'sol-card';
+    const tarjeta = await loadTemplate('../partials/tarjeta-devolucion-admin.html', '.sol-card');
 
-    tarjeta.innerHTML = `
-        <div class="sol-card__header">
-            <div class="sol-card__info">
-                <strong>Pedido #${dev.idPedido}</strong>
-                — Cliente: <em>${dev.nombreCliente || '—'}</em>
-            </div>
-            <span class="sol-badge"
-                  style="background:${cfg.bg};color:${cfg.color};">
-                ${dev.estado}
-            </span>
-        </div>
+    // Header
+    const idEl = tarjeta.querySelector('.dev-id-pedido');
+    idEl.textContent = `Pedido #${dev.idPedido} — Cliente: `;
+    tarjeta.querySelector('.dev-nombre-cliente').textContent = dev.nombreCliente || '—';
 
-        <div class="sol-card__body">
-            <p><strong>Total del pedido:</strong>
-               $${Number(dev.totalPago).toLocaleString('es-CO')}</p>
-            <p><strong>Fecha pedido:</strong>
-               ${dev.fechaPedido ? dev.fechaPedido.substring(0, 10) : '—'}</p>
-            <p><strong>Solicitud enviada:</strong>
-               ${dev.fechaSolicitud ? dev.fechaSolicitud.substring(0, 16).replace('T',' ') : '—'}</p>
-            <p style="margin-top:8px;"><strong>Motivo del cliente:</strong><br>
-               ${dev.motivo}</p>
-            ${imgSrc ? `
-                <div style="margin-top:10px;">
-                    <strong>Imagen de prueba:</strong><br>
-                    <img src="${imgSrc}"
-                         alt="Prueba devolución"
-                         onerror="this.style.display='none'"
-                         style="max-width:200px;max-height:160px;border-radius:10px;
-                                margin-top:6px;object-fit:cover;border:2px solid #DCD6F7;">
-                </div>` : ''}
-            ${dev.motivoRespuesta ? `
-                <p style="margin-top:8px;color:#8e44ad;">
-                    <strong>Respuesta registrada:</strong> ${dev.motivoRespuesta}
-                </p>` : ''}
-            ${dev.fechaRespuesta ? `
-                <p style="font-size:.78rem;color:#999;">
-                    Respondida: ${dev.fechaRespuesta.substring(0, 16).replace('T',' ')}
-                </p>` : ''}
-        </div>
+    const badgeEl = tarjeta.querySelector('.sol-badge');
+    badgeEl.textContent        = dev.estado;
+    badgeEl.style.background   = cfg.bg;
+    badgeEl.style.color        = cfg.color;
 
-        ${dev.estado === 'Pendiente' ? `
-        <div class="sol-card__footer">
-            <button class="sol-btn-responder" data-id="${dev.idDevolucion}"
-                    data-pedido="${dev.idPedido}" data-cliente="${dev.nombreCliente || ''}">
-                 Responder
-            </button>
-        </div>` : ''}
-    `;
+    // Body
+    tarjeta.querySelector('.dev-total').textContent         = `$${Number(dev.totalPago).toLocaleString('es-CO')}`;
+    tarjeta.querySelector('.dev-fecha-pedido').textContent  = dev.fechaPedido ? dev.fechaPedido.substring(0, 10) : '—';
+    tarjeta.querySelector('.dev-fecha-solicitud').textContent = dev.fechaSolicitud
+        ? dev.fechaSolicitud.substring(0, 16).replace('T', ' ') : '—';
+    tarjeta.querySelector('.dev-motivo-texto').textContent  = dev.motivo;
 
-    // Listener del botón responder
-    const btnR = tarjeta.querySelector('.sol-btn-responder');
-    if (btnR) {
+    if (imgSrc) {
+        const imgWrap = tarjeta.querySelector('.dev-img-wrap');
+        imgWrap.querySelector('.dev-img-prueba').src = imgSrc;
+        imgWrap.hidden = false;
+    }
+    if (dev.motivoRespuesta) {
+        const respEl = tarjeta.querySelector('.dev-respuesta');
+        respEl.querySelector('.dev-respuesta-texto').textContent = dev.motivoRespuesta;
+        respEl.hidden = false;
+    }
+    if (dev.fechaRespuesta) {
+        const fechaRespEl = tarjeta.querySelector('.dev-fecha-respuesta');
+        fechaRespEl.textContent = `Respondida: ${dev.fechaRespuesta.substring(0, 16).replace('T', ' ')}`;
+        fechaRespEl.hidden = false;
+    }
+
+    // Footer con botón responder
+    if (dev.estado === 'Pendiente') {
+        const footer = tarjeta.querySelector('.sol-card__footer--dev');
+        const btnR   = footer.querySelector('.sol-btn-responder');
+        btnR.dataset.id      = dev.idDevolucion;
+        btnR.dataset.pedido  = dev.idPedido;
+        btnR.dataset.cliente = dev.nombreCliente || '';
+        footer.hidden = false;
         btnR.addEventListener('click', () => {
             abrirModalResponderDevolucion(
                 Number(btnR.dataset.id),
@@ -2075,7 +1739,7 @@ function crearTarjetaDevAdmin(dev) {
 // ─────────────────────────────────────────────────────────────────────────────
 let _idDevolucionActiva = null;
 
-function abrirModalResponderDevolucion(idDevolucion, idPedido, nombreCliente) {
+async function abrirModalResponderDevolucion(idDevolucion, idPedido, nombreCliente) {
     _idDevolucionActiva = idDevolucion;
 
     // Limpiar estado previo
@@ -2087,10 +1751,10 @@ function abrirModalResponderDevolucion(idDevolucion, idPedido, nombreCliente) {
     errorEl.textContent = '';
 
     // Llenar detalle
-    document.getElementById('devModalDetalle').innerHTML = `
-        <p><strong>Solicitud #${idDevolucion}</strong> — Pedido #${idPedido}</p>
-        <p>Cliente: <em>${nombreCliente}</em></p>
-    `;
+    const devDetalle = document.getElementById('devModalDetalle');
+    await loadSectionFromTemplate(devDetalle, '../partials/modal-detalle-devolucion.html');
+    devDetalle.querySelector('.dev-val-solicitud').textContent = `Solicitud #${idDevolucion} — Pedido #${idPedido}`;
+    devDetalle.querySelector('.dev-val-cliente').textContent   = nombreCliente;
 
     // Botón confirmar
     const btnConfirmar = document.getElementById('devModalConfirmar');
@@ -2165,64 +1829,9 @@ async function enviarRespuestaDevolucion(idDevolucion) {
 // SECCIÓN CANCELACIONES — Administrador
 // ═════════════════════════════════════════════════════════════════════════════
 
-function renderSeccionCancelacionesAdmin() {
+async function renderSeccionCancelacionesAdmin() {
     const main = document.getElementById('contenidoPrincipal');
-    main.innerHTML = `
-        <div class="seccion-header">
-            <h2> Solicitudes de Cancelación</h2>
-        </div>
-
-        <div class="ventas-tabs">
-            <button class="ventas-tab ventas-tab--activo" data-filtro-can="">Todas</button>
-            <button class="ventas-tab" data-filtro-can="Pendiente">Pendientes</button>
-            <button class="ventas-tab" data-filtro-can="Aprobada">Aprobadas</button>
-            <button class="ventas-tab" data-filtro-can="Rechazada">Rechazadas</button>
-        </div>
-
-        <div id="listaCancelAdmin" class="solicitudes-lista">
-            <p class="cargando">Cargando solicitudes…</p>
-        </div>
-
-        <!-- Modal responder cancelación -->
-        <div id="modalResponderCancelacion" class="modal-overlay" style="display:none">
-            <div class="modal modal--solicitud">
-                <div class="modal__header">
-                    <h3 id="modalCanTitulo">Responder cancelación</h3>
-                    <button class="modal__cerrar" id="cerrarModalCan">✕</button>
-                </div>
-                <div class="modal__body">
-                    <div class="sol-modal__detalle" id="canModalDetalle"></div>
-
-                    <label class="sol-label" style="margin-top:16px;display:block;">
-                        Decisión <span class="sol-required">*</span>
-                    </label>
-                    <div class="sol-radio-group">
-                        <label class="sol-radio">
-                            <input type="radio" name="canDecision" value="Aprobada"> Aprobar cancelación
-                        </label>
-                        <label class="sol-radio">
-                            <input type="radio" name="canDecision" value="Rechazada"> Rechazar cancelación
-                        </label>
-                    </div>
-
-                    <div id="can-motivo-wrap" style="display:none;margin-top:14px;">
-                        <label class="sol-label">
-                            Motivo del rechazo <span class="sol-required">*</span>
-                        </label>
-                        <textarea id="can-motivoRespuesta" class="sol-textarea"
-                                  placeholder="Indica brevemente por qué no se puede aprobar…"
-                                  maxlength="255"></textarea>
-                    </div>
-
-                    <p class="sol-error hidden" id="canModalError"></p>
-                </div>
-                <div class="modal__footer">
-                    <button class="sol-btn-cancelar" id="canModalCancelar">Cancelar</button>
-                    <button class="sol-btn-confirmar" id="canModalConfirmar">Confirmar</button>
-                </div>
-            </div>
-        </div>
-    `;
+    await loadSection('main', '../partials/seccion-cancelaciones.html');
 
     document.querySelectorAll('[data-filtro-can]').forEach(tab => {
         tab.addEventListener('click', () => {
@@ -2267,35 +1876,39 @@ async function cargarCancelacionesAdmin(filtro) {
             return;
         }
 
-        contenedor.innerHTML = lista.map(c => {
-            const colorEstado = { Pendiente: '#e67e22', Aprobada: '#2ecc71', Rechazada: '#e74c3c' }[c.estado] ?? '#aaa';
-            const esPendiente = c.estado === 'Pendiente';
-            return `
-            <div class="sol-card" id="cancel-card-${c.idCancelacion}">
-                <div class="sol-card__header">
-                    <span class="sol-card__id">Pedido #${c.idPedido}</span>
-                    <span class="sol-card__badge" style="background:${colorEstado}">${c.estado}</span>
-                    <span class="sol-card__fecha">${c.fechaSolicitud}</span>
-                </div>
-                <div class="sol-card__body">
-                    <p><strong>Cliente:</strong> ${c.cliente} — ${c.correo} · ${c.telefono}</p>
-                    <p><strong>Total del pedido:</strong> $${Number(c.totalPago).toLocaleString('es-CO')}</p>
-                    <p><strong>Motivo del cliente:</strong> ${c.motivo}</p>
-                    ${c.motivoRespuesta ? `<p><strong>Respuesta admin:</strong> ${c.motivoRespuesta}</p>` : ''}
-                </div>
-                ${esPendiente ? `
-                <div class="sol-card__footer">
-                    <button class="sol-btn-responder" data-id="${c.idCancelacion}" data-pedido="${c.idPedido}">
-                        📝 Responder
-                    </button>
-                </div>` : ''}
-            </div>`;
-        }).join('');
+        contenedor.innerHTML = '';
+        for (const c of lista) {
+            const tarjeta = await loadTemplate('../partials/tarjeta-cancelacion-admin.html', '.sol-card');
+            tarjeta.id = `cancel-card-${c.idCancelacion}`;
 
-        contenedor.querySelectorAll('.sol-btn-responder').forEach(btn => {
-            btn.addEventListener('click', () =>
-                abrirModalCancelacion(Number(btn.dataset.id), Number(btn.dataset.pedido)));
-        });
+            tarjeta.querySelector('.sol-card__id').textContent    = `Pedido #${c.idPedido}`;
+            const badgeCan = tarjeta.querySelector('.sol-card__badge');
+            badgeCan.textContent = c.estado;
+            badgeCan.classList.add(`sol-card__badge--${c.estado.toLowerCase()}`);
+            tarjeta.querySelector('.sol-card__fecha').textContent = c.fechaSolicitud;
+
+            tarjeta.querySelector('.can-cliente').textContent = `${c.cliente} — ${c.correo} · ${c.telefono}`;
+            tarjeta.querySelector('.can-total').textContent   = `$${Number(c.totalPago).toLocaleString('es-CO')}`;
+            tarjeta.querySelector('.can-motivo').textContent  = c.motivo;
+
+            if (c.motivoRespuesta) {
+                const respEl = tarjeta.querySelector('.can-fila-respuesta');
+                respEl.querySelector('.can-respuesta').textContent = c.motivoRespuesta;
+                respEl.hidden = false;
+            }
+
+            if (c.estado === 'Pendiente') {
+                const footer = tarjeta.querySelector('.sol-card__footer--can');
+                const btn    = footer.querySelector('.sol-btn-responder');
+                btn.dataset.id     = c.idCancelacion;
+                btn.dataset.pedido = c.idPedido;
+                footer.hidden = false;
+                btn.addEventListener('click', () =>
+                    abrirModalCancelacion(Number(btn.dataset.id), Number(btn.dataset.pedido)));
+            }
+
+            contenedor.appendChild(tarjeta);
+        }
 
     } catch (e) {
         contenedor.innerHTML = `<p class="sol-error"> Error al cargar: ${e.message}</p>`;
@@ -2304,11 +1917,10 @@ async function cargarCancelacionesAdmin(filtro) {
 
 let _idCancelacionActual = null;
 
-function abrirModalCancelacion(idCancelacion, idPedido) {
+async function abrirModalCancelacion(idCancelacion, idPedido) {
     _idCancelacionActual = idCancelacion;
     document.getElementById('modalCanTitulo').textContent = `Responder cancelación — Pedido #${idPedido}`;
-    document.getElementById('canModalDetalle').innerHTML =
-        `<p style="font-size:.85rem;color:#555;">Revisa el motivo del cliente arriba y elige tu decisión.</p>`;
+    await loadSectionFromTemplate(document.getElementById('canModalDetalle'), '../partials/modal-detalle-cancelacion.html');
     document.querySelectorAll('input[name="canDecision"]').forEach(r => r.checked = false);
     document.getElementById('can-motivo-wrap').style.display = 'none';
     document.getElementById('can-motivoRespuesta').value = '';
@@ -2382,51 +1994,7 @@ async function enviarRespuestaCancelacion() {
 
 async function renderSeccionPagosProveedores() {
     const main = document.getElementById('contenidoPrincipal');
-    main.innerHTML = `
-        <div class="seccion-header">
-            <h2>Pagos a proveedores</h2>
-        </div>
-
-        <!-- Resumen general -->
-        <div class="admin-stats-bar" id="statsPagos">
-            <div class="stat-card">
-                <div class="stat-card__icon"></div>
-                <div class="stat-card__info">
-                    <span class="stat-card__label">Total pagado a proveedores</span>
-                    <span class="stat-card__valor" id="statTotalPagado">—</span>
-                    <span class="stat-card__sub" id="statTotalPedidosProv">Cargando...</span>
-                </div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-card__icon"></div>
-                <div class="stat-card__info">
-                    <span class="stat-card__label">Proveedores con cobros</span>
-                    <span class="stat-card__valor" id="statProveedoresUnicos">—</span>
-                    <span class="stat-card__sub">proveedores distintos</span>
-                </div>
-            </div>
-        </div>
-
-        <!-- Filtros -->
-        <div class="filtros-bar">
-            <input type="text" id="filtroPagoProv" class="filtro-input"
-                   placeholder="Buscar proveedor o pedido…"/>
-            <select id="filtroEstadoPago" class="filtro-select">
-                <option value="">Todos los estados</option>
-                <option value="Pendiente">Pendiente</option>
-                <option value="Completado">Completado</option>
-                <option value="Cancelado">Cancelado</option>
-            </select>
-            <button class="btn-limpiar" id="btnLimpiarPagosFiltros">✕ Limpiar</button>
-        </div>
-
-        <p class="contador-resultados" id="contadorPagos"></p>
-
-        <!-- Tabla de pagos -->
-        <div id="tablaPagosProveedores" style="overflow-x:auto; margin-top:12px;">
-            <p class="cargando">Cargando pagos…</p>
-        </div>
-    `;
+    await loadSection('main', '../partials/seccion-pagos.html');
 
     document.getElementById('filtroPagoProv').addEventListener('input', filtrarPagos);
     document.getElementById('filtroEstadoPago').addEventListener('change', filtrarPagos);
@@ -2488,7 +2056,7 @@ async function cargarPagosProveedores() {
         }
 
         _filasPagos = filas;
-        renderTablaPagos(filas);
+        await renderTablaPagos(filas);
         actualizarStatsPagos(filas);
 
     } catch (e) {
@@ -2513,7 +2081,7 @@ function actualizarStatsPagos(filas) {
     if (elProv)  elProv.textContent  = provUnicos;
 }
 
-function renderTablaPagos(filas) {
+async function renderTablaPagos(filas) {
     const contenedor = document.getElementById('tablaPagosProveedores');
     const contador   = document.getElementById('contadorPagos');
     if (!contenedor) return;
@@ -2521,62 +2089,60 @@ function renderTablaPagos(filas) {
     if (contador) contador.textContent = `${filas.length} registro${filas.length !== 1 ? 's' : ''}`;
 
     if (filas.length === 0) {
-        contenedor.innerHTML = `<p style="color:#888;text-align:center;padding:40px;">No hay pagos que coincidan con los filtros.</p>`;
+        contenedor.innerHTML = `<p class="pagos-vacio">No hay pagos que coincidan con los filtros.</p>`;
         return;
     }
 
-    const filasBadge = (f) => {
-        const colores = {
-            1: ['#fff8e1','#b7860b'],  // Pendiente
-            2: ['#e6f9f0','#1a7a4a'],  // Completado
-            3: ['#ffe8e8','#c0392b'],  // Cancelado
-        };
-        const [bg, color] = colores[f.estadoPago] || ['#f5f5f5','#555'];
-        return `<span style="padding:4px 10px;border-radius:20px;font-size:.78rem;font-weight:700;background:${bg};color:${color}">${f.nombreEstadoPago}</span>`;
-    };
+    const clsMap = { 1: 'pendiente', 2: 'completado', 3: 'cancelado' };
+    const tplPath = '../partials/fila-pago-admin.html';
+    await loadTemplate(tplPath, 'tr'); // calienta caché
 
-    const rows = filas.map(f => {
-        const productosHtml = f.productos.map(p =>
-            `<div class="pago-prod-item">
-                <span class="pago-prod-nombre">${p.nombre}</span>
-                <span class="pago-prod-detalle">x${p.cantidad} · $${Number(p.precio).toLocaleString('es-CO')} c/u</span>
-                <span class="pago-prod-sub">Subtotal: <strong>$${Number(p.subtotal).toLocaleString('es-CO')}</strong></span>
-             </div>`
-        ).join('');
+    const tabla = document.createElement('table');
+    const theadP = await loadTemplate('../partials/thead-pagos.html', 'thead');
+    const tbody  = document.createElement('tbody');
+    tabla.appendChild(theadP);
+    tabla.appendChild(tbody);
 
-        return `
-        <tr>
-            <td><strong>#${f.idPedido}</strong><br><small>${f.fechaPedido}</small></td>
-            <td>${f.cliente}</td>
-            <td><strong>${f.proveedor}</strong></td>
-            <td>
-                <div class="pago-prods-wrap">${productosHtml || '<em>Sin productos</em>'}</div>
-            </td>
-            <td class="td-monto"><strong>$${f.subtotal.toLocaleString('es-CO')}</strong></td>
-            <td>${f.metodoPago}</td>
-            <td>${filasBadge(f)}</td>
-        </tr>`;
-    }).join('');
+    for (const f of filas) {
+        const fila = await loadTemplate(tplPath, 'tr');
 
-    contenedor.innerHTML = `
-        <table>
-            <thead>
-                <tr>
-                    <th>Pedido</th>
-                    <th>Cliente</th>
-                    <th>Proveedor</th>
-                    <th>Productos entregados</th>
-                    <th>Monto</th>
-                    <th>Método de pago</th>
-                    <th>Estado pedido</th>
-                </tr>
-            </thead>
-            <tbody>${rows}</tbody>
-        </table>
-    `;
+        fila.querySelector('.pago-id-pedido').textContent = `#${f.idPedido}`;
+        fila.querySelector('.pago-fecha').textContent     = f.fechaPedido;
+        fila.querySelector('.pago-cliente').textContent   = f.cliente;
+        fila.querySelector('.pago-proveedor').textContent = f.proveedor;
+        fila.querySelector('.pago-subtotal').textContent  = `$${f.subtotal.toLocaleString('es-CO')}`;
+        fila.querySelector('.pago-metodo').textContent    = f.metodoPago;
+
+        const badge = fila.querySelector('.pago-estado-badge');
+        badge.textContent = f.nombreEstadoPago;
+        badge.classList.add(`pago-estado-badge--${clsMap[f.estadoPago] || 'pendiente'}`);
+
+        const prodsWrap = fila.querySelector('.pago-prods-wrap');
+        if (f.productos && f.productos.length) {
+            for (const p of f.productos) {
+                const prodEl = await loadTemplate(tplPath, '.pago-prod-item--tpl');
+                prodEl.classList.remove('pago-prod-item--tpl');
+                prodEl.hidden = false;
+                prodEl.querySelector('.pago-prod-nombre').textContent   = p.nombre;
+                prodEl.querySelector('.pago-prod-detalle').textContent  = `x${p.cantidad} · $${Number(p.precio).toLocaleString('es-CO')} c/u`;
+                prodEl.querySelector('.pago-prod-subtotal').textContent = `$${Number(p.subtotal).toLocaleString('es-CO')}`;
+                prodsWrap.appendChild(prodEl);
+            }
+        } else {
+            const em = document.createElement('em');
+            em.textContent = 'Sin productos';
+            prodsWrap.appendChild(em);
+        }
+
+        tbody.appendChild(fila);
+    }
+
+    contenedor.innerHTML = '';
+    contenedor.appendChild(tabla);
 }
 
-function filtrarPagos() {
+
+async function filtrarPagos() {
     const texto   = (document.getElementById('filtroPagoProv')?.value   || '').toLowerCase().trim();
     const estado  = (document.getElementById('filtroEstadoPago')?.value || '').toLowerCase().trim();
 
@@ -2590,7 +2156,7 @@ function filtrarPagos() {
         return coincideTexto && coincideEstado;
     });
 
-    renderTablaPagos(filtradas);
+    await renderTablaPagos(filtradas);
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -2601,66 +2167,15 @@ let _catSaborData = { categorias: [], sabores: [] };
 
 async function renderSeccionGestionCatSabor() {
     const main = document.getElementById('contenidoPrincipal');
-    main.innerHTML = `
-        <div class="seccion-header">
-            <h2>Categorías y Sabores</h2>
-            <p style="color:#888;font-size:.9rem;margin-top:4px;">
-                Gestiona las categorías y sabores del catálogo.
-            </p>
-        </div>
-
-        <!-- Botones de acción compactos -->
-        <div class="cs-acciones-bar">
-            <button class="cs-btn-accion" id="btnElegirCategoria">
-                <span class="cs-btn-icon">️</span> Nueva Categoría
-            </button>
-            <button class="cs-btn-accion" id="btnElegirSabor">
-                <span class="cs-btn-icon"></span> Nuevo Sabor
-            </button>
-            <button class="cs-btn-accion" id="btnElegirAmbos">
-                <span class="cs-btn-icon"></span> Categoría + Sabor
-            </button>
-        </div>
-
-        <!-- Formulario dinámico -->
-        <div id="cs-formulario" class="cs-formulario-wrap" style="display:none;"></div>
-
-        <!-- Feedback global -->
-        <div id="cs-feedback" style="display:none;"></div>
-
-        <!-- Listas existentes -->
-        <div class="cs-listas-wrap">
-            <div class="cs-lista-panel">
-                <div class="cs-lista-header">
-                    <span class="cs-lista-icon"></span>
-                    <h3>Categorías registradas</h3>
-                    <span class="cs-lista-badge" id="cs-badge-cats">0</span>
-                </div>
-                <div id="cs-lista-categorias" class="cs-lista-items">
-                    <p class="cs-lista-cargando">Cargando…</p>
-                </div>
-            </div>
-
-            <div class="cs-lista-panel">
-                <div class="cs-lista-header">
-                    <span class="cs-lista-icon"></span>
-                    <h3>Sabores registrados</h3>
-                    <span class="cs-lista-badge" id="cs-badge-sabores">0</span>
-                </div>
-                <div id="cs-lista-sabores" class="cs-lista-items">
-                    <p class="cs-lista-cargando">Cargando…</p>
-                </div>
-            </div>
-        </div>
-    `;
+    await loadSection('main', '../partials/seccion-cat-sabor.html');
 
     // Cargar datos de categorías y sabores
     await _cargarListasCatSabor();
     _renderizarListasExistentes();
 
-    document.getElementById('btnElegirCategoria').addEventListener('click', () => _mostrarFormCS('Categoria'));
-    document.getElementById('btnElegirSabor').addEventListener('click',     () => _mostrarFormCS('Sabor'));
-    document.getElementById('btnElegirAmbos').addEventListener('click',     () => _mostrarFormCS('Ambos'));
+    document.getElementById('btnElegirCategoria').addEventListener('click', async () => await _mostrarFormCS('Categoria'));
+    document.getElementById('btnElegirSabor').addEventListener('click',     async () => await _mostrarFormCS('Sabor'));
+    document.getElementById('btnElegirAmbos').addEventListener('click',     async () => await _mostrarFormCS('Ambos'));
 }
 
 function _renderizarListasExistentes() {
@@ -2710,7 +2225,7 @@ async function _cargarListasCatSabor() {
     }
 }
 
-function _mostrarFormCS(tipo) {
+async function _mostrarFormCS(tipo) {
     // Marcar el botón activo
     document.querySelectorAll('.cs-btn-accion').forEach(c => c.classList.remove('cs-btn-accion--activo'));
     const mapId = { Categoria: 'btnElegirCategoria', Sabor: 'btnElegirSabor', Ambos: 'btnElegirAmbos' };
@@ -2721,94 +2236,61 @@ function _mostrarFormCS(tipo) {
     feedback.style.display = 'none';
     feedback.innerHTML = '';
 
-    // Builds selects
-    const opsCat   = _catSaborData.categorias.map(c =>
-        `<option value="${c.idCategoria}">${c.nombreCategoria}</option>`).join('');
-    const opsSabor = _catSaborData.sabores.map(s =>
-        `<option value="${s.idSabor}">${s.nombreSabor}</option>`).join('');
+    // Cargar el parcial del formulario
+    await loadSectionFromTemplate(contenedor, '../partials/form-cat-sabor.html');
 
-    const campoCat = `
-        <div class="cs-grupo">
-            <label class="cs-label">Nombre de la categoría <span class="cs-req">*</span></label>
-            <input id="cs-nombreCat" class="cs-input" type="text" maxlength="60"
-                   placeholder="Ej: Helados artesanales" />
-        </div>
-        <div class="cs-grupo">
-            <label class="cs-label">Descripción de la categoría</label>
-            <input id="cs-descCat" class="cs-input" type="text" maxlength="120"
-                   placeholder="Ej: Elaborados con frutas naturales…" />
-        </div>
-        <div class="cs-grupo">
-            <label class="cs-label">Foto de la categoría</label>
-            <div class="cs-upload-area" id="cs-upload-area">
-                <input type="file" id="cs-imagenCat" accept="image/png,image/jpeg,image/webp,image/gif"
-                       style="display:none;" />
-                <div class="cs-upload-placeholder" id="cs-upload-placeholder">
-                    <span class="cs-upload-icon"></span>
-                    <span>Haz clic para seleccionar una imagen</span>
-                    <small>PNG, JPG, WEBP, GIF · Máx. 5 MB</small>
-                </div>
-                <img id="cs-preview-img" class="cs-preview-img" style="display:none;" alt="Vista previa" />
-            </div>
-        </div>`;
+    // Título según tipo
+    const titulos = { Categoria: 'Nueva Categoría', Sabor: 'Nuevo Sabor', Ambos: 'Nueva Categoría y Sabor' };
+    contenedor.querySelector('.cs-form-titulo-val').textContent = titulos[tipo];
 
-    const campoSabor = `
-        <div class="cs-grupo">
-            <label class="cs-label">Nombre del sabor <span class="cs-req">*</span></label>
-            <input id="cs-nombreSabor" class="cs-input" type="text" maxlength="60"
-                   placeholder="Ej: Maracuyá con coco" />
-        </div>
-        <div class="cs-grupo">
-            <label class="cs-label">Descripción del sabor</label>
-            <input id="cs-descSabor" class="cs-input" type="text" maxlength="120"
-                   placeholder="Ej: Tropical, con notas cítricas y cremosas…" />
-        </div>`;
+    // Mostrar/ocultar grupos según tipo
+    const mostrarCat   = tipo === 'Categoria' || tipo === 'Ambos';
+    const mostrarSabor = tipo === 'Sabor'     || tipo === 'Ambos';
 
-    const selectSaborExistente = tipo === 'Categoria' ? `
-        <div class="cs-grupo">
-            <label class="cs-label">Sabor existente a relacionar <span class="cs-req">*</span></label>
-            ${_catSaborData.sabores.length === 0
-                ? `<p class="cs-aviso-vacio">⚠️ No hay sabores registrados aún.</p>`
-                : `<select id="cs-idSaborExistente" class="cs-select">
-                       <option value="">— Selecciona un sabor —</option>
-                       ${opsSabor}
-                   </select>`}
-        </div>` : '';
+    contenedor.querySelectorAll('.cs-grupo-cat').forEach(el => el.hidden = !mostrarCat);
+    contenedor.querySelectorAll('.cs-grupo-sabor').forEach(el => el.hidden = !mostrarSabor);
 
-    const selectCatExistente = tipo === 'Sabor' ? `
-        <div class="cs-grupo">
-            <label class="cs-label">Categoría existente a relacionar <span class="cs-req">*</span></label>
-            ${_catSaborData.categorias.length === 0
-                ? `<p class="cs-aviso-vacio">⚠️ No hay categorías registradas aún.</p>`
-                : `<select id="cs-idCatExistente" class="cs-select">
-                       <option value="">— Selecciona una categoría —</option>
-                       ${opsCat}
-                   </select>`}
-        </div>` : '';
+    // Select sabor existente (solo para tipo Categoria)
+    const grupoSelSabor = contenedor.querySelector('.cs-grupo-sel-sabor');
+    if (tipo === 'Categoria') {
+        grupoSelSabor.hidden = false;
+        const sel = contenedor.querySelector('#cs-idSaborExistente');
+        const aviso = contenedor.querySelector('.cs-aviso-sabores');
+        if (_catSaborData.sabores.length === 0) {
+            sel.hidden   = true;
+            aviso.hidden = false;
+        } else {
+            _catSaborData.sabores.forEach(s => {
+                const opt = document.createElement('option');
+                opt.value       = s.idSabor;
+                opt.textContent = s.nombreSabor;
+                sel.appendChild(opt);
+            });
+        }
+    } else {
+        grupoSelSabor.hidden = true;
+    }
 
-    const titulos = {
-        Categoria: 'Nueva Categoría',
-        Sabor:     'Nuevo Sabor',
-        Ambos:     'Nueva Categoría y Sabor'
-    };
-
-    contenedor.innerHTML = `
-        <div class="cs-form-card">
-            <h3 class="cs-form-titulo">${titulos[tipo]}</h3>
-
-            ${tipo === 'Categoria' || tipo === 'Ambos' ? campoCat : ''}
-            ${tipo === 'Categoria' ? selectSaborExistente : ''}
-            ${tipo === 'Sabor' || tipo === 'Ambos' ? campoSabor : ''}
-            ${tipo === 'Sabor' ? selectCatExistente : ''}
-
-            <span class="cs-error" id="cs-error-msg"></span>
-
-            <div class="cs-form-footer">
-                <button class="btn-secundario" id="cs-btn-cancelar">Cancelar</button>
-                <button class="btn-primario"   id="cs-btn-guardar">Guardar</button>
-            </div>
-        </div>
-    `;
+    // Select categoría existente (solo para tipo Sabor)
+    const grupoSelCat = contenedor.querySelector('.cs-grupo-sel-cat');
+    if (tipo === 'Sabor') {
+        grupoSelCat.hidden = false;
+        const sel   = contenedor.querySelector('#cs-idCatExistente');
+        const aviso = contenedor.querySelector('.cs-aviso-cats');
+        if (_catSaborData.categorias.length === 0) {
+            sel.hidden   = true;
+            aviso.hidden = false;
+        } else {
+            _catSaborData.categorias.forEach(c => {
+                const opt = document.createElement('option');
+                opt.value       = c.idCategoria;
+                opt.textContent = c.nombreCategoria;
+                sel.appendChild(opt);
+            });
+        }
+    } else {
+        grupoSelCat.hidden = true;
+    }
 
     contenedor.style.display = 'block';
 
