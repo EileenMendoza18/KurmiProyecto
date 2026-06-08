@@ -36,7 +36,7 @@ public class PedidoDAO {
             if (idCarrito <= 0) {
                 PreparedStatement psBuscar = con.prepareStatement(
                     "SELECT ID_Carrito FROM Carrito_Compras " +
-                    "WHERE ID_Cliente = ? AND EstadoCarrito = 1 LIMIT 1");
+                    "WHERE ID_Cliente = ? AND Activo = TRUE LIMIT 1");
                 psBuscar.setInt(1, pedido.getIdUsuario());
                 ResultSet rsBuscar = psBuscar.executeQuery();
                 if (rsBuscar.next()) idCarrito = rsBuscar.getInt("ID_Carrito");
