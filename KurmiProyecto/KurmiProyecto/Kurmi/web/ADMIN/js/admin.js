@@ -96,6 +96,7 @@ function configurarNavegacion() {
             else if (seccion === 'cancelaciones') renderSeccionCancelacionesAdmin();
             else if (seccion === 'devoluciones') renderSeccionDevolucionesAdmin();
             else if (seccion === 'pagosProveedores') renderSeccionPagosProveedores();
+            else if (seccion === 'backup') renderSeccionBackup();
         });
     });
 }
@@ -2282,4 +2283,66 @@ async function _enviarFormCS(tipo) {
         btn.disabled    = false;
         btn.textContent = 'Guardar';
     }
+}
+// ─────────────────────────────────────────────────────────────────────────────
+// SECCIÓN BACKUP
+// ─────────────────────────────────────────────────────────────────────────────
+async function renderSeccionBackup() {
+    await loadSection('main', '../partials/seccion-backup.html');
+
+    const btn      = document.getElementById('btnDescargarBackup');
+    const feedback = document.getElementById('feedbackBackup');
+    const historial    = document.getElementById('backupHistorial');
+    const listaBackups = document.getElementById('listaBackups');
+
+    btn.addEventListener('click', async () => {
+        // Estado de carga
+        btn.disabled = true;
+        btn.innerHTML = '<span class="backup-btn__icono" aria-hidden="true">⏳</span> Generando copia…';
+        feedback.style.display = 'none';
+
+        try {
+            const res = await fetch(`${BASE_URL}/BackupServlet`, { method: 'GET' });
+
+            if (!res.ok) {
+                throw new Error(`El servidor respondió con estado ${res.status}`);
+            }
+
+            // Extraer nombre del archivo desde la cabecera Content-Disposition
+            const disposition = res.headers.get('Content-Disposition') ?? '';
+            const match = disposition.match(/filename="?([^"]+)"?/);
+            const fileName = match ? match[1] : 'kurmi_backup.zip';
+
+            // Descargar el blob
+            const blob = await res.blob();
+            const url  = URL.createObjectURL(blob);
+            const a    = document.createElement('a');
+            a.href     = url;
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(url);
+
+            // Feedback éxito
+            feedback.className = 'feedback feedback--ok';
+            feedback.textContent = '✅ Copia descargada correctamente: ' + fileName;
+            feedback.style.display = 'block';
+
+            // Agregar al historial de sesión
+            const hora = new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
+            const li = document.createElement('li');
+            li.textContent = `${fileName}  —  ${hora}`;
+            listaBackups.appendChild(li);
+            historial.style.display = 'block';
+
+        } catch (err) {
+            feedback.className = 'feedback feedback--error';
+            feedback.textContent = '❌ Error al generar la copia: ' + err.message;
+            feedback.style.display = 'block';
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<span class="backup-btn__icono" aria-hidden="true">⬇</span> Descargar copia de seguridad';
+        }
+    });
 }
