@@ -113,9 +113,6 @@
     font-size: 0.78rem;
     color: #0000007a;
 }
-.pedido__estado-badge {
-    align-self: flex-start;
-}
 .pedido__detalle {
     font-size: 0.85rem;
     color: #463877;

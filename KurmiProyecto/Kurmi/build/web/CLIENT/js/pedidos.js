@@ -54,21 +54,33 @@ async function cargarPedidos(estado) {
     grid.innerHTML = '<p class="pedidos__cargando">Cargando...</p>';
 
     try {
-        const res = await fetch('/KurmiProyect/PedidosServlet?estado=' + estado);
+        // Para pestañas "1" y "en_proceso" el servidor devuelve todos juntos
+        // (estados 1,4,5,6,7 con sub-pedidos por proveedor); filtramos aquí
+        const estadoParam = (estado === '1' || estado === 'en_proceso') ? '1' : estado;
+        const res = await fetch('/KurmiProyect/PedidosServlet?estado=' + estadoParam);
         if (res.status === 401) { window.location.replace('/KurmiProyect/inicioSesion.html'); return; }
 
-        const pedidos = await res.json();
+        let pedidos = await res.json();
+        console.log('📦 Pedidos recibidos del servidor:', JSON.stringify(pedidos, null, 2));
         grid.innerHTML = '';
 
+        // Filtrar por pestaña activa
+        if (estado === '1') {
+            pedidos = pedidos.filter(p => p.estadoPedido === 1);
+        } else if (estado === 'en_proceso') {
+            pedidos = pedidos.filter(p => [4, 5, 6, 7].includes(p.estadoPedido));
+        }
+
+        const etiquetas = {
+            '1':          'pedidos pendientes',
+            'en_proceso': 'pedidos en proceso',
+            '11':         'solicitudes de cancelación',
+            '8':          'pedidos entregados',
+            '9':          'pedidos en devolución',
+            '3':          'pedidos cancelados'
+        };
+
         if (!pedidos || pedidos.length === 0) {
-            const etiquetas = {
-                '1':          'pedidos pendientes',
-                'en_proceso': 'pedidos en proceso',
-                '11':         'solicitudes de cancelación',
-                '8':          'pedidos entregados',
-                '9':          'pedidos en devolución',
-                '3':          'pedidos cancelados'
-            };
             grid.innerHTML = `<p class="pedidos__vacio">:( No tienes ${etiquetas[estado] || 'pedidos'} aún.</p>`;
             return;
         }
@@ -111,7 +123,8 @@ function crearTarjetaPedido(pedido, filtroActivo) {
     badge.textContent = pedido.nombreEstado || '';
     badge.style.cssText = `background:${badgeCfg.bg};color:${badgeCfg.color};
         padding:3px 10px;border-radius:20px;font-size:.72rem;font-weight:600;
-        display:inline-block;margin-bottom:4px;`;
+        display:inline-block;margin-bottom:4px;align-self:flex-start;
+        width:fit-content;`;
 
     const detalle = document.createElement('p');
     detalle.className = 'pedido__detalle';
@@ -125,6 +138,9 @@ function crearTarjetaPedido(pedido, filtroActivo) {
     info.appendChild(badge);
     info.appendChild(detalle);
     info.appendChild(total);
+
+    // Los estados de proveedor no se muestran al cliente
+
     card.appendChild(img);
     card.appendChild(info);
 
@@ -755,7 +771,12 @@ function abrirModal(pedido, filtroActivo) {
     productos.innerHTML = '';
     footer.innerHTML    = '';
 
-    (pedido.productos || []).forEach(prod => {
+    // Lista de productos del pedido (plana, sin separación por proveedor)
+    const todosLosProductos = (pedido.subpedidos && pedido.subpedidos.length > 0)
+        ? pedido.subpedidos.flatMap(sub => sub.productos || [])
+        : (pedido.productos || []);
+
+    todosLosProductos.forEach(prod => {
         const card = document.createElement('div');
         card.className = 'modal__prod-card';
 

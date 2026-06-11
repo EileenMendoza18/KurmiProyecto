@@ -50,7 +50,7 @@ public class SessionFilter implements Filter {
                    path.contains("RESOURCES/") ||path.contains("LoginServlet") || path.contains("RegistroServlet") || path.contains("FavoritosServlet")||
                     path.contains("CarritoServlet") || path.endsWith("registro.html") || path.contains("CerrarSesionServlet");
         boolean esPrivado = path.contains("/ADMIN/") || path.contains("/PROVIDER/") || path.contains("tienda.html") || path.contains("carrito.html") 
-                || path.contains("formularioPago.html") || path.contains("perfil.html") || path.contains("PerfilServlet")|| path.contains("pedidos.html") || path.contains("PedidosServlet") || path.contains("ProcesarCompraServlet") || path.contains("CambiarEstadoPedidoServlet");
+                || path.contains("formularioPago.html") || path.contains("perfil.html") || path.contains("PerfilServlet")|| path.contains("pedidos.html") || path.contains("PedidosServlet") || path.contains("ProcesarCompraServlet") || path.contains("CambiarEstadoPedidoServlet") || path.contains("BackupServlet");
 
         if (esPublico) {
             chain.doFilter(request, response);

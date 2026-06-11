@@ -61,6 +61,7 @@ async function cargarPedidos(estado) {
         if (res.status === 401) { window.location.replace('/KurmiProyect/inicioSesion.html'); return; }
 
         let pedidos = await res.json();
+        console.log('📦 Pedidos recibidos del servidor:', JSON.stringify(pedidos, null, 2));
         grid.innerHTML = '';
 
         // Filtrar por pestaña activa
@@ -122,7 +123,8 @@ function crearTarjetaPedido(pedido, filtroActivo) {
     badge.textContent = pedido.nombreEstado || '';
     badge.style.cssText = `background:${badgeCfg.bg};color:${badgeCfg.color};
         padding:3px 10px;border-radius:20px;font-size:.72rem;font-weight:600;
-        display:inline-block;margin-bottom:4px;width:auto;max-width:fit-content;`;
+        display:inline-block;margin-bottom:4px;align-self:flex-start;
+        width:fit-content;`;
 
     const detalle = document.createElement('p');
     detalle.className = 'pedido__detalle';
@@ -137,34 +139,7 @@ function crearTarjetaPedido(pedido, filtroActivo) {
     info.appendChild(detalle);
     info.appendChild(total);
 
-    // Sub-pedidos por proveedor — solo cuando el dato viene del servidor
-    if (pedido.subpedidos && pedido.subpedidos.length > 0) {
-        const subWrap = document.createElement('div');
-        subWrap.className = 'pedido__subpedidos';
-        subWrap.style.cssText = 'margin-top:8px;width:100%;';
-
-        pedido.subpedidos.forEach(sub => {
-            const cfg = estadoBadgeConfig(sub.estadoItem);
-            const subEl = document.createElement('div');
-            subEl.className = 'pedido__subpedido-fila';
-            subEl.style.cssText = `
-                display:flex;align-items:center;gap:8px;
-                padding:5px 10px;margin-bottom:4px;
-                background:#f9f6ff;border-radius:8px;
-                border-left:3px solid ${cfg.bg};font-size:.78rem;color:#333;`;
-            subEl.innerHTML = `
-                <span style="flex:1;font-weight:600;color:#463877;">
-                    📦 ${sub.nombreProveedor}
-                </span>
-                <span style="background:${cfg.bg};color:${cfg.color};
-                    padding:2px 9px;border-radius:12px;font-size:.7rem;font-weight:700;
-                    white-space:nowrap;">
-                    ${sub.nombreEstado}
-                </span>`;
-            subWrap.appendChild(subEl);
-        });
-        info.appendChild(subWrap);
-    }
+    // Los estados de proveedor no se muestran al cliente
 
     card.appendChild(img);
     card.appendChild(info);
@@ -796,98 +771,40 @@ function abrirModal(pedido, filtroActivo) {
     productos.innerHTML = '';
     footer.innerHTML    = '';
 
-    // Si tiene sub-pedidos (pedidos en proceso/pendiente con múltiples proveedores)
-    if (pedido.subpedidos && pedido.subpedidos.length > 0) {
-        pedido.subpedidos.forEach(sub => {
-            const cfg = estadoBadgeConfig(sub.estadoItem);
+    // Lista de productos del pedido (plana, sin separación por proveedor)
+    const todosLosProductos = (pedido.subpedidos && pedido.subpedidos.length > 0)
+        ? pedido.subpedidos.flatMap(sub => sub.productos || [])
+        : (pedido.productos || []);
 
-            // Cabecera del sub-pedido
-            const subHeader = document.createElement('div');
-            subHeader.style.cssText = `
-                display:flex;align-items:center;justify-content:space-between;
-                margin:12px 0 6px;padding:8px 12px;
-                background:#f4eeff;border-radius:10px;
-                border-left:4px solid ${cfg.bg};`;
-            subHeader.innerHTML = `
-                <span style="font-weight:700;color:#463877;font-size:.88rem;">
-                    📦 ${sub.nombreProveedor}
-                </span>
-                <span style="background:${cfg.bg};color:${cfg.color};
-                    padding:3px 11px;border-radius:12px;font-size:.72rem;font-weight:700;">
-                    ${sub.nombreEstado}
-                </span>`;
-            productos.appendChild(subHeader);
+    todosLosProductos.forEach(prod => {
+        const card = document.createElement('div');
+        card.className = 'modal__prod-card';
 
-            // Productos de este sub-pedido
-            (sub.productos || []).forEach(prod => {
-                const card = document.createElement('div');
-                card.className = 'modal__prod-card';
+        const img = document.createElement('img');
+        img.className = 'modal__prod-img';
+        const BASE_IMG_MOD = '/KurmiProyect/RESOURCES/img/';
+        img.src = (prod.imagen && prod.imagen !== 'inicioHelado.png')
+            ? BASE_IMG_MOD + prod.imagen
+            : '../../RESOURCES/img/inicioHelado.png';
+        img.alt = prod.nombre;
 
-                const img = document.createElement('img');
-                img.className = 'modal__prod-img';
-                const BASE_IMG_MOD = '/KurmiProyect/RESOURCES/img/';
-                img.src = (prod.imagen && prod.imagen !== 'inicioHelado.png')
-                    ? BASE_IMG_MOD + prod.imagen
-                    : '../../RESOURCES/img/inicioHelado.png';
-                img.alt = prod.nombre;
+        const info = document.createElement('div');
+        info.className = 'modal__prod-info';
 
-                const info = document.createElement('div');
-                info.className = 'modal__prod-info';
+        const nombre = document.createElement('p');
+        nombre.className = 'modal__prod-nombre';
+        nombre.textContent = prod.nombre;
 
-                const nombre = document.createElement('p');
-                nombre.className = 'modal__prod-nombre';
-                nombre.textContent = prod.nombre;
+        const det = document.createElement('p');
+        det.className = 'modal__prod-detalle';
+        det.textContent = 'Cantidad: ' + prod.cantidad + '  ·  $' + Number(prod.precioTotal).toLocaleString('es-CO');
 
-                const det = document.createElement('p');
-                det.className = 'modal__prod-detalle';
-                det.textContent = 'Cantidad: ' + prod.cantidad + '  ·  $' + Number(prod.precioTotal).toLocaleString('es-CO');
-
-                info.appendChild(nombre);
-                info.appendChild(det);
-                card.appendChild(img);
-                card.appendChild(info);
-                productos.appendChild(card);
-            });
-
-            // Subtotal por proveedor
-            const subtotalEl = document.createElement('p');
-            subtotalEl.style.cssText = 'text-align:right;font-size:.8rem;color:#888;margin:2px 4px 8px;';
-            subtotalEl.textContent = 'Subtotal proveedor: $' + Number(sub.subtotal).toLocaleString('es-CO');
-            productos.appendChild(subtotalEl);
-        });
-
-    } else {
-        // Lista plana de productos (pedidos entregados, cancelados, etc.)
-        (pedido.productos || []).forEach(prod => {
-            const card = document.createElement('div');
-            card.className = 'modal__prod-card';
-
-            const img = document.createElement('img');
-            img.className = 'modal__prod-img';
-            const BASE_IMG_MOD = '/KurmiProyect/RESOURCES/img/';
-            img.src = (prod.imagen && prod.imagen !== 'inicioHelado.png')
-                ? BASE_IMG_MOD + prod.imagen
-                : '../../RESOURCES/img/inicioHelado.png';
-            img.alt = prod.nombre;
-
-            const info = document.createElement('div');
-            info.className = 'modal__prod-info';
-
-            const nombre = document.createElement('p');
-            nombre.className = 'modal__prod-nombre';
-            nombre.textContent = prod.nombre;
-
-            const det = document.createElement('p');
-            det.className = 'modal__prod-detalle';
-            det.textContent = 'Cantidad: ' + prod.cantidad + '  ·  $' + Number(prod.precioTotal).toLocaleString('es-CO');
-
-            info.appendChild(nombre);
-            info.appendChild(det);
-            card.appendChild(img);
-            card.appendChild(info);
-            productos.appendChild(card);
-        });
-    }
+        info.appendChild(nombre);
+        info.appendChild(det);
+        card.appendChild(img);
+        card.appendChild(info);
+        productos.appendChild(card);
+    });
 
     const spanTotal = document.createElement('p');
     spanTotal.style.cssText = 'font-weight:700;color:#463877;margin-right:auto;font-size:1rem;';

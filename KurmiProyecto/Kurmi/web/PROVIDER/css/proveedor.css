@@ -839,6 +839,14 @@ html, body {
 }
 .btn-entregar:hover { background: #15803d; }
 .btn-entregar:disabled { background: #9ca3af; cursor: not-allowed; }
+.btn-entregar--bodega       { background: #f39c12; }
+.btn-entregar--bodega:hover { background: #d68910; }
+.btn-entregar--empacando       { background: #1abc9c; }
+.btn-entregar--empacando:hover { background: #17a589; }
+.btn-entregar--transportando       { background: #9b59b6; }
+.btn-entregar--transportando:hover { background: #8e44ad; }
+.btn-entregar--entregado       { background: #2471a3; }
+.btn-entregar--entregado:hover { background: #1a5276; }
 
 .pedido-card__footer {
     display: flex;

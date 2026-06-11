@@ -797,34 +797,52 @@ function renderListaPedidos(lista, tipo) {
 
     contenedor.innerHTML = lista.map(p => {
         // Estado 1=Pendiente (recién creado), 4=Preparando, 5=En bodega
-        const badgeColor = p.estadoProveedor === 5 ? '#2ecc71'
+        const badgeColor = p.estadoProveedor === 8 ? '#2ecc71'
+                         : p.estadoProveedor === 7 ? '#9b59b6'
+                         : p.estadoProveedor === 6 ? '#1abc9c'
+                         : p.estadoProveedor === 5 ? '#2ecc71'
                          : p.estadoProveedor === 4 ? '#f39c12'
                          : '#3498db';   // 1 = Pendiente → azul
         const estadoLabel = p.estadoProveedor === 1 ? 'Pendiente'
                           : p.estadoProveedor === 4 ? 'Preparando'
                           : p.estadoProveedor === 5 ? 'En bodega'
+                          : p.estadoProveedor === 6 ? 'Empacando'
+                          : p.estadoProveedor === 7 ? 'Transportando'
+                          : p.estadoProveedor === 8 ? 'Entregado'
                           : (p.nombreEstadoProveedor ?? 'Pendiente');
 
         // Botón según estado actual del proveedor
         let accionFooter = '';
         if (tipo === 'pendientes') {
             if (p.estadoProveedor === 1) {
-                // Aún no inicia preparación → botón para pasar a 4
                 accionFooter = `
                     <button class="btn-entregar" data-id="${p.idPedido}" data-nuevo-estado="4">
                         Iniciar preparación
                     </button>`;
             } else if (p.estadoProveedor === 4) {
-                // Ya preparando → botón para pasar a 5
                 accionFooter = `
                     <button class="btn-entregar btn-entregar--bodega" data-id="${p.idPedido}" data-nuevo-estado="5">
-                        Marcar en bodega
+                        Listo en bodega
                     </button>`;
             } else if (p.estadoProveedor === 5) {
-                // Ya en bodega → solo mensaje
+                accionFooter = `
+                    <button class="btn-entregar btn-entregar--empacando" data-id="${p.idPedido}" data-nuevo-estado="6">
+                        Empacando
+                    </button>`;
+            } else if (p.estadoProveedor === 6) {
+                accionFooter = `
+                    <button class="btn-entregar btn-entregar--transportando" data-id="${p.idPedido}" data-nuevo-estado="7">
+                        En camino
+                    </button>`;
+            } else if (p.estadoProveedor === 7) {
+                accionFooter = `
+                    <button class="btn-entregar btn-entregar--entregado" data-id="${p.idPedido}" data-nuevo-estado="8">
+                        Marcar entregado
+                    </button>`;
+            } else if (p.estadoProveedor === 8) {
                 accionFooter = `
                     <span style="color:#2ecc71;font-weight:600;font-size:.85rem;">
-                        ✔ Listo en bodega — esperando al admin
+                        ✔ Pedido entregado al cliente
                     </span>`;
             }
         }
@@ -888,8 +906,14 @@ function generarFacturaProv(p) {
     const estadoLabel = p.estadoProveedor === 1 ? 'Pendiente'
                       : p.estadoProveedor === 4 ? 'Preparando'
                       : p.estadoProveedor === 5 ? 'En bodega'
+                      : p.estadoProveedor === 6 ? 'Empacando'
+                      : p.estadoProveedor === 7 ? 'Transportando'
+                      : p.estadoProveedor === 8 ? 'Entregado'
                       : (p.nombreEstadoProveedor ?? 'Pendiente');
-    const badgeBg  = p.estadoProveedor === 5 ? '#2ecc71'
+    const badgeBg  = p.estadoProveedor === 8 ? '#2ecc71'
+                   : p.estadoProveedor === 7 ? '#9b59b6'
+                   : p.estadoProveedor === 6 ? '#1abc9c'
+                   : p.estadoProveedor === 5 ? '#2ecc71'
                    : p.estadoProveedor === 4 ? '#f39c12'
                    : '#3498db';
     const fecha    = p.fecha      || '—';
@@ -1005,11 +1029,17 @@ function generarFacturaProv(p) {
 async function marcarEstadoProveedor(idPedido, btn, nuevoEstado) {
     const mensajes = {
         '4': `¿Confirmas que vas a iniciar la preparación del pedido #${idPedido}?`,
-        '5': `¿Confirmas que tus productos del pedido #${idPedido} están listos en bodega?`
+        '5': `¿Confirmas que el pedido #${idPedido} está listo en bodega?`,
+        '6': `¿Confirmas que estás empacando el pedido #${idPedido}?`,
+        '7': `¿Confirmas que el pedido #${idPedido} está en camino al cliente?`,
+        '8': `¿Confirmas que el pedido #${idPedido} fue entregado al cliente?`
     };
     const textosBtn = {
         '4': 'Iniciar preparación',
-        '5': 'Marcar en bodega'
+        '5': 'Listo en bodega',
+        '6': 'Empacando',
+        '7': 'En camino',
+        '8': 'Marcar entregado'
     };
 
     if (!confirm(mensajes[nuevoEstado] ?? '¿Confirmar acción?')) return;
