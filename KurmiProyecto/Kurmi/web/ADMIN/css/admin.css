@@ -961,7 +961,11 @@ html, body {
     justify-content: center;
     flex-shrink: 0;
 }
-
+.stat-card__icon img {
+    width: 24px;
+    height: 24px;
+    object-fit: contain;
+}
 .stat-card__info {
     display: flex;
     flex-direction: column;
@@ -1556,7 +1560,7 @@ html, body {
 .mda-precio {
     font-size: 1.45rem;
     font-weight: 800;
-    color: #7C4DFF;
+    color: #c5b8f0;
     margin: 0;
 }
 
@@ -1610,7 +1614,7 @@ html, body {
 .mda-btn-estado {
     flex: 1;
     padding: 12px;
-    background: #7C4DFF;
+    background: #b79dff;
     color: #fff;
     border: none;
     border-radius: 12px;
@@ -1621,7 +1625,7 @@ html, body {
 }
 
 .mda-btn-estado:hover {
-    background: #6a3de8;
+    background: #d6c8fd;
 }
 
 /* ============================================================

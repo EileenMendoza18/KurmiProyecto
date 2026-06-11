@@ -1,0 +1,42 @@
+<div class="pedido-card" id="">
+    <div class="pedido-card__header">
+        <span class="pedido-card__fecha"></span>
+        <span class="pedido-estado-badge"></span>
+        <span class="pedido-card__metodo"></span>
+    </div>
+
+    <div class="pedido-card__receptor"></div>
+
+    <div class="ped-proveedores-wrap">
+        <p class="ped-proveedores-titulo">ESTADO POR PROVEEDOR:</p>
+        <div class="ped-proveedores-lista"></div>
+        <p class="ped-aviso-espera" hidden>⚠ Esperando que todos los proveedores marquen sus productos en bodega</p>
+        <p class="ped-aviso-ok"    hidden>✔ Todos los proveedores han entregado en bodega</p>
+    </div>
+
+    <div class="pedido-card__footer pedido-card__footer--gap">
+        <span>Total: <strong class="ped-total"></strong></span>
+        <div class="ped-btns-group">
+            <div class="ped-btns-avance"></div>
+            <button class="btn-factura-admin">Ver factura</button>
+        </div>
+    </div>
+</div>
+
+<!-- Sub-template: bloque por proveedor -->
+<div class="ped-prov-bloque ped-prov-bloque--tpl" hidden>
+    <div class="ped-prov-header">
+        <span class="ped-prov-nombre"></span>
+        <span class="ped-prov-estado-badge"></span>
+    </div>
+    <div class="ped-prov-productos"></div>
+</div>
+
+<!-- Sub-template: fila de producto del proveedor -->
+<div class="ped-prod-fila ped-prod-fila--tpl" hidden>
+    <span class="ped-prod-nombre-cant"></span>
+    <span class="ped-prod-subtotal"></span>
+</div>
+
+<!-- Sub-template: botón avanzar estado -->
+<button class="btn-avanzar-estado btn-avanzar-estado--tpl" hidden></button>

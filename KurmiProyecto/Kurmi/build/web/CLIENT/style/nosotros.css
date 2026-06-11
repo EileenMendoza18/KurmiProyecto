@@ -59,7 +59,7 @@ main.nosotros-main {
 }
 
 .tarjetaNosotros p {
-    color: #756a9b;
+    color: #0000009d;
     font-size: 0.95rem;
     line-height: 1.6;
     margin: 0;
@@ -88,7 +88,7 @@ main.nosotros-main {
 
 .contacto {
     background-color: white;
-    width: 90%;
+    width: auto;
     display: grid;
     grid-template-columns: 20% 80%;
     gap: 10px;
@@ -154,26 +154,24 @@ main.nosotros-main {
 }
 
 .card__nombre {
-    color: #463877 ;
+    color: #0000009d ;
     font-weight: bold;
     font-size: 0.95rem;
     margin: 0 ;
 }
 
 .card__correo {
-    color: #756a9b ;
+    color: #0000009d ;
     font-size: 0.85rem;
     margin: 0 ;
 }
 
 /* --- BOTÓN FINAL --- */
 .btn-tienda {
-    background-color: #463877;
+    background-color: #d6c8fd;
     border: none;
-    padding: 20px;
-    height: auto;
-    width: 20%;
-    border-radius: 25px;
+    padding: 15px;
+    border-radius: 20px;
     cursor: pointer;
     transition: background-color 0.2s ease;
 }
