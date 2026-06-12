@@ -228,6 +228,11 @@ function htmlModalCrear() {
                 <div class="input-imagen-wrap">
                     <input type="file" id="inp-imagen"
                            accept="image/jpeg,image/png,image/webp,image/gif" />
+                    <label class="file-upload-label" for="inp-imagen">
+                        <span class="file-upload-label__icon">🖼️</span>
+                        <span class="file-upload-label__texto" id="inp-imagen-texto">Ningún archivo seleccionado</span>
+                        <span class="file-upload-label__btn">Seleccionar</span>
+                    </label>
                     <div id="preview-wrap" style="display:none">
                         <img id="preview-img" src="" alt="Vista previa" class="preview-img" />
                         <span id="preview-info" class="preview-info"></span>
@@ -257,6 +262,8 @@ function abrirModalCrear() {
     if (fb) fb.style.display = 'none';
     const imgInp = document.getElementById('inp-imagen');
     if (imgInp) imgInp.value = '';
+    const imgTxt = document.getElementById('inp-imagen-texto');
+    if (imgTxt) imgTxt.textContent = 'Ningún archivo seleccionado';
 
     document.getElementById('modalCrear').style.display = 'flex';
     cargarCategoriasSabores('inp-relaCatSabor');
@@ -274,6 +281,7 @@ function configurarModalCrear() {
     document.getElementById('inp-imagen').addEventListener('change', e => {
         const file = e.target.files[0];
         if (!file) return;
+        document.getElementById('inp-imagen-texto').textContent = file.name;
         document.getElementById('preview-img').src = URL.createObjectURL(file);
         document.getElementById('preview-info').textContent =
             `${file.name} · ${(file.size / 1024).toFixed(1)} KB`;
@@ -438,6 +446,10 @@ function htmlModalEditar() {
                 <div class="input-imagen-wrap">
                     <input type="file" id="edit-imagen"
                            accept="image/jpeg,image/png,image/webp,image/gif" />
+                    <label class="file-upload-label" for="edit-imagen">
+                        <span class="file-upload-label__texto" id="edit-imagen-texto">Ningún archivo seleccionado</span>
+                        <span class="file-upload-label__btn">Seleccionar</span>
+                    </label>
                     <div id="edit-preview-wrap" style="display:none">
                         <img id="edit-preview-img" src="" alt="Vista previa" class="preview-img" />
                         <span id="edit-preview-info" class="preview-info"></span>
@@ -466,6 +478,7 @@ function configurarModalEditar() {
     document.getElementById('edit-imagen').addEventListener('change', e => {
         const file = e.target.files[0];
         if (!file) return;
+        document.getElementById('edit-imagen-texto').textContent = file.name;
         document.getElementById('edit-preview-img').src = URL.createObjectURL(file);
         document.getElementById('edit-preview-info').textContent =
             `${file.name} · ${(file.size / 1024).toFixed(1)} KB`;

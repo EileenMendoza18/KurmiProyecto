@@ -60,17 +60,17 @@
     z-index: 999999;
     
     /* Diseño visual e identidad de Kurmi */
-    background-color: #7c3aed; /* Color morado corporativo */
+    background-color: #B1B2FF; /* Color morado corporativo */
     color: #ffffff; /* Texto blanco en alto contraste */
     padding: 16px 32px;
     border-radius: 12px;
-    box-shadow: 0px 10px 25px rgba(0, 0, 0, 0.3);
-    
     /* Layout interno flexible */
     display: flex;
     align-items: center;
     gap: 15px;
-    
+    border: 2px solid #bbaef1; /* Borde ligeramente más oscuro para definición */
+        box-shadow: 0px 10px 25px rgba(0, 0, 0, 0.3);
+
     /* Transición suave para las animaciones */
     transition: opacity 0.3s ease, transform 0.3s ease;
 }

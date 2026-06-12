@@ -273,9 +273,6 @@ async function cargarCategoriasAside(contenedorId) {
                 divIcono.innerHTML = iconoPostre;
                 divIcono.style.cursor = 'pointer';
                 divIcono.title = nombreCat;
-                divIcono.addEventListener('click', () => {
-                    window.location.href = `Productos.html?categoria=${encodeURIComponent(nombreCat)}`;
-                });
                 contenedorIconos.appendChild(divIcono);
             }
 
@@ -315,7 +312,7 @@ async function cargarCategoriasAside(contenedorId) {
         if (contenedorIconos) {
             contenedorIconos.addEventListener('click', (e) => {
                 e.stopPropagation();
-                abrirAside();
+                letras.style.display === 'flex' ? cerrarAside() : abrirAside();
             });
         }
 
