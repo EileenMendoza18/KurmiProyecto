@@ -33,6 +33,7 @@ main{
 
 h2{
     font-size: 1.8rem;
+    text-align: center;
 }
 
 .main_presentacion button, .hero__button {

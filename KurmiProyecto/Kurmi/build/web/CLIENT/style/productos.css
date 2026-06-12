@@ -85,6 +85,7 @@
     align-items: center;
     justify-content: center;
     transition: all 0.2s ease;
+    width: auto;
 }
 
 .products .sabores__pills .btn__sabor:hover {
@@ -160,7 +161,7 @@
    ============================================================ */
 .botones {
     display: grid;
-    grid-template-columns: 50% 25% 25%;
+    grid-template-columns: 38% 45% 17%;
     align-items: center;
     margin-top: auto;         /* Empuja la barra de botones al final de la tarjeta */
 }
@@ -172,6 +173,12 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 50px;
+    overflow: hidden;
+    margin-left: auto;
+    padding: 7px;
 }
 
 .products button:hover {
