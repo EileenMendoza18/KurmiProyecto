@@ -2065,43 +2065,58 @@ async function renderSeccionGestionCatSabor() {
     document.getElementById('btnElegirAmbos').addEventListener('click',     async () => await _mostrarFormCS('Ambos'));
 }
 
-function _renderizarListasExistentes() {
-    const cats   = _catSaborData.categorias ?? [];
-    const sabores = _catSaborData.sabores   ?? [];
+async function _renderizarListasExistentes() {
+    const cats    = _catSaborData.categorias ?? [];
+    const sabores = _catSaborData.sabores    ?? [];
 
-    const elCats   = document.getElementById('cs-lista-categorias');
-    const elSabores = document.getElementById('cs-lista-sabores');
+    const elCats      = document.getElementById('cs-lista-categorias');
+    const elSabores   = document.getElementById('cs-lista-sabores');
     const badgeCats   = document.getElementById('cs-badge-cats');
     const badgeSabores = document.getElementById('cs-badge-sabores');
 
     if (!elCats || !elSabores) return;
 
-    badgeCats.textContent   = cats.length;
+    badgeCats.textContent    = cats.length;
     badgeSabores.textContent = sabores.length;
 
+    const tplPath = '../partials/item-lista-cs.html';
+
+    // Categorías
+    elCats.innerHTML = '';
     if (cats.length === 0) {
         elCats.innerHTML = '<p class="cs-lista-vacia">Sin categorías registradas aún.</p>';
     } else {
-        elCats.innerHTML = cats.map(c => `
-            <div class="cs-lista-item">
-                <span class="cs-lista-nombre">${c.nombreCategoria}</span>
-                ${c.descripcion ? `<span class="cs-lista-desc">${c.descripcion}</span>` : ''}
-            </div>
-        `).join('');
+        for (const c of cats) {
+            const item = await loadTemplate(tplPath, '.cs-lista-item');
+            item.querySelector('.cs-lista-nombre').textContent = c.nombreCategoria;
+            const descEl = item.querySelector('.cs-lista-desc');
+            if (c.descripcion) {
+                descEl.textContent = c.descripcion;
+            } else {
+                descEl.remove();
+            }
+            elCats.appendChild(item);
+        }
     }
 
+    // Sabores
+    elSabores.innerHTML = '';
     if (sabores.length === 0) {
         elSabores.innerHTML = '<p class="cs-lista-vacia">Sin sabores registrados aún.</p>';
     } else {
-        elSabores.innerHTML = sabores.map(s => `
-            <div class="cs-lista-item">
-                <span class="cs-lista-nombre">${s.nombreSabor}</span>
-                ${s.descripcion ? `<span class="cs-lista-desc">${s.descripcion}</span>` : ''}
-            </div>
-        `).join('');
+        for (const s of sabores) {
+            const item = await loadTemplate(tplPath, '.cs-lista-item');
+            item.querySelector('.cs-lista-nombre').textContent = s.nombreSabor;
+            const descEl = item.querySelector('.cs-lista-desc');
+            if (s.descripcion) {
+                descEl.textContent = s.descripcion;
+            } else {
+                descEl.remove();
+            }
+            elSabores.appendChild(item);
+        }
     }
 }
-
 async function _cargarListasCatSabor() {
     try {
         const res  = await fetch(`${BASE_URL}/SolicitudesServlet?accion=listar`);

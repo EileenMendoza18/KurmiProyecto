@@ -25,7 +25,7 @@
     flex-direction: column;
     gap: 8px;
     margin-bottom: 15px;
-    width: 90%;
+    width: 600px;
 }
 
 .form-group input, 
@@ -34,7 +34,7 @@
     border: 1px solid #DCD6F7;
     border-radius: 8px;
     outline: none;
-    width: 90%;
+    width: 100%;
 }
 
 .form-group input:focus {
@@ -42,7 +42,6 @@
 }
 
 .btn-pagar {
-    width: 100%;
     padding: 12px;
     background-color: #B1B2FF;
     border: none;
@@ -83,9 +82,13 @@
     display: block;
 }
 form{
-    width: 500px;
-    justify-items: left;
-
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    justify-content: center;
+    align-items: center;
+    width: 90%;
+    max-width: 700px;
 }
 @keyframes shake {
     0%   { transform: translateX(0); }
