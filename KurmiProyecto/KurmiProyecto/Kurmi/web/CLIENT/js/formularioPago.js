@@ -119,7 +119,7 @@ function validarFormulario() {
     return todoValido;
 }
 
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
 
     // =========================================================================
     // 0. PRE-RELLENAR CAMPOS CON DATOS DEL CLIENTE
@@ -181,16 +181,20 @@ document.addEventListener("DOMContentLoaded", () => {
         localStorage.removeItem("recompraFechaPedido");
 
         if (bloquePago) {
-            bloquePago.innerHTML = `
-                <h2>¡Compra Exitosa!</h2>
-                <div class="resumen-producto">
-                    🎉 Tu pedido ha sido registrado correctamente en Kurmi.
-                </div>
-                <p style="text-align: center; color: #463877; margin-bottom: 20px;">
-                    Pronto nos comunicaremos contigo para coordinar la entrega.
-                </p>
-                <button class="btn-pagar" onclick="window.location.href='tienda.html'">Volver a la Tienda</button>
-            `;
+            try {
+                const responseTemplate = await fetch('/KurmiProyect/components/compraExitosa.html');
+                const templateHTML = await responseTemplate.text();
+                bloquePago.innerHTML = templateHTML;
+
+                const btnVolver = document.getElementById('btnVolverTienda');
+                if (btnVolver) {
+                    btnVolver.addEventListener('click', () => {
+                        window.location.href = 'tienda.html';
+                    });
+                }
+            } catch (e) {
+                console.error('Error cargando el componente de compra exitosa:', e);
+            }
         }
         return;
     }
@@ -201,10 +205,10 @@ document.addEventListener("DOMContentLoaded", () => {
     if (mensajeError) {
         if (status === "invalid_data") {
             mensajeError.innerText = "⚠️ Datos de formulario inválidos. Revisa los campos.";
-            mensajeError.style.display = "block";
+            mensajeError.classList.add("mensaje-error--visible");
         } else if (status === "error_db") {
             mensajeError.innerText = "No se pudo procesar la orden en el servidor.";
-            mensajeError.style.display = "block";
+            mensajeError.classList.add("mensaje-error--visible");
         }
     }
 
@@ -326,7 +330,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 if (mensajeError) {
                     mensajeError.innerText = "⚠️ Por favor corrige los campos marcados antes de continuar.";
-                    mensajeError.style.display = "block";
+                    mensajeError.classList.add("mensaje-error--visible");
                 }
 
                 // Scroll y foco al primer campo con error
@@ -336,7 +340,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     primerError.focus();
                 }
             } else {
-                if (mensajeError) mensajeError.style.display = "none";
+                if (mensajeError) mensajeError.classList.remove("mensaje-error--visible");
             }
         });
     }

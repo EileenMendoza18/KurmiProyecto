@@ -1,0 +1,42 @@
+<!--
+    modal-base.html — Componente reutilizable: estructura base de modal
+    ───────────────────────────────────────────────────────────────────
+    Uso: carga este fragmento vía loadTemplate() e inyéctalo en un
+    contenedor .modal-overlay.modal-overlay--oculto.
+
+    Slots que debes reemplazar antes de insertar en el DOM:
+      · [MODAL_ID]      → id único del wrapper .modal (para cerrar desde JS)
+      · [MODAL_TITULO]  → texto del <h3> en el header
+      · [BTN_CERRAR_ID] → id del botón ✕
+      · [MODAL_BODY]    → contenido HTML del cuerpo
+      · [BTN_CANCEL_ID] → id del botón Cancelar
+      · [BTN_SUBMIT_ID] → id del botón de acción principal
+      · [BTN_SUBMIT_TXT]→ texto del botón de acción principal
+
+    Clases disponibles:
+      · modal--sm  (480 px)   · modal--md  (560 px, default)
+      · modal--lg  (720 px)   · modal--xl  (900 px)
+
+    Ejemplo de uso en JS:
+        const tpl = await loadTemplate(`${BASE_URL}/components/modal-base.html`);
+        document.getElementById('miOverlay').innerHTML = tpl
+            .replace('[MODAL_TITULO]',  'Nuevo elemento')
+            .replace('[BTN_CERRAR_ID]', 'btnCerrarMiModal')
+            ...
+-->
+
+<div class="modal modal--md" id="[MODAL_ID]">
+    <div class="modal__header">
+        <h3>[MODAL_TITULO]</h3>
+        <button class="modal__cerrar" id="[BTN_CERRAR_ID]">✕</button>
+    </div>
+
+    <div class="modal__body">
+        [MODAL_BODY]
+    </div>
+
+    <div class="modal__footer">
+        <button class="btn-secundario" id="[BTN_CANCEL_ID]">Cancelar</button>
+        <button class="btn-primario"   id="[BTN_SUBMIT_ID]">[BTN_SUBMIT_TXT]</button>
+    </div>
+</div>

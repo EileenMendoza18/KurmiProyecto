@@ -84,7 +84,7 @@ public class CarritoDAO {// Declaración de la clase Data Access Object (DAO) pa
             // Usa COALESCE para que si la suma da NULL (el producto no existe en inventario), retorne un 0 de forma segura.
             // Filtra exclusivamente por el producto recibido (WHERE ID_Producto = ?).
             String sqlStock =
-                "SELECT COALESCE(SUM(StockInicial + CantidadAnadida), 0) AS stockTotal " +
+                "SELECT SUM(StockInicial + CantidadAnadida) AS stockTotal " +
                 "FROM Inventario WHERE ID_Producto = ?";
             PreparedStatement psStock = con.prepareStatement(sqlStock);
             psStock.setInt(1, idProducto);
@@ -279,7 +279,7 @@ public class CarritoDAO {// Declaración de la clase Data Access Object (DAO) pa
         // Usa COALESCE para transformar un posible valor NULL en un 0 limpio en caso de que no haya registros.
         // Filtra únicamente por el producto consultado (WHERE ID_Producto = ?).
         String sqlStock =
-            "SELECT COALESCE(SUM(StockInicial + CantidadAnadida), 0) AS stockTotal " +
+            "SELECT SUM(StockInicial + CantidadAnadida) AS stockTotal " +
             "FROM Inventario WHERE ID_Producto = ?";
         try (Connection con = cn.getConexion()) {
             PreparedStatement psStock = con.prepareStatement(sqlStock);

@@ -10,6 +10,16 @@
 
 const BASE_URL = '/KurmiProyect';
 
+// ── Helper: renderizar mensaje de estado (evita innerHTML con strings HTML) ──
+function _setMsg(container, className, text) {
+    const p = document.createElement('p');
+    p.className = className;
+    p.textContent = text;
+    container.innerHTML = '';
+    container.appendChild(p);
+}
+
+
 // ── Caché de templates HTML ───────────────────────────────────────────────────
 const _tplCache = {};
 
@@ -48,7 +58,7 @@ async function loadSection(containerId, path) {
         el.innerHTML = await res.text();
     } catch (e) {
         console.error('loadSection error:', path, e);
-        el.innerHTML = `<p class="error-txt">No se pudo cargar la sección.</p>`;
+        const _errEl1 = document.createElement('p'); _errEl1.className = 'error-txt'; _errEl1.textContent = 'No se pudo cargar la sección.'; el.innerHTML = ''; el.appendChild(_errEl1);
     }
 }
 
@@ -64,7 +74,7 @@ async function loadSectionFromTemplate(el, path) {
         el.innerHTML = await res.text();
     } catch (e) {
         console.error('loadSectionFromTemplate error:', path, e);
-        el.innerHTML = `<p class="error-txt">No se pudo cargar.</p>`;
+        const _errEl2 = document.createElement('p'); _errEl2.className = 'error-txt'; _errEl2.textContent = 'No se pudo cargar.'; el.innerHTML = ''; el.appendChild(_errEl2);
     }
 }
 
@@ -158,14 +168,14 @@ async function cargarTodosLosProductos() {
         const contentType = res.headers.get('content-type') || '';
 
         if (!contentType.includes('application/json')) {
-            contenedor.innerHTML = `<p class="error-txt">Error del servidor (${res.status}).</p>`;
+            _setMsg(contenedor, 'error-txt', `Error del servidor (${res.status}).`);
             return;
         }
 
         const data = await res.json();
 
         if (data.error) {
-            contenedor.innerHTML = `<p class="error-txt">${data.error}</p>`;
+            _setMsg(contenedor, 'error-txt', data.error);
             return;
         }
 
@@ -188,7 +198,7 @@ async function cargarTodosLosProductos() {
         }
 
     } catch (e) {
-        contenedor.innerHTML = `<p class="error-txt">No se pudo conectar: ${e.message}</p>`;
+        _setMsg(contenedor, 'error-txt', `No se pudo conectar: ${e.message}`);
     }
 }
 
@@ -211,7 +221,7 @@ async function renderProductosAdmin(lista) {
 
     if (!lista.length) {
         contador.textContent = '';
-        contenedor.innerHTML = `<p class="vacio">No se encontraron productos con ese filtro.</p>`;
+        _setMsg(contenedor, 'vacio', 'No se encontraron productos con ese filtro.');
         return;
     }
 
@@ -456,18 +466,18 @@ async function cargarTodosLosUsuarios() {
         const res = await fetch(`${BASE_URL}/AdminServlet?accion=clientes`);
         const contentType = res.headers.get('content-type') || '';
         if (!contentType.includes('application/json')) {
-            contenedor.innerHTML = `<p class="error-txt">Error del servidor (${res.status}).</p>`;
+            _setMsg(contenedor, 'error-txt', `Error del servidor (${res.status}).`);
             return;
         }
         const data = await res.json();
         if (data.error) {
-            contenedor.innerHTML = `<p class="error-txt"> ${data.error}</p>`;
+            _setMsg(contenedor, 'error-txt', data.error);
             return;
         }
         todosLosUsuarios = data;
         await renderTablaUsuarios(data);
     } catch (e) {
-        contenedor.innerHTML = `<p class="error-txt">No se pudo conectar: ${e.message}</p>`;
+        _setMsg(contenedor, 'error-txt', `No se pudo conectar: ${e.message}`);
     }
 }
 
@@ -477,7 +487,7 @@ async function renderTablaUsuarios(lista) {
 
     if (!lista.length) {
         contador.textContent = '';
-        contenedor.innerHTML = `<p class="vacio">No se encontraron usuarios con ese filtro.</p>`;
+        _setMsg(contenedor, 'vacio', 'No se encontraron usuarios con ese filtro.');
         return;
     }
 
@@ -570,7 +580,7 @@ function abrirModalUsuario(idUsuario) {
     const estadoMap = { 'Activo': '1', 'Inactivo': '2', 'Pendiente': '3' };
     document.getElementById('selectNuevoEstadoUsuario').value = estadoMap[usuario.estadoNombre] ?? '1';
 
-    document.getElementById('modalEstadoUsuario').style.display = 'flex';
+    document.getElementById('modalEstadoUsuario').classList.remove('hidden');
 
     const btnConfirmar = document.getElementById('confirmarCambioEstadoUsuario');
     const clon = btnConfirmar.cloneNode(true);
@@ -579,7 +589,7 @@ function abrirModalUsuario(idUsuario) {
 }
 
 function cerrarModalUsuario() {
-    document.getElementById('modalEstadoUsuario').style.display = 'none';
+    document.getElementById('modalEstadoUsuario').classList.add('hidden');
     usuarioSeleccionadoId = null;
 }
 
@@ -640,7 +650,7 @@ async function guardarCambioEstadoUsuario() {
 // ─────────────────────────────────────────────────────────────────────────────
 async function renderSeccionPerfil() {
     const main = document.getElementById('contenidoPrincipal');
-    main.innerHTML = `<p class="cargando">Cargando perfil…</p>`;
+    _setMsg(main, 'cargando', 'Cargando perfil…');
 
     try {
         const res = await fetch(`${BASE_URL}/PerfilServlet`);
@@ -659,7 +669,7 @@ async function renderSeccionPerfil() {
         configurarPerfilAdmin();
 
     } catch (e) {
-        main.innerHTML = `<p class="error-txt">Error cargando perfil: ${e.message}</p>`;
+        _setMsg(main, 'error-txt', `Error cargando perfil: ${e.message}`);
     }
 }
 
@@ -684,8 +694,8 @@ const REGLAS_PERFIL_ADMIN = {
     },
     'adm-correo': {
         required: true, requiredMessage: 'El correo es obligatorio',
-        custom: (v) => /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(v.trim()),
-        message: 'El correo debe tener un formato válido (ejemplo@dominio.com)',
+        custom: (v) => /^[a-zA-Z][a-zA-Z0-9._%+-]*@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(v.trim()),
+        message: 'El correo debe empezar con una letra y tener un dominio válido (ejemplo@dominio.com)',
         errorId: 'error-adm-correo'
     },
     'adm-fecha': {
@@ -854,14 +864,14 @@ async function renderSeccionPedidos() {
 
 async function cargarPedidosAdmin(filtro) {
     const contenedor = document.getElementById('listaPedidosAdmin');
-    contenedor.innerHTML = `<p class="cargando">Cargando…</p>`;
+    _setMsg(contenedor, 'cargando', 'Cargando…');
     try {
         const res = await fetch(`${BASE_URL}/PedidosAdminServlet?filtro=${filtro}`);
         if (!res.ok) throw new Error(`Error ${res.status}`);
         const pedidos = await res.json();
         await renderPedidosAdmin(pedidos);
     } catch (e) {
-        contenedor.innerHTML = `<p class="error-txt">No se pudo cargar: ${e.message}</p>`;
+        _setMsg(contenedor, 'error-txt', `No se pudo cargar: ${e.message}`);
     }
 }
 
@@ -869,7 +879,7 @@ async function renderPedidosAdmin(pedidos) {
     const contenedor = document.getElementById('listaPedidosAdmin');
 
     if (!pedidos.length) {
-        contenedor.innerHTML = `<p class="vacio ped-vacio">No hay pedidos en esta categoría.</p>`;
+        _setMsg(contenedor, 'vacio ped-vacio', 'No hay pedidos en esta categoría.');
         return;
     }
 
@@ -1068,7 +1078,7 @@ async function renderSeccionSolicitudesAdmin() {
 // ── Cargar todas las solicitudes ──────────────────────────────────────────────
 async function cargarSolicitudesAdmin(estadoFiltro) {
     const contenedor = document.getElementById('listaSolicitudesAdmin');
-    contenedor.innerHTML = `<p class="cargando">Cargando…</p>`;
+    _setMsg(contenedor, 'cargando', 'Cargando…');
  
     try {
         const url = `${BASE_URL}/SolicitudesServlet?accion=todasSolicitudes` +
@@ -1078,7 +1088,7 @@ async function cargarSolicitudesAdmin(estadoFiltro) {
         const data = await res.json();
  
         if (!data.ok) {
-            contenedor.innerHTML = `<p class="error-txt">${data.error}</p>`;
+            _setMsg(contenedor, 'error-txt', data.error);
             return;
         }
  
@@ -1086,7 +1096,7 @@ async function cargarSolicitudesAdmin(estadoFiltro) {
         await renderListaSolicitudesAdmin(todasLasSolicitudes);
  
     } catch (e) {
-        contenedor.innerHTML = `<p class="error-txt">No se pudo conectar: ${e.message}</p>`;
+        _setMsg(contenedor, 'error-txt', `No se pudo conectar: ${e.message}`);
     }
 }
  
@@ -1108,9 +1118,6 @@ async function renderListaSolicitudesAdmin(lista) {
         contenedor.appendChild(await tarjetaSolicitudAdmin(s));
     }
  
-    contenedor.querySelectorAll('.btn-responder-sol').forEach(btn => {
-        btn.addEventListener('click', () => abrirModalResponder(Number(btn.dataset.id)));
-    });
 }
  
 // ── Tarjeta de solicitud (vista admin) ────────────────────────────────────────
@@ -1171,6 +1178,7 @@ async function tarjetaSolicitudAdmin(s) {
     if (s.estado === 'Pendiente') {
         btnR.dataset.id = s.idSolicitud;
         btnR.hidden = false;
+        btnR.addEventListener('click', () => abrirModalResponder(s.idSolicitud));
     } else {
         yaRes.hidden = false;
     }
@@ -1190,8 +1198,7 @@ async function abrirModalResponder(idSolicitud) {
     decisionSeleccionada    = null;
  
     // Actualizar título y detalle
-    document.getElementById('modalSolTitulo').textContent = `Solicitud #${sol.idSolicitud}`;
- 
+
     const tipoIcono = { 'Categoria': '<img src="../../RESOURCES/img/postreAside.png" >', 'Sabor': '<img src="../../RESOURCES/img/postreAside.png" >', 'Ambos': '<img src="../../RESOURCES/img/postreAside.png" >' }[sol.tipo] ?? ':)';
     const detalleEl = await loadTemplate('../partials/modal-detalle-solicitud.html', '.sol-modal__fila--proveedor');
     const contenedorDetalle = detalleEl.parentElement || document.createDocumentFragment();
@@ -1210,13 +1217,17 @@ async function abrirModalResponder(idSolicitud) {
     if (sol.descripcion)          { solDetalle.querySelector('.sol-fila-desc').hidden           = false; solDetalle.querySelector('.sol-val-desc').textContent             = sol.descripcion; }
     solDetalle.querySelector('.sol-val-fecha').textContent = sol.fechaSolicitud ?? '—';
  
-    // Reset botones de decisión
+    // Reset completo del modal (incluyendo restaurar lo oculto en paso 2)
+    document.querySelector('.sol-decision-btns').style.display = '';
+    document.querySelectorAll('.modal__body .sol-label').forEach(lbl => lbl.style.display = '');
+    document.getElementById('modalSolTitulo').textContent = `Solicitud #${sol.idSolicitud}`;
     document.getElementById('btnDecisionAprobar').classList.remove('sol-btn-decision--activo');
     document.getElementById('btnDecisionRechazar').classList.remove('sol-btn-decision--activo');
-    document.getElementById('sol-motivo-wrap').style.display = 'none';
+    document.getElementById('sol-motivo-wrap').classList.add('hidden');
     document.getElementById('sol-motivoRechazo').value = '';
     document.getElementById('error-sol-motivo').textContent = '';
-    document.getElementById('feedbackResponder').innerHTML = '';
+    const _fb = document.getElementById('feedbackResponder');
+    _fb.innerHTML = ''; _fb.className = ''; _fb.hidden = true;
     document.getElementById('confirmarResponder').disabled = true;
  
     // Listeners de decisión
@@ -1232,7 +1243,7 @@ async function abrirModalResponder(idSolicitud) {
         decisionSeleccionada = 'Aprobado';
         clonAprobar.classList.add('sol-btn-decision--activo');
         clonRechazar.classList.remove('sol-btn-decision--activo');
-        document.getElementById('sol-motivo-wrap').style.display = 'none';
+        document.getElementById('sol-motivo-wrap').classList.add('hidden');
         document.getElementById('confirmarResponder').disabled = false;
     });
  
@@ -1240,7 +1251,7 @@ async function abrirModalResponder(idSolicitud) {
         decisionSeleccionada = 'Rechazado';
         clonRechazar.classList.add('sol-btn-decision--activo');
         clonAprobar.classList.remove('sol-btn-decision--activo');
-        document.getElementById('sol-motivo-wrap').style.display = 'block';
+        document.getElementById('sol-motivo-wrap').classList.remove('hidden');
         document.getElementById('confirmarResponder').disabled = false;
     });
  
@@ -1251,13 +1262,26 @@ async function abrirModalResponder(idSolicitud) {
     clonConfirmar.disabled = true;
     clonConfirmar.addEventListener('click', guardarRespuestaSolicitud);
  
-    document.getElementById('modalResponderSolicitud').style.display = 'flex';
+    document.getElementById('modalResponderSolicitud').classList.remove('hidden');
 }
  
 function cerrarModalResponder() {
-    document.getElementById('modalResponderSolicitud').style.display = 'none';
+    document.getElementById('modalResponderSolicitud').classList.add('hidden');
     solicitudSeleccionadaId = null;
     decisionSeleccionada    = null;
+
+    // Resetear el modal al estado inicial para que la próxima apertura esté limpia
+    document.querySelector('.sol-decision-btns').style.display = '';
+    document.querySelectorAll('.modal__body .sol-label').forEach(lbl => lbl.style.display = '');
+    document.getElementById('solModalDetalle').innerHTML = '';
+    const _fb3 = document.getElementById('feedbackResponder');
+    _fb3.innerHTML = ''; _fb3.className = ''; _fb3.hidden = true;
+    document.getElementById('sol-motivo-wrap').classList.add('hidden');
+    document.getElementById('sol-motivoRechazo').value = '';
+    document.getElementById('error-sol-motivo').textContent = '';
+    // Restaurar texto y estado del botón confirmar
+    const btnConf = document.getElementById('confirmarResponder');
+    if (btnConf) { btnConf.textContent = 'Confirmar'; btnConf.disabled = true; }
 }
  
 // ── Guardar respuesta ─────────────────────────────────────────────────────────
@@ -1279,6 +1303,7 @@ async function guardarRespuestaSolicitud() {
     btn.disabled = true;
     feedback.className   = 'feedback feedback--cargando';
     feedback.textContent = 'Guardando respuesta…';
+    feedback.hidden      = false;
 
     try {
         const res = await fetch(`${BASE_URL}/SolicitudesServlet`, {
@@ -1299,24 +1324,30 @@ async function guardarRespuestaSolicitud() {
                 // Rechazo: cerrar y refrescar
                 feedback.className   = 'feedback feedback--ok';
                 feedback.textContent = 'Solicitud rechazada correctamente.';
+                feedback.hidden      = false;
                 setTimeout(() => {
                     cerrarModalResponder();
                     const tabActivo = document.querySelector('[data-estado].ventas-tab--activo');
                     cargarSolicitudesAdmin(tabActivo ? tabActivo.dataset.estado : '');
                 }, 900);
             } else {
-                // Aprobado: mostrar paso 2 para que el admin cree la categoría/sabor
+                // Aprobado: limpiar feedback antes de mostrar paso 2
+                feedback.className   = '';
+                feedback.textContent = '';
+                feedback.hidden      = true;
                 mostrarPaso2Creacion();
             }
         } else {
             feedback.className   = 'feedback feedback--error';
             feedback.textContent = `${data.error ?? 'No se pudo guardar.'}`;
+            feedback.hidden      = false;
             btn.disabled = false;
         }
 
     } catch (e) {
         feedback.className   = 'feedback feedback--error';
         feedback.textContent = `Error de conexión: ${e.message}`;
+        feedback.hidden      = false;
         btn.disabled = false;
     }
 }
@@ -1362,8 +1393,9 @@ async function mostrarPaso2Creacion() {
         if (lbl.textContent.includes('Decisión')) lbl.style.display = 'none';
     });
     document.querySelector('.sol-decision-btns').style.display = 'none';
-    document.getElementById('sol-motivo-wrap').style.display   = 'none';
-    document.getElementById('feedbackResponder').innerHTML      = '';
+    document.getElementById('sol-motivo-wrap').classList.add('hidden');
+    const _fb2 = document.getElementById('feedbackResponder');
+    _fb2.innerHTML = ''; _fb2.className = ''; _fb2.hidden = true;
     document.getElementById('modalSolTitulo').textContent       = '➕ Crear en catálogo';
 
     if (conCamposCat) {
@@ -1404,12 +1436,15 @@ async function crearDesdeAprobacion(sol) {
     const errorEl     = document.getElementById('error-paso2');
 
     errorEl.textContent = '';
+    errorEl.hidden = true;
 
     if ((sol.tipo === 'Categoria' || sol.tipo === 'Ambos') && !nombreCat) {
-        errorEl.textContent = 'El nombre de la categoría es obligatorio.'; return;
+        errorEl.textContent = 'El nombre de la categoría es obligatorio.';
+        errorEl.hidden = false; return;
     }
     if ((sol.tipo === 'Sabor' || sol.tipo === 'Ambos') && !nombreSabor) {
-        errorEl.textContent = 'El nombre del sabor es obligatorio.'; return;
+        errorEl.textContent = 'El nombre del sabor es obligatorio.';
+        errorEl.hidden = false; return;
     }
 
     const btn = document.getElementById('confirmarResponder');
@@ -1446,9 +1481,11 @@ async function crearDesdeAprobacion(sol) {
             fbOk.className   = 'feedback feedback--ok feedback--modal-bottom';
             fbOk.textContent = `${sol.tipo} creada correctamente en el catálogo.`;
             document.getElementById('solModalDetalle').appendChild(fbOk);
-            btn.textContent = 'Cerrar';
-            btn.disabled    = false;
-            const clonCerrar = btn.cloneNode(true);
+            // Reemplazar botón Crear por botón Cerrar limpio
+            const clonCerrar = document.createElement('button');
+            clonCerrar.className   = btn.className;
+            clonCerrar.textContent = 'Cerrar';
+            clonCerrar.disabled    = false;
             btn.parentNode.replaceChild(clonCerrar, btn);
             clonCerrar.addEventListener('click', () => {
                 cerrarModalResponder();
@@ -1496,7 +1533,7 @@ async function renderSeccionDevolucionesAdmin() {
     document.querySelectorAll('input[name="devDecision"]').forEach(radio => {
         radio.addEventListener('change', () => {
             const wrap = document.getElementById('dev-motivo-wrap');
-            wrap.style.display = radio.value === 'Rechazada' ? 'block' : 'none';
+            if (radio.value === 'Rechazada') { wrap.classList.remove('hidden'); } else { wrap.classList.add('hidden'); }
             if (radio.value !== 'Rechazada') {
                 document.getElementById('dev-motivoRespuesta').value = '';
             }
@@ -1513,7 +1550,7 @@ async function renderSeccionDevolucionesAdmin() {
 async function cargarDevolucionesAdmin(filtro) {
     const contenedor = document.getElementById('listaDevAdmin');
     if (!contenedor) return;
-    contenedor.innerHTML = '<p class="cargando">Cargando…</p>';
+    _setMsg(contenedor, 'cargando', 'Cargando…');
 
     try {
         const url = `${BASE_URL}/DevolucionServlet?accion=todasDevoluciones` +
@@ -1523,7 +1560,7 @@ async function cargarDevolucionesAdmin(filtro) {
         const data = await res.json();
 
         if (!data.ok) {
-            contenedor.innerHTML = '<p class="sol-vacia">Error al cargar solicitudes.</p>';
+            _setMsg(contenedor, 'sol-vacia', 'Error al cargar solicitudes.');
             return;
         }
 
@@ -1536,7 +1573,7 @@ async function cargarDevolucionesAdmin(filtro) {
         }
 
         if (lista.length === 0) {
-            contenedor.innerHTML = '<p class="sol-vacia">:) No hay solicitudes de devolución.</p>';
+            _setMsg(contenedor, 'sol-vacia', ':) No hay solicitudes de devolución.');
             return;
         }
 
@@ -1547,7 +1584,7 @@ async function cargarDevolucionesAdmin(filtro) {
 
     } catch (e) {
         console.error('cargarDevolucionesAdmin:', e);
-        if (contenedor) contenedor.innerHTML = '<p class="sol-vacia">Error de red.</p>';
+        if (contenedor) _setMsg(contenedor, 'sol-vacia', 'Error de red.');
     }
 }
 
@@ -1631,7 +1668,7 @@ async function abrirModalResponderDevolucion(idDevolucion, idPedido, nombreClien
 
     // Limpiar estado previo
     document.querySelectorAll('input[name="devDecision"]').forEach(r => r.checked = false);
-    document.getElementById('dev-motivo-wrap').style.display = 'none';
+    document.getElementById('dev-motivo-wrap').classList.add('hidden');
     document.getElementById('dev-motivoRespuesta').value = '';
     const errorEl = document.getElementById('devModalError');
     errorEl.classList.add('hidden');
@@ -1650,12 +1687,12 @@ async function abrirModalResponderDevolucion(idDevolucion, idPedido, nombreClien
     btnConfirmar.parentNode.replaceChild(btnNuevo, btnConfirmar);
     btnNuevo.addEventListener('click', () => enviarRespuestaDevolucion(idDevolucion));
 
-    document.getElementById('modalResponderDevolucion').style.display = 'flex';
+    document.getElementById('modalResponderDevolucion').classList.remove('hidden');
 }
 
 function cerrarModalDev() {
     const modal = document.getElementById('modalResponderDevolucion');
-    if (modal) modal.style.display = 'none';
+    if (modal) modal.classList.add('hidden');
     _idDevolucionActiva = null;
 }
 
@@ -1733,8 +1770,7 @@ async function renderSeccionCancelacionesAdmin() {
 
     document.querySelectorAll('input[name="canDecision"]').forEach(radio => {
         radio.addEventListener('change', () => {
-            document.getElementById('can-motivo-wrap').style.display =
-                radio.value === 'Rechazada' ? 'block' : 'none';
+            if (radio.value === 'Rechazada') { document.getElementById('can-motivo-wrap').classList.remove('hidden'); } else { document.getElementById('can-motivo-wrap').classList.add('hidden'); }
             if (radio.value !== 'Rechazada')
                 document.getElementById('can-motivoRespuesta').value = '';
         });
@@ -1749,7 +1785,7 @@ async function renderSeccionCancelacionesAdmin() {
 async function cargarCancelacionesAdmin(filtro) {
     const contenedor = document.getElementById('listaCancelAdmin');
     if (!contenedor) return;
-    contenedor.innerHTML = '<p class="cargando">Cargando…</p>';
+    _setMsg(contenedor, 'cargando', 'Cargando…');
 
     try {
         const url = `${BASE_URL}/CancelacionesAdminServlet` +
@@ -1759,7 +1795,7 @@ async function cargarCancelacionesAdmin(filtro) {
         const lista = await res.json();
 
         if (!lista.length) {
-            contenedor.innerHTML = '<p class="solicitudes-vacia">No hay solicitudes en esta categoría.</p>';
+            _setMsg(contenedor, 'solicitudes-vacia', 'No hay solicitudes en esta categoría.');
             return;
         }
 
@@ -1798,7 +1834,7 @@ async function cargarCancelacionesAdmin(filtro) {
         }
 
     } catch (e) {
-        contenedor.innerHTML = `<p class="sol-error"> Error al cargar: ${e.message}</p>`;
+        _setMsg(contenedor, 'sol-error', `Error al cargar: ${e.message}`);
     }
 }
 
@@ -1809,12 +1845,12 @@ async function abrirModalCancelacion(idCancelacion, idPedido) {
     document.getElementById('modalCanTitulo').textContent = `Responder cancelación — Pedido #${idPedido}`;
     await loadSectionFromTemplate(document.getElementById('canModalDetalle'), '../partials/modal-detalle-cancelacion.html');
     document.querySelectorAll('input[name="canDecision"]').forEach(r => r.checked = false);
-    document.getElementById('can-motivo-wrap').style.display = 'none';
+    document.getElementById('can-motivo-wrap').classList.add('hidden');
     document.getElementById('can-motivoRespuesta').value = '';
     document.getElementById('canModalError').classList.add('hidden');
     document.getElementById('canModalConfirmar').disabled = false;
     document.getElementById('canModalConfirmar').textContent = 'Confirmar';
-    document.getElementById('modalResponderCancelacion').style.display = 'flex';
+    document.getElementById('modalResponderCancelacion').classList.remove('hidden');
 
     // Asignar listener al botón confirmar (clonar para evitar duplicados)
     const btnC = document.getElementById('canModalConfirmar');
@@ -1824,7 +1860,7 @@ async function abrirModalCancelacion(idCancelacion, idPedido) {
 }
 
 function cerrarModalCan() {
-    document.getElementById('modalResponderCancelacion').style.display = 'none';
+    document.getElementById('modalResponderCancelacion').classList.add('hidden');
     _idCancelacionActual = null;
 }
 
@@ -1948,7 +1984,7 @@ async function cargarPagosProveedores() {
 
     } catch (e) {
         console.error('Error cargando pagos a proveedores:', e);
-        if (contenedor) contenedor.innerHTML = `<p class="error-txt">No se pudieron cargar los pagos. Intenta de nuevo.</p>`;
+        if (contenedor) _setMsg(contenedor, 'error-txt', 'No se pudieron cargar los pagos. Intenta de nuevo.');
     }
 }
 
@@ -1976,7 +2012,7 @@ async function renderTablaPagos(filas) {
     if (contador) contador.textContent = `${filas.length} registro${filas.length !== 1 ? 's' : ''}`;
 
     if (filas.length === 0) {
-        contenedor.innerHTML = `<p class="pagos-vacio">No hay pagos que coincidan con los filtros.</p>`;
+        _setMsg(contenedor, 'pagos-vacio', 'No hay pagos que coincidan con los filtros.');
         return;
     }
 
@@ -2050,7 +2086,8 @@ async function filtrarPagos() {
 // SECCIÓN GESTIÓN DE CATEGORÍAS Y SABORES — Admin directo
 // ═════════════════════════════════════════════════════════════════════════════
 
-let _catSaborData = { categorias: [], sabores: [] };
+let _catSaborData      = { categorias: [], sabores: [] };
+let _catSaborDataAdmin = { categorias: [], sabores: [] };
 
 async function renderSeccionGestionCatSabor() {
     const main = document.getElementById('contenidoPrincipal');
@@ -2066,25 +2103,25 @@ async function renderSeccionGestionCatSabor() {
 }
 
 async function _renderizarListasExistentes() {
-    const cats    = _catSaborData.categorias ?? [];
-    const sabores = _catSaborData.sabores    ?? [];
+    const cats    = _catSaborDataAdmin?.categorias ?? _catSaborData.categorias ?? [];
+    const sabores = _catSaborDataAdmin?.sabores    ?? _catSaborData.sabores    ?? [];
 
-    const elCats      = document.getElementById('cs-lista-categorias');
-    const elSabores   = document.getElementById('cs-lista-sabores');
-    const badgeCats   = document.getElementById('cs-badge-cats');
+    const elCats       = document.getElementById('cs-lista-categorias');
+    const elSabores    = document.getElementById('cs-lista-sabores');
+    const badgeCats    = document.getElementById('cs-badge-cats');
     const badgeSabores = document.getElementById('cs-badge-sabores');
 
     if (!elCats || !elSabores) return;
 
-    badgeCats.textContent    = cats.length;
-    badgeSabores.textContent = sabores.length;
+    badgeCats.textContent    = cats.filter(c => c.activo !== false).length;
+    badgeSabores.textContent = sabores.filter(s => s.activo !== false).length;
 
     const tplPath = '../partials/item-lista-cs.html';
 
     // Categorías
     elCats.innerHTML = '';
     if (cats.length === 0) {
-        elCats.innerHTML = '<p class="cs-lista-vacia">Sin categorías registradas aún.</p>';
+        _setMsg(elCats, 'cs-lista-vacia', 'Sin categorías registradas aún.');
     } else {
         for (const c of cats) {
             const item = await loadTemplate(tplPath, '.cs-lista-item');
@@ -2095,6 +2132,16 @@ async function _renderizarListasExistentes() {
             } else {
                 descEl.remove();
             }
+            if (c.activo === false) {
+                item.classList.add('cs-lista-item--inactivo');
+            }
+            const btnToggle = item.querySelector('.cs-item-btn--toggle');
+            if (c.activo === false) {
+                btnToggle.textContent = 'Activar';
+                btnToggle.classList.add('cs-item-btn--activar');
+            }
+            item.querySelector('.cs-item-btn--editar').addEventListener('click', () => _abrirModalEditarCat(c));
+            btnToggle.addEventListener('click', () => _toggleCat(c));
             elCats.appendChild(item);
         }
     }
@@ -2102,7 +2149,7 @@ async function _renderizarListasExistentes() {
     // Sabores
     elSabores.innerHTML = '';
     if (sabores.length === 0) {
-        elSabores.innerHTML = '<p class="cs-lista-vacia">Sin sabores registrados aún.</p>';
+        _setMsg(elSabores, 'cs-lista-vacia', 'Sin sabores registrados aún.');
     } else {
         for (const s of sabores) {
             const item = await loadTemplate(tplPath, '.cs-lista-item');
@@ -2113,6 +2160,16 @@ async function _renderizarListasExistentes() {
             } else {
                 descEl.remove();
             }
+            if (s.activo === false) {
+                item.classList.add('cs-lista-item--inactivo');
+            }
+            const btnToggle = item.querySelector('.cs-item-btn--toggle');
+            if (s.activo === false) {
+                btnToggle.textContent = 'Activar';
+                btnToggle.classList.add('cs-item-btn--activar');
+            }
+            item.querySelector('.cs-item-btn--editar').addEventListener('click', () => _abrirModalEditarSabor(s));
+            btnToggle.addEventListener('click', () => _toggleSabor(s));
             elSabores.appendChild(item);
         }
     }
@@ -2122,6 +2179,9 @@ async function _cargarListasCatSabor() {
         const res  = await fetch(`${BASE_URL}/SolicitudesServlet?accion=listar`);
         if (!res.ok) return;
         _catSaborData = await res.json();
+
+        const resAdmin = await fetch(`${BASE_URL}/AdminServlet?accion=listarCatSaborAdmin`);
+        if (resAdmin.ok) _catSaborDataAdmin = await resAdmin.json();
     } catch (e) {
         console.error('Error cargando categorías/sabores:', e);
     }
@@ -2226,6 +2286,7 @@ async function _mostrarFormCS(tipo) {
 async function _enviarFormCS(tipo) {
     const errorEl = document.getElementById('cs-error-msg');
     errorEl.textContent = '';
+    errorEl.hidden = true;
 
     const nombreCat   = document.getElementById('cs-nombreCat')?.value.trim()   ?? '';
     const descCat     = document.getElementById('cs-descCat')?.value.trim()     ?? '';
@@ -2282,7 +2343,7 @@ async function _enviarFormCS(tipo) {
             document.querySelectorAll('.cs-opcion-card').forEach(c => c.classList.remove('cs-opcion-card--activo'));
 
             const fb = document.getElementById('cs-feedback');
-            fb.innerHTML = `<div class="feedback feedback--ok cs-feedback-ok">✅ ${data.mensaje}</div>`;
+            const _fbDiv = document.createElement('div'); _fbDiv.className = 'feedback feedback--ok cs-feedback-ok'; _fbDiv.textContent = `✅ ${data.mensaje}`; fb.innerHTML = ''; fb.appendChild(_fbDiv);
             fb.style.display = 'block';
 
             // Recargar lista para próximo uso y actualizar vistas
@@ -2299,6 +2360,136 @@ async function _enviarFormCS(tipo) {
         btn.textContent = 'Guardar';
     }
 }
+// ─────────────────────────────────────────────────────────────────────────────
+// Editar / Toggle Categorías y Sabores
+// ─────────────────────────────────────────────────────────────────────────────
+function _abrirModalEditarCat(cat) {
+    _renderModalEditar({
+        titulo: 'Editar Categoría',
+        campos: [
+            { id: 'edit-nombre',      label: 'Nombre *',     tipo: 'text', valor: cat.nombreCategoria },
+            { id: 'edit-descripcion', label: 'Descripción',  tipo: 'text', valor: cat.descripcion ?? '' },
+            { id: 'edit-imagen',      label: 'Nueva imagen', tipo: 'file', valor: '' },
+        ],
+        onGuardar: async () => {
+            const nombre = document.getElementById('edit-nombre').value.trim();
+            const desc   = document.getElementById('edit-descripcion').value.trim();
+            const img    = document.getElementById('edit-imagen').files[0];
+            if (!nombre) { _modalError('El nombre es obligatorio.'); return; }
+            const fd = new FormData();
+            fd.append('accion',      'editarCategoria');
+            fd.append('idCategoria', cat.idCategoria);
+            fd.append('nombre',      nombre);
+            fd.append('descripcion', desc);
+            if (img) fd.append('imagenCat', img);
+            await _enviarCatSaborPost(fd);
+        }
+    });
+}
+
+function _abrirModalEditarSabor(sabor) {
+    _renderModalEditar({
+        titulo: 'Editar Sabor',
+        campos: [
+            { id: 'edit-nombre',      label: 'Nombre *',    tipo: 'text', valor: sabor.nombreSabor },
+            { id: 'edit-descripcion', label: 'Descripción', tipo: 'text', valor: sabor.descripcion ?? '' },
+        ],
+        onGuardar: async () => {
+            const nombre = document.getElementById('edit-nombre').value.trim();
+            const desc   = document.getElementById('edit-descripcion').value.trim();
+            if (!nombre) { _modalError('El nombre es obligatorio.'); return; }
+            const fd = new FormData();
+            fd.append('accion',      'editarSabor');
+            fd.append('idSabor',     sabor.idSabor);
+            fd.append('nombre',      nombre);
+            fd.append('descripcion', desc);
+            await _enviarCatSaborPost(fd);
+        }
+    });
+}
+
+async function _toggleCat(cat) {
+    const activar = cat.activo === false;
+    if (!confirm(`¿Seguro que deseas ${activar ? 'reactivar' : 'desactivar'} la categoría "${cat.nombreCategoria}"?`)) return;
+    const fd = new FormData();
+    fd.append('accion',      'toggleCategoria');
+    fd.append('idCategoria', cat.idCategoria);
+    fd.append('activar',     activar);
+    await _enviarCatSaborPost(fd);
+}
+
+async function _toggleSabor(sabor) {
+    const activar = sabor.activo === false;
+    if (!confirm(`¿Seguro que deseas ${activar ? 'reactivar' : 'desactivar'} el sabor "${sabor.nombreSabor}"?`)) return;
+    const fd = new FormData();
+    fd.append('accion',  'toggleSabor');
+    fd.append('idSabor', sabor.idSabor);
+    fd.append('activar', activar);
+    await _enviarCatSaborPost(fd);
+}
+
+async function _enviarCatSaborPost(fd) {
+    try {
+        const res  = await fetch(`${BASE_URL}/AdminServlet`, { method: 'POST', body: fd });
+        const data = await res.json();
+        if (data.ok) {
+            document.getElementById('cs-modal-editar')?.remove();
+            const fb = document.getElementById('cs-feedback');
+            if (fb) {
+                const div = document.createElement('div');
+                div.className   = 'feedback feedback--ok cs-feedback-ok';
+                div.textContent = `✅ ${data.mensaje}`;
+                fb.innerHTML    = '';
+                fb.appendChild(div);
+                fb.style.display = 'block';
+                setTimeout(() => { fb.style.display = 'none'; fb.innerHTML = ''; }, 3000);
+            }
+            await _cargarListasCatSabor();
+            _renderizarListasExistentes();
+        } else {
+            _modalError(data.error ?? 'Error desconocido.');
+        }
+    } catch (e) {
+        _modalError('Error de conexión: ' + e.message);
+    }
+}
+
+function _renderModalEditar({ titulo, campos, onGuardar }) {
+    document.getElementById('cs-modal-editar')?.remove();
+    const overlay = document.createElement('div');
+    overlay.id        = 'cs-modal-editar';
+    overlay.className = 'cs-modal-overlay';
+    const card = document.createElement('div');
+    card.className = 'cs-modal-card';
+    card.innerHTML = `
+        <h3 class="cs-modal-titulo">${titulo}</h3>
+        ${campos.map(c => `
+            <div class="cs-grupo">
+                <label class="cs-label">${c.label}</label>
+                <input id="${c.id}" class="cs-input" type="${c.tipo}"
+                       value="${c.tipo !== 'file' ? (c.valor ?? '').replace(/"/g, '&quot;') : ''}"
+                       ${c.tipo === 'file' ? 'accept="image/*"' : ''} />
+            </div>
+        `).join('')}
+        <span class="cs-error" id="cs-modal-err" style="display:none"></span>
+        <div class="cs-form-footer">
+            <button class="btn-secundario" id="cs-modal-cancelar">Cancelar</button>
+            <button class="btn-primario"   id="cs-modal-guardar">Guardar</button>
+        </div>
+    `;
+    overlay.appendChild(card);
+    document.body.appendChild(overlay);
+    document.getElementById('cs-modal-cancelar').addEventListener('click', () => overlay.remove());
+    overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+    document.getElementById('cs-modal-guardar').addEventListener('click', onGuardar);
+}
+
+function _modalError(msg) {
+    const el = document.getElementById('cs-modal-err');
+    if (el) { el.textContent = msg; el.style.display = 'block'; }
+    else    { alert(msg); }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // SECCIÓN BACKUP
 // ─────────────────────────────────────────────────────────────────────────────

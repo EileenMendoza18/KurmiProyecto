@@ -1,14 +1,16 @@
 <div class="sol-card">
     <div class="sol-card__header">
-        <span class="sol-card__id"></span>
+        <div class="sol-card__header-left">
+            <span class="sol-card__id"></span>
+            <span class="sol-card__fecha"></span>
+        </div>
         <span class="sol-card__badge"></span>
-        <span class="sol-card__fecha"></span>
     </div>
     <div class="sol-card__body">
-        <p><strong>Cliente:</strong> <span class="can-cliente"></span></p>
-        <p><strong>Total del pedido:</strong> <span class="can-total"></span></p>
-        <p><strong>Motivo del cliente:</strong> <span class="can-motivo"></span></p>
-        <p class="can-fila-respuesta" hidden><strong>Respuesta admin:</strong> <span class="can-respuesta"></span></p>
+        <p class="sol-card__fila"><span class="sol-card__etiq">Cliente:</span> <span class="can-cliente"></span></p>
+        <p class="sol-card__fila"><span class="sol-card__etiq">Total del pedido:</span> <span class="can-total sol-card__monto"></span></p>
+        <p class="sol-card__fila"><span class="sol-card__etiq">Motivo del cliente:</span> <span class="can-motivo"></span></p>
+        <p class="sol-card__fila can-fila-respuesta" hidden><span class="sol-card__etiq">Respuesta admin:</span> <span class="can-respuesta"></span></p>
     </div>
     <div class="sol-card__footer sol-card__footer--can" hidden>
         <button class="sol-btn-responder">📝 Responder</button>

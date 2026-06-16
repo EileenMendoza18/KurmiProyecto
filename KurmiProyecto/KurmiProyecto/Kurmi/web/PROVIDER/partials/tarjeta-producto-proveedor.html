@@ -1,0 +1,22 @@
+<div class="tarjeta-prov">
+    <div class="tarjeta-prov__img-wrap">
+        <img src="{{urlImg}}" alt="{{nombre}}"
+             onerror="this.src='{{imgDefault}}'"
+             class="tarjeta-prov__img" />
+        <span class="badge {{badgeClass}}">{{estadoNombre}}</span>
+    </div>
+    <div class="tarjeta-prov__info">
+        <h3 class="tarjeta-prov__nombre">{{nombre}}</h3>
+        <p  class="tarjeta-prov__cat">{{categoria}} · {{nombreSabor}}</p>
+        <p  class="tarjeta-prov__precio">${{precio}}</p>
+        <p  class="tarjeta-prov__stock">Stock: <strong>{{stock}}</strong></p>
+    </div>
+    <div class="tarjeta-prov__acciones">
+        <button class="btn-editar" data-id="{{idProducto}}" data-nombre="{{nombre}}" title="Editar producto">
+            Editar
+        </button>
+        <button class="btn-eliminar" data-id="{{idProducto}}" data-nombre="{{nombre}}" title="Desactivar producto">
+            Eliminar
+        </button>
+    </div>
+</div>

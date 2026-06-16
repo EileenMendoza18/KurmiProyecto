@@ -1,79 +1,85 @@
 <div class="seccion-header">
-            <h2>Todos los productos</h2>
-        </div>
+    <h2>Todos los productos</h2>
+</div>
 
-        <!-- Tarjetas de estadísticas -->
-        <div class="admin-stats-bar">
-            <div class="stat-card">
-                <div class="stat-card__icon"></div>
-                <div class="stat-card__info">
-                    <span class="stat-card__label">Total ventas acumuladas</span>
-                    <span class="stat-card__valor" id="statTotalVentas">—</span>
-                    <span class="stat-card__sub"   id="statEntregados">Cargando...</span>
-                </div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-card__icon"></div>
-                <div class="stat-card__info">
-                    <span class="stat-card__label">Pedidos totales</span>
-                    <span class="stat-card__valor" id="statTotalPedidos">—</span>
-                    <span class="stat-card__sub"   id="statPedidosSub">Cargando...</span>
-                </div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-card__icon"></div>
-                <div class="stat-card__info">
-                    <span class="stat-card__label">Total productos</span>
-                    <span class="stat-card__valor" id="statTotalProductos">—</span>
-                    <span class="stat-card__sub"   id="statDisponibles">Cargando...</span>
-                </div>
-            </div>
+<!-- Tarjetas de estadísticas -->
+<div class="admin-stats-bar">
+    <div class="stat-card">
+        <div class="stat-card__icon">
+            <img src="../../RESOURCES/img/carrito.png" alt="Ícono de pago"/>
         </div>
+        <div class="stat-card__info">
+            <span class="stat-card__label">Total ventas acumuladas</span>
+            <span class="stat-card__valor" id="statTotalVentas">—</span>
+            <span class="stat-card__sub"   id="statEntregados">Cargando...</span>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-card__icon">
+            <img src="../../RESOURCES/img/pedidos.png" alt="Ícono de pago"/>
+        </div>
+        <div class="stat-card__info">
+            <span class="stat-card__label">Pedidos totales</span>
+            <span class="stat-card__valor" id="statTotalPedidos">—</span>
+            <span class="stat-card__sub"   id="statPedidosSub">Cargando...</span>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-card__icon">
+            <img src="../../RESOURCES/img/total.png" alt="Ícono de pago"/>
+        </div>
+        <div class="stat-card__info">
+            <span class="stat-card__label">Total productos</span>
+            <span class="stat-card__valor" id="statTotalProductos">—</span>
+            <span class="stat-card__sub"   id="statDisponibles">Cargando...</span>
+        </div>
+    </div>
+</div>
 
-        <!-- Filtros -->
-        <div class="filtros-bar">
-            <input  type="text" id="filtroNombre" class="filtro-input"
-                    placeholder="Buscar por nombre…" />
-            <select id="filtroEstado" class="filtro-select">
-                <option value="">Todos los estados</option>
-                <option value="Disponible">Disponible</option>
-                <option value="Agotado">Agotado</option>
-                <option value="Descontinuado">Descontinuado</option>
+<!-- Filtros -->
+<div class="filtros-bar">
+    <input  type="text" id="filtroNombre" class="filtro-input"
+            placeholder="Buscar por nombre…" />
+    <select id="filtroEstado" class="filtro-select">
+        <option value="">Todos los estados</option>
+        <option value="Disponible">Disponible</option>
+        <option value="Agotado">Agotado</option>
+        <option value="Descontinuado">Descontinuado</option>
+    </select>
+    <select id="filtroProveedor" class="filtro-select">
+        <option value="">Todos los proveedores</option>
+    </select>
+    <button class="btn-limpiar" id="btnLimpiarFiltros">✕ Limpiar</button>
+</div>
+
+<p class="contador-resultados" id="contadorResultados"></p>
+
+<div id="listaProductos" class="grid-productos">
+    <p class="cargando">Cargando productos…</p>
+</div>
+
+<!-- Modal cambio de estado -->
+<div id="modalEstado" class="modal-overlay" style="display:none">
+    <div class="modal">
+        <div class="modal__header">
+            <h3>Cambiar estado del producto</h3>
+            <button class="modal__cerrar" id="cerrarModalEstado">✕</button>
+        </div>
+        <div class="modal__body">
+            <p id="modalEstadoNombre" class="modal-nombre-bold"></p>
+            <p class="modal-info-sub">
+                Estado actual: <strong id="modalEstadoActual"></strong>
+            </p>
+            <select class="modal-estado-select" id="selectNuevoEstado">
+                <option value="1">Disponible</option>
+                <option value="2">Agotado</option>
+                <option value="3">Descontinuado</option>
             </select>
-            <select id="filtroProveedor" class="filtro-select">
-                <option value="">Todos los proveedores</option>
-            </select>
-            <button class="btn-limpiar" id="btnLimpiarFiltros">✕ Limpiar</button>
+            <div id="feedbackEstado"></div>
         </div>
-
-        <p class="contador-resultados" id="contadorResultados"></p>
-
-        <div id="listaProductos" class="grid-productos">
-            <p class="cargando">Cargando productos…</p>
+        <div class="modal__footer">
+            <button class="btn-secundario" id="cancelarModalEstado">Cancelar</button>
+            <button class="btn-primario"   id="confirmarCambioEstado">Guardar cambio</button>
         </div>
-
-        <!-- Modal cambio de estado -->
-        <div id="modalEstado" class="modal-overlay hidden">
-            <div class="modal">
-                <div class="modal__header">
-                    <h3>Cambiar estado del producto</h3>
-                    <button class="modal__cerrar" id="cerrarModalEstado">✕</button>
-                </div>
-                <div class="modal__body">
-                    <p id="modalEstadoNombre" class="modal-nombre-bold"></p>
-                    <p class="modal-info-sub">
-                        Estado actual: <strong id="modalEstadoActual"></strong>
-                    </p>
-                    <select class="modal-estado-select" id="selectNuevoEstado">
-                        <option value="1">Disponible</option>
-                        <option value="2">Agotado</option>
-                        <option value="3">Descontinuado</option>
-                    </select>
-                    <div id="feedbackEstado"></div>
-                </div>
-                <div class="modal__footer">
-                    <button class="btn-secundario" id="cancelarModalEstado">Cancelar</button>
-                    <button class="btn-primario"   id="confirmarCambioEstado">Guardar cambio</button>
-                </div>
-            </div>
-        </div>
+    </div>
+</div>

@@ -147,7 +147,7 @@ public class ProductoDAO {
             "p.Imagen_Producto, p.Unidad_Medida, p.Fecha_vencimiento, " +
             "c.Nombre_Categoria, s.Nombre_Sabor, " +
             "CONCAT(u.Nombres, ' ', u.Apellidos) AS nombreProveedor, " +
-            "COALESCE(SUM(cd.Cantidad_producto), 0) AS totalVendido, " +
+            "SUM(cd.Cantidad_producto) AS totalVendido, " +
             "COALESCE((SELECT SUM(i.StockInicial + i.CantidadAnadida) FROM Inventario i WHERE i.ID_Producto = p.ID_Producto), 0) AS stockTotal " +
             "FROM Productos p " +
             "LEFT JOIN Carrito_Detalle cd ON p.ID_Producto = cd.ID_Producto AND cd.Estado_Carrito = 3 " +
@@ -160,7 +160,7 @@ public class ProductoDAO {
             "GROUP BY p.ID_Producto, p.Nombre_Producto, p.Valor_Producto, p.Descripcion_Producto, " +
             "p.Imagen_Producto, p.Unidad_Medida, p.Fecha_vencimiento, " +
             "c.Nombre_Categoria, s.Nombre_Sabor, u.Nombres, u.Apellidos " +
-            "HAVING (SELECT COALESCE(SUM(i.StockInicial + i.CantidadAnadida),0) FROM Inventario i WHERE i.ID_Producto = p.ID_Producto) > 0 " +
+            "HAVING stockTotal > 0 " +
             "ORDER BY totalVendido DESC, p.ID_Producto DESC " +
             "LIMIT ?";
         try {
@@ -204,7 +204,7 @@ public class ProductoDAO {
             "LEFT JOIN RelaProductoVendedor rpv ON rpv.ID_Productos = p.ID_Producto " +
             "LEFT JOIN Usuario u ON u.UsuarioID = rpv.ID_Usuario " +
             "WHERE p.ID_Estado = 1 " +
-            "AND (SELECT COALESCE(SUM(i.StockInicial + i.CantidadAnadida),0) FROM Inventario i WHERE i.ID_Producto = p.ID_Producto) > 0 " +
+            "AND (SELECT SUM(i.StockInicial + i.CantidadAnadida) FROM Inventario i WHERE i.ID_Producto = p.ID_Producto) > 0 " +
             "ORDER BY p.ID_Producto DESC LIMIT ?";
         try (Connection con = cn.getConexion();
              PreparedStatement ps = con.prepareStatement(sql)) {
@@ -248,7 +248,7 @@ public class ProductoDAO {
             "JOIN Categorias c ON r.ID_Categoria = c.ID_Categoria " +
             "JOIN Sabores s ON r.ID_Sabor = s.ID_Sabor " +
             "WHERE c.Nombre_Categoria = ? AND p.ID_Estado = 1 " +
-            "AND COALESCE((SELECT SUM(i2.StockInicial + i2.CantidadAnadida) FROM Inventario i2 WHERE i2.ID_Producto = p.ID_Producto), 0) > 0";
+            "AND (SELECT SUM(i2.StockInicial + i2.CantidadAnadida) FROM Inventario i2 WHERE i2.ID_Producto = p.ID_Producto) > 0";
         try {
             con = cn.getConexion();
             ps  = con.prepareStatement(sql);
@@ -291,7 +291,7 @@ public class ProductoDAO {
             "JOIN Categorias c ON r.ID_Categoria = c.ID_Categoria " +
             "JOIN Sabores s ON r.ID_Sabor = s.ID_Sabor " +
             "WHERE p.ID_Estado = 1 " +
-            "AND COALESCE((SELECT SUM(i2.StockInicial + i2.CantidadAnadida) FROM Inventario i2 WHERE i2.ID_Producto = p.ID_Producto), 0) > 0 " +
+            "AND (SELECT SUM(i2.StockInicial + i2.CantidadAnadida) FROM Inventario i2 WHERE i2.ID_Producto = p.ID_Producto) > 0 " +
             "ORDER BY c.Nombre_Categoria ASC";
         try {
             con = cn.getConexion();

@@ -796,49 +796,35 @@ public class PedidoDAO {
     // ADMIN — Ventas totales de TODA la plataforma
     // ─────────────────────────────────────────────────────────────────────────
     public Map<String, Object> obtenerVentasTotalesAdmin() {
-        double totalVentas       = 0;
-        int    totalPedidos      = 0;
-        int    pedidosEntregados = 0;
-        int    pedidosPendientes = 0;
-
-        // Incluye todos los estados activos y entregados (excluye cancelado=3 y devolución=9)
+        // Excluye cancelado=3 y devolución=9; agrega todo en una sola query
         String sql =
-            "SELECT p.Estado_Pedido, p.Total_Pago " +
-            "FROM Pedidos_Cliente p " +
-            "WHERE p.Estado_Pedido NOT IN (3, 9)";
+            "SELECT " +
+            "  COUNT(*) AS totalPedidos, " +
+            "  SUM(CASE WHEN Estado_Pedido = 8 THEN 1 ELSE 0 END) AS pedidosEntregados, " +
+            "  SUM(CASE WHEN Estado_Pedido != 8 THEN 1 ELSE 0 END) AS pedidosPendientes, " +
+            "  SUM(CASE WHEN Estado_Pedido = 8 THEN Total_Pago ELSE 0 END) AS totalVentas " +
+            "FROM Pedidos_Cliente " +
+            "WHERE Estado_Pedido NOT IN (3, 9)";
 
+        Map<String, Object> resultado = new java.util.LinkedHashMap<>();
         Connection conLocal = null;
         try {
             conLocal = cn.getConexion();
             PreparedStatement psLocal = conLocal.prepareStatement(sql);
             ResultSet rsLocal = psLocal.executeQuery();
-
-            while (rsLocal.next()) {
-                int    estado    = rsLocal.getInt("Estado_Pedido");
-                double totalPago = rsLocal.getDouble("Total_Pago");
-                totalPedidos++;
-
-                if (estado == 8) {
-                    pedidosEntregados++;
-                    totalVentas += totalPago;
-                } else {
-                    pedidosPendientes++;
-                }
+            if (rsLocal.next()) {
+                resultado.put("totalVentas",       rsLocal.getDouble("totalVentas"));
+                resultado.put("totalPedidos",      rsLocal.getInt("totalPedidos"));
+                resultado.put("pedidosEntregados", rsLocal.getInt("pedidosEntregados"));
+                resultado.put("pedidosPendientes", rsLocal.getInt("pedidosPendientes"));
             }
             rsLocal.close(); psLocal.close();
-
         } catch (Exception e) {
             System.err.println("Error en obtenerVentasTotalesAdmin: " + e.getMessage());
             e.printStackTrace();
         } finally {
             try { if (conLocal != null) conLocal.close(); } catch (Exception ignored) {}
         }
-
-        Map<String, Object> resultado = new java.util.LinkedHashMap<>();
-        resultado.put("totalVentas",       totalVentas);
-        resultado.put("totalPedidos",      totalPedidos);
-        resultado.put("pedidosEntregados", pedidosEntregados);
-        resultado.put("pedidosPendientes", pedidosPendientes);
         return resultado;
     }
 
