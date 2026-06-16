@@ -75,16 +75,22 @@ public class ProcesarCompraServlet extends HttpServlet {
             if (idCarParam != null) {
                 nuevoPedido.setIdCarrito(Integer.parseInt(idCarParam));
             }
+            
+            boolean compraExitosa;
 
             if (esRecompra) {
                 String fechaOriginal = param(request, "fechaPedidoOriginal");
                 nuevoPedido.setFechaPedidoOriginal(fechaOriginal != null ? fechaOriginal : "");
+                compraExitosa = new PedidoDAO().registrarCompraCompleta(nuevoPedido);
             } else if (idProd != null) {
-                // ── Compra directa: marcar el ítem como seleccionado ──────────
-                new PedidoDAO().marcarItemComoSeleccionado(Integer.parseInt(idProd), idUsuario);
+                // Compra directa: bypass total del carrito
+                int cantidadDirecta = 1; // siempre 1 unidad en compra directa
+                compraExitosa = new PedidoDAO().registrarCompraDirecta(
+                    nuevoPedido, Integer.parseInt(idProd), cantidadDirecta, totalPago
+                );
+            } else {
+                compraExitosa = new PedidoDAO().registrarCompraCompleta(nuevoPedido);
             }
-
-            boolean compraExitosa = new PedidoDAO().registrarCompraCompleta(nuevoPedido);
 
             if (compraExitosa) {
                 response.sendRedirect(request.getContextPath() + BASE_PAGO + "?status=success");
