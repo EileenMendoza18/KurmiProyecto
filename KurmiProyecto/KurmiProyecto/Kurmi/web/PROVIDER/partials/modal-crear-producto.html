@@ -1,0 +1,51 @@
+<div class="modal">
+    <div class="modal__header">
+        <h3>Nuevo producto</h3>
+        <button class="modal__cerrar" id="btnCerrarModalCrear">✕</button>
+    </div>
+    <div class="modal__body">
+        <label>Nombre del producto *</label>
+        <input type="text" id="inp-nombre" placeholder="Ej: Helado de mango" />
+
+        <label>Precio ($) *</label>
+        <input type="number" id="inp-precio" placeholder="Ej: 5000" min="0" step="100" />
+
+        <label>Stock inicial *</label>
+        <input type="number" id="inp-stock" placeholder="Ej: 20" min="0" step="1" />
+
+        <label>Descripción *</label>
+        <textarea id="inp-descripcion" placeholder="Describe el producto…" rows="3"></textarea>
+
+        <label>Unidad de medida *</label>
+        <input type="text" id="inp-unidad" placeholder="Ej: Porción, Bola, Unidad" />
+
+        <label>Fecha de vencimiento *</label>
+        <input type="date" id="inp-fechaVenc" />
+
+        <label>Categoría y sabor *</label>
+        <select id="inp-relaCatSabor">
+            <option value="">Cargando…</option>
+        </select>
+
+        <label>Imagen del producto</label>
+        <div class="input-imagen-wrap">
+            <input type="file" id="inp-imagen"
+                   accept="image/jpeg,image/png,image/webp,image/gif" />
+            <label class="file-upload-label" for="inp-imagen">
+                <span class="file-upload-label__icon">🖼️</span>
+                <span class="file-upload-label__texto" id="inp-imagen-texto">Ningún archivo seleccionado</span>
+                <span class="file-upload-label__btn">Seleccionar</span>
+            </label>
+            <div id="preview-wrap" class="preview-wrap--oculto">
+                <img id="preview-img" src="" alt="Vista previa" class="preview-img" />
+                <span id="preview-info" class="preview-info"></span>
+            </div>
+        </div>
+
+        <div id="feedback-modal" class="feedback feedback--oculto"></div>
+    </div>
+    <div class="modal__footer">
+        <button class="btn-secundario" id="btnCancelarModalCrear">Cancelar</button>
+        <button class="btn-primario"   id="btnGuardarProducto">Guardar producto</button>
+    </div>
+</div>

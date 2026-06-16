@@ -2,7 +2,7 @@
 
 /* Regla utilitaria para alternar estados desde JavaScript */
 .hidden {
-    display: none !important;
+    display: none;
 }
 
 .div__body {
@@ -19,7 +19,6 @@
     align-items: center;
     padding: 20px;
     width: 100%;
-    max-width: 1200px;
     margin-top: 12vh;
     box-sizing: border-box;
 }
@@ -33,6 +32,9 @@
     align-items: center;
     gap: 20px;
     width: 100%;
+}
+.carrito__vacio.hidden {
+    display: none;
 }
 
 .carrito__vacio img {
@@ -75,6 +77,9 @@
     width: 100%;
     align-items: center;
     padding: 20px 0;
+}
+.carrito__contenedor.hidden {
+    display: none;
 }
 
 /* --- Sección Izquierda: Resumen --- */

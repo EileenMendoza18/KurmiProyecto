@@ -1,0 +1,18 @@
+<div class="pedido-card pedido-card--{{tipo}}" id="pedido-card-{{idPedido}}">
+    <div class="pedido-card__header">
+        <span class="pedido-card__fecha">#{{idPedido}} · {{fecha}}</span>
+        <span class="pedido-card__metodo">{{metodoPago}}</span>
+        <span class="badge-estado {{badgeClass}}">{{estadoLabel}}</span>
+    </div>
+    <div class="pedido-card__receptor">
+        <strong>{{receptor}}</strong> — {{direccion}} — {{telefono}}
+    </div>
+    <div class="pedido-card__items">
+        {{itemsHtml}}
+    </div>
+    <div class="pedido-card__footer">
+        <span>Subtotal: <strong>${{subtotalProveedor}}</strong></span>
+        {{accionFooter}}
+        <button class="btn-factura-prov" data-id="{{idPedido}}">Ver factura</button>
+    </div>
+</div>

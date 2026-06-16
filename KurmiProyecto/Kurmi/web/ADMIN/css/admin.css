@@ -961,7 +961,11 @@ html, body {
     justify-content: center;
     flex-shrink: 0;
 }
-
+.stat-card__icon img {
+    width: 24px;
+    height: 24px;
+    object-fit: contain;
+}
 .stat-card__info {
     display: flex;
     flex-direction: column;
@@ -1556,7 +1560,7 @@ html, body {
 .mda-precio {
     font-size: 1.45rem;
     font-weight: 800;
-    color: #7C4DFF;
+    color: #c5b8f0;
     margin: 0;
 }
 
@@ -1610,7 +1614,7 @@ html, body {
 .mda-btn-estado {
     flex: 1;
     padding: 12px;
-    background: #7C4DFF;
+    background: #b79dff;
     color: #fff;
     border: none;
     border-radius: 12px;
@@ -1621,7 +1625,7 @@ html, body {
 }
 
 .mda-btn-estado:hover {
-    background: #6a3de8;
+    background: #d6c8fd;
 }
 
 /* ============================================================
@@ -1700,4 +1704,320 @@ html, body {
 .pago-prod-sub {
     font-size: .82rem;
     color: #555;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   CLASES MIGRADAS DESDE admin.js — estilos inline removidos
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Modales: nombre en negrita ─────────────────────────────── */
+.modal-nombre-bold {
+    font-weight: 700;
+    color: var(--color-texto);
+    font-size: 1rem;
+}
+
+/* ── Modales: subtítulo info (estado actual, rol…) ──────────── */
+.modal-info-sub {
+    font-size: .85rem;
+    color: #888;
+    margin-top: 6px;
+}
+.modal-info-sub--sm {
+    font-size: .85rem;
+    color: #888;
+    margin-top: 4px;
+}
+
+/* ── Modal select con margen superior ───────────────────────── */
+.modal-select-mt {
+    margin-top: 14px;
+}
+
+/* ── Tarjeta producto: img-wrap relativo ────────────────────── */
+.tarjeta-prov__img-wrap {
+    position: relative;
+}
+
+/* ── Detalle producto: campo full-width ─────────────────────── */
+.mda-campo--full {
+    grid-column: span 2;
+}
+
+/* ── Detalle producto: dot de color de estado ───────────────── */
+.mda-estado-dot {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    margin-right: 5px;
+}
+
+/* ── Tabla de clientes: celda id tenue ──────────────────────── */
+.td-id {
+    color: #aaa;
+    font-size: .8rem;
+}
+
+/* ── Tabla de clientes: celda dato secundario ───────────────── */
+.td-dato {
+    font-size: .85rem;
+    color: #666;
+}
+
+/* ── Badge posición static (dentro de tabla) ────────────────── */
+.badge--static {
+    position: static;
+}
+
+/* ── Pedidos: badge de estado dinámico (color via --bg/--color) */
+.pedido-estado-badge {
+    padding: 3px 12px;
+    border-radius: 20px;
+    font-size: .8rem;
+    font-weight: 600;
+    color: #fff;
+}
+
+/* ── Pedidos: fila de producto dentro de proveedor ──────────── */
+.ped-prod-fila {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 3px 0 3px 12px;
+    font-size: .78rem;
+    color: #555;
+    border-left: 2px solid #e8e0f7;
+    margin: 2px 0;
+}
+
+.ped-prod-cantidad {
+    color: #aaa;
+}
+
+.ped-prod-subtotal {
+    color: #7C4DFF;
+    font-weight: 600;
+}
+
+/* ── Pedidos: bloque por proveedor ──────────────────────────── */
+.ped-prov-bloque {
+    margin: 6px 0;
+    padding: 8px;
+    background: #fff;
+    border-radius: 8px;
+    border: 1px solid #f0ecff;
+}
+
+.ped-prov-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.ped-prov-header--mb {
+    margin-bottom: 6px;
+}
+
+.ped-prov-nombre {
+    color: #666;
+    font-size: .82rem;
+}
+
+.ped-prov-estado-badge {
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: .75rem;
+    color: #fff;
+}
+
+/* ── Pedidos: bloque estado por proveedor (contenedor) ──────── */
+.ped-proveedores-wrap {
+    margin: 10px 0;
+    padding: 10px;
+    background: #f9f9f9;
+    border-radius: 8px;
+}
+
+.ped-proveedores-titulo {
+    font-size: .8rem;
+    color: #999;
+    margin-bottom: 6px;
+    font-weight: 600;
+}
+
+.ped-proveedores-vacio {
+    color: #aaa;
+    font-size: .8rem;
+}
+
+/* ── Pedidos: aviso pendiente / completo bodega ─────────────── */
+.ped-aviso-espera {
+    color: #e67e22;
+    font-size: .78rem;
+    margin-top: 6px;
+}
+
+.ped-aviso-ok {
+    color: #2ecc71;
+    font-size: .78rem;
+    margin-top: 6px;
+}
+
+/* ── Pedidos: footer con flex gap ───────────────────────────── */
+.pedido-card__footer--gap {
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+/* ── Pedidos: grupo de botones de avance ────────────────────── */
+.ped-btns-group {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+/* ── Botón ver factura ──────────────────────────────────────── */
+.btn-factura-admin {
+    padding: 6px 16px;
+    background: #7C4DFF;
+    color: #fff;
+    border: none;
+    border-radius: 20px;
+    font-size: .82rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+.btn-factura-admin:hover {
+    background: #6a3de8;
+}
+
+/* ── Factura: celdas de tabla alineadas ─────────────────────── */
+.td-center { text-align: center; }
+.td-right  { text-align: right; }
+
+/* ── Solicitudes: fecha respuesta ───────────────────────────── */
+.sol-fecha-respuesta {
+    margin-top: 6px;
+}
+
+/* ── Solicitudes: texto "Ya respondida" ─────────────────────── */
+.sol-ya-respondida {
+    font-size: .8rem;
+    color: #aaa;
+}
+
+/* ── Solicitudes: header con flex ───────────────────────────── */
+.sol-card__header-flex {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+/* ── Solicitudes: info de relación (feedback) ───────────────── */
+.feedback--relacion {
+    margin-bottom: 10px;
+    font-size: .9rem;
+}
+
+/* ── Solicitudes: feedback de acción en modal ───────────────── */
+.feedback--modal-top {
+    margin-bottom: 14px;
+}
+.feedback--modal-bottom {
+    margin-top: 10px;
+}
+
+/* ── Devoluciones: párrafo motivo ───────────────────────────── */
+.dev-motivo {
+    margin-top: 8px;
+}
+
+/* ── Devoluciones: contenedor imagen prueba ─────────────────── */
+.dev-img-wrap {
+    margin-top: 10px;
+}
+
+/* ── Devoluciones: imagen de prueba ─────────────────────────── */
+.dev-img-prueba {
+    max-width: 200px;
+    max-height: 160px;
+    border-radius: 10px;
+    margin-top: 6px;
+    object-fit: cover;
+    border: 2px solid #DCD6F7;
+}
+
+/* ── Devoluciones: respuesta del admin ──────────────────────── */
+.dev-respuesta {
+    margin-top: 8px;
+    color: #8e44ad;
+}
+
+/* ── Devoluciones: fecha de respuesta ───────────────────────── */
+.dev-fecha-respuesta {
+    font-size: .78rem;
+    color: #999;
+}
+
+/* ── Cancelaciones: badge de estado (color dinámico via JS) ─── */
+.sol-card__badge {
+    color: #fff;
+    padding: 2px 10px;
+    border-radius: 12px;
+    font-size: .8rem;
+    font-weight: 600;
+}
+
+/* ── Cancelaciones: texto hint en modal ─────────────────────── */
+.modal-hint {
+    font-size: .85rem;
+    color: #555;
+}
+
+/* ── Pagos proveedores: tabla wrapper ───────────────────────── */
+.pagos-tabla-wrap {
+    overflow-x: auto;
+    margin-top: 12px;
+}
+
+/* ── Pagos: texto vacío ─────────────────────────────────────── */
+.pagos-vacio {
+    color: #888;
+    text-align: center;
+    padding: 40px;
+}
+
+/* ── Pagos: badge de estado de pago ─────────────────────────── */
+.pago-estado-badge {
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: .78rem;
+    font-weight: 700;
+}
+.pago-estado-badge--pendiente  { background: #fff8e1; color: #b7860b; }
+.pago-estado-badge--completado { background: #e6f9f0; color: #1a7a4a; }
+.pago-estado-badge--cancelado  { background: #ffe8e8; color: #c0392b; }
+
+/* ── Categorías y Sabores: subtítulo ────────────────────────── */
+.cs-seccion-subtitulo {
+    color: #888;
+    font-size: .9rem;
+    margin-top: 4px;
+}
+
+/* ── Label con margen superior (modal motivo) ───────────────── */
+.sol-label--mt {
+    margin-top: 16px;
+    display: block;
+}
+
+/* ── Wrap de motivo de rechazo (oculto por defecto via JS) ──── */
+.motivo-wrap {
+    margin-top: 14px;
+}
+
+/* ── Pedido vacío con padding ────────────────────────────────── */
+.ped-vacio {
+    padding: 30px 0;
 }

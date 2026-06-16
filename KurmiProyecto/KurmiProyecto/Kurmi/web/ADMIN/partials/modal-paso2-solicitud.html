@@ -1,0 +1,45 @@
+<div class="feedback feedback--ok feedback--modal-top p2-msg-aprobado"></div>
+
+<!-- Info de relación (se muestra condicionalmente) -->
+<div class="feedback feedback--ok feedback--relacion p2-relacion-sabor" hidden>
+    🔗 Se relacionará con el sabor existente: <strong class="p2-val-sabor-existente"></strong>
+</div>
+<div class="feedback feedback--ok feedback--relacion p2-relacion-cat" hidden>
+    🔗 Se relacionará con la categoría existente: <strong class="p2-val-cat-existente"></strong>
+</div>
+
+<!-- Campos categoría -->
+<div class="p2-grupo p2-grupo-cat" hidden>
+    <label class="sol-label">Nombre de la categoría <span class="sol-required">*</span></label>
+    <input id="paso2-nombreCat" class="sol-input" type="text" maxlength="50" />
+</div>
+<div class="p2-grupo p2-grupo-cat" hidden>
+    <label class="sol-label">Descripción de la categoría</label>
+    <input id="paso2-descCat" class="sol-input" type="text"
+           placeholder="Ej: Postres horneados, cremas…" maxlength="100" />
+</div>
+<div class="p2-grupo p2-grupo-cat" hidden>
+    <label class="sol-label">Foto de la categoría</label>
+    <div class="p2-upload-area" id="p2-upload-area">
+        <input type="file" id="paso2-imagenCat" accept="image/png,image/jpeg,image/webp,image/gif" hidden />
+        <div class="p2-upload-placeholder" id="p2-upload-placeholder">
+            <span class="p2-upload-icon">🖼️</span>
+            <span>Haz clic para seleccionar una imagen</span>
+            <small>PNG, JPG, WEBP · Máx. 5 MB</small>
+        </div>
+        <img id="p2-preview-img" class="p2-preview-img" alt="Vista previa" />
+    </div>
+</div>
+
+<!-- Campos sabor -->
+<div class="p2-grupo p2-grupo-sabor" hidden>
+    <label class="sol-label">Nombre del sabor <span class="sol-required">*</span></label>
+    <input id="paso2-nombreSabor" class="sol-input" type="text" maxlength="50" />
+</div>
+<div class="p2-grupo p2-grupo-sabor" hidden>
+    <label class="sol-label">Descripción del sabor</label>
+    <input id="paso2-descSabor" class="sol-input" type="text"
+           placeholder="Ej: Fruta tropical, cítrico…" maxlength="100" />
+</div>
+
+<span class="error-msg" id="error-paso2" hidden></span>

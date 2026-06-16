@@ -1,0 +1,62 @@
+<div class="seccion-header">
+            <h2>Solicitudes de proveedores</h2>
+        </div>
+ 
+        <!-- Tabs de estado -->
+        <div class="ventas-tabs">
+            <button class="ventas-tab ventas-tab--activo" data-estado="">Todas</button>
+            <button class="ventas-tab" data-estado="Pendiente">Pendientes</button>
+            <button class="ventas-tab" data-estado="Aprobado">Aprobadas</button>
+            <button class="ventas-tab" data-estado="Rechazado">Rechazadas</button>
+        </div>
+ 
+        <p class="contador-resultados" id="contadorSolicitudesAdmin"></p>
+ 
+        <div id="listaSolicitudesAdmin" class="solicitudes-lista">
+            <p class="cargando">Cargando solicitudes…</p>
+        </div>
+ 
+        <!-- Modal responder solicitud -->
+        <div id="modalResponderSolicitud" class="modal-overlay" style="display:none">
+            <div class="modal modal--solicitud">
+                <div class="modal__header">
+                    <h3 id="modalSolTitulo">Responder solicitud</h3>
+                    <button class="modal__cerrar" id="cerrarModalResponder">✕</button>
+                </div>
+                <div class="modal__body">
+ 
+                    <!-- Detalle de la solicitud -->
+                    <div class="sol-modal__detalle" id="solModalDetalle"></div>
+ 
+                    <!-- Acción -->
+                    <label class="sol-label sol-label--mt">
+                        Decisión <span class="sol-required">*</span>
+                    </label>
+                    <div class="sol-decision-btns">
+                        <button class="sol-btn-decision sol-btn-aprobar" id="btnDecisionAprobar">
+                            Aprobar
+                        </button>
+                        <button class="sol-btn-decision sol-btn-rechazar" id="btnDecisionRechazar">
+                            Rechazar
+                        </button>
+                    </div>
+ 
+                    <!-- Motivo (solo al rechazar) -->
+                    <div id="sol-motivo-wrap" class="motivo-wrap" style="display:none;">
+                        <label class="sol-label">
+                            Motivo del rechazo <span class="sol-required">*</span>
+                        </label>
+                        <textarea id="sol-motivoRechazo" class="sol-textarea"
+                                  placeholder="Indica brevemente por qué no se puede aprobar esta solicitud…"
+                                  maxlength="255" rows="3"></textarea>
+                        <span class="error-msg" id="error-sol-motivo"></span>
+                    </div>
+ 
+                    <div id="feedbackResponder"></div>
+                </div>
+                <div class="modal__footer">
+                    <button class="btn-secundario" id="cancelarModalResponder">Cancelar</button>
+                    <button class="btn-primario"   id="confirmarResponder" disabled>Confirmar</button>
+                </div>
+            </div>
+        </div>

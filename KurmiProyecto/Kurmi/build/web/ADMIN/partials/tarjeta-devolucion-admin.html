@@ -1,0 +1,30 @@
+<div class="sol-card">
+    <div class="sol-card__header">
+        <div class="sol-card__info">
+            <strong class="dev-id-pedido"></strong>
+            <em class="dev-nombre-cliente"></em>
+        </div>
+        <span class="sol-badge"></span>
+    </div>
+
+    <div class="sol-card__body">
+        <p><strong>Total del pedido:</strong> <span class="dev-total"></span></p>
+        <p><strong>Fecha pedido:</strong> <span class="dev-fecha-pedido"></span></p>
+        <p><strong>Solicitud enviada:</strong> <span class="dev-fecha-solicitud"></span></p>
+        <p class="dev-motivo"><strong>Motivo del cliente:</strong><br><span class="dev-motivo-texto"></span></p>
+
+        <div class="dev-img-wrap" hidden>
+            <strong>Imagen de prueba:</strong><br>
+            <img src="" alt="Prueba devolución" onerror="this.style.display='none'" class="dev-img-prueba" />
+        </div>
+
+        <p class="dev-respuesta" hidden>
+            <strong>Respuesta registrada:</strong> <span class="dev-respuesta-texto"></span>
+        </p>
+        <p class="dev-fecha-respuesta" hidden></p>
+    </div>
+
+    <div class="sol-card__footer sol-card__footer--dev" hidden>
+        <button class="sol-btn-responder">Responder</button>
+    </div>
+</div>

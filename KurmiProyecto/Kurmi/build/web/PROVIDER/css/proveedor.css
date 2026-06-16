@@ -411,6 +411,62 @@ html, body {
 
 /* Área de imagen */
 .input-imagen-wrap { display: flex; flex-direction: column; gap: 8px; }
+
+/* Ocultar el input file nativo */
+.input-imagen-wrap input[type="file"] {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+    overflow: hidden;
+    clip: rect(0,0,0,0);
+    white-space: nowrap;
+    pointer-events: none;
+}
+
+/* Zona clickable estilizada */
+.file-upload-label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 14px;
+    border: 1.5px dashed var(--color-morado);
+    border-radius: 8px;
+    background: #faf9fe;
+    cursor: pointer;
+    transition: border-color .2s, background .2s;
+    width: 100%;
+}
+.file-upload-label:hover {
+    border-color: var(--color-morado-osc);
+    background: var(--color-morado-clr);
+}
+.file-upload-label__icon {
+    font-size: 1.1rem;
+    flex-shrink: 0;
+    color: var(--color-morado);
+}
+.file-upload-label__texto {
+    font-size: .88rem;
+    color: var(--color-texto);
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.file-upload-label__btn {
+    margin-left: auto;
+    flex-shrink: 0;
+    background: var(--color-morado);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 5px 14px;
+    font-size: .82rem;
+    font-weight: 600;
+    pointer-events: none;
+}
+
 .preview-img {
     max-height: 140px;
     border-radius: 8px;
@@ -839,6 +895,14 @@ html, body {
 }
 .btn-entregar:hover { background: #15803d; }
 .btn-entregar:disabled { background: #9ca3af; cursor: not-allowed; }
+.btn-entregar--bodega       { background: #f39c12; }
+.btn-entregar--bodega:hover { background: #d68910; }
+.btn-entregar--empacando       { background: #1abc9c; }
+.btn-entregar--empacando:hover { background: #17a589; }
+.btn-entregar--transportando       { background: #9b59b6; }
+.btn-entregar--transportando:hover { background: #8e44ad; }
+.btn-entregar--entregado       { background: #2471a3; }
+.btn-entregar--entregado:hover { background: #1a5276; }
 
 .pedido-card__footer {
     display: flex;
@@ -1086,4 +1150,9 @@ html, body {
 
 .sol-card__tipo img{
     width: 25px;
+}
+
+.badge--amarillo{
+    background-color: #fff9c4;
+    color: #fbc02d;
 }

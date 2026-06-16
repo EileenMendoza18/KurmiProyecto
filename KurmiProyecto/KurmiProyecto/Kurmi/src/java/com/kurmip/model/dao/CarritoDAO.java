@@ -29,7 +29,7 @@ public class CarritoDAO {// Declaración de la clase Data Access Object (DAO) pa
              "FROM Carrito_Detalle cd " +
              "JOIN Carrito_Compras cc ON cd.ID_Carrito = cc.ID_Carrito " +
              "JOIN Productos p ON cd.ID_Producto = p.ID_Producto " +
-             "WHERE cc.ID_Cliente = ? AND cc.EstadoCarrito = 1 " +
+             "WHERE cc.ID_Cliente = ? AND cc.Activo = TRUE " +
              "AND cd.Estado_Carrito IN (4, 5)";
 
         try {// Bloque seguro para capturar errores de base de datos.
@@ -84,7 +84,7 @@ public class CarritoDAO {// Declaración de la clase Data Access Object (DAO) pa
             // Usa COALESCE para que si la suma da NULL (el producto no existe en inventario), retorne un 0 de forma segura.
             // Filtra exclusivamente por el producto recibido (WHERE ID_Producto = ?).
             String sqlStock =
-                "SELECT COALESCE(SUM(StockInicial + CantidadAnadida), 0) AS stockTotal " +
+                "SELECT SUM(StockInicial + CantidadAnadida) AS stockTotal " +
                 "FROM Inventario WHERE ID_Producto = ?";
             PreparedStatement psStock = con.prepareStatement(sqlStock);
             psStock.setInt(1, idProducto);
@@ -104,7 +104,7 @@ public class CarritoDAO {// Declaración de la clase Data Access Object (DAO) pa
             // Ordena los resultados de manera descendente (ORDER BY ID_Carrito DESC) y toma solo el primero (LIMIT 1) para obtener el más reciente.
             String sqlBuscarCarrito =
                 "SELECT ID_Carrito FROM Carrito_Compras " +               
-                "WHERE ID_Cliente = ? AND EstadoCarrito = 1 " +           
+                "WHERE ID_Cliente = ? AND Activo = TRUE " +           
                 "ORDER BY ID_Carrito DESC LIMIT 1";                       
             ps = con.prepareStatement(sqlBuscarCarrito);
             ps.setInt(1, idUsuario);
@@ -120,7 +120,7 @@ public class CarritoDAO {// Declaración de la clase Data Access Object (DAO) pa
             if (idCarrito == -1) {
                 // SQL: Inserta un nuevo registro en la tabla Carrito_Compras definiendo el ID_Cliente y forzando el EstadoCarrito en 1 (Abierto).
                 // Solo se crea un carrito nuevo si el usuario realmente no tiene ninguno activo.
-                String sqlCrearCarrito = "INSERT INTO Carrito_Compras (ID_Cliente, EstadoCarrito) VALUES (?, 1)";
+                String sqlCrearCarrito = "INSERT INTO Carrito_Compras (ID_Cliente, Activo) VALUES (?, TRUE)";
                 ps = con.prepareStatement(sqlCrearCarrito, PreparedStatement.RETURN_GENERATED_KEYS);
                 ps.setInt(1, idUsuario);
                 ps.executeUpdate();
@@ -279,7 +279,7 @@ public class CarritoDAO {// Declaración de la clase Data Access Object (DAO) pa
         // Usa COALESCE para transformar un posible valor NULL en un 0 limpio en caso de que no haya registros.
         // Filtra únicamente por el producto consultado (WHERE ID_Producto = ?).
         String sqlStock =
-            "SELECT COALESCE(SUM(StockInicial + CantidadAnadida), 0) AS stockTotal " +
+            "SELECT SUM(StockInicial + CantidadAnadida) AS stockTotal " +
             "FROM Inventario WHERE ID_Producto = ?";
         try (Connection con = cn.getConexion()) {
             PreparedStatement psStock = con.prepareStatement(sqlStock);

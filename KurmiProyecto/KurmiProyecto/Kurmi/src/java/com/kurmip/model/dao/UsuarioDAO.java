@@ -18,7 +18,7 @@ public class UsuarioDAO {
         String sql = "SELECT u.*, r.NombreRol, e.NombreEstado " +
                      "FROM Usuario u " +
                      "LEFT JOIN Roles r ON u.Rol_Usuario = r.Roles_ID " +
-                     "LEFT JOIN EstadoCliente e ON u.Est_Vinculacion = e.EstadoID " +
+                     "LEFT JOIN EstadoUsuario e ON u.Est_Vinculacion = e.EstadoID " +
                      "WHERE u.Correo_Usu = ? AND (u.Contrasena_Usu = ? OR u.Contrasena_Usu = ?)";
                      
         UsuarioDTO usuario = null;
@@ -152,7 +152,7 @@ public class UsuarioDAO {
                          "r.NombreRol, e.NombreEstado " +
                          "FROM Usuario u " +
                          "LEFT JOIN Roles r ON u.Rol_Usuario = r.Roles_ID " +
-                         "LEFT JOIN EstadoCliente e ON u.Est_Vinculacion = e.EstadoID " +
+                         "LEFT JOIN EstadoUsuario e ON u.Est_Vinculacion = e.EstadoID " +
                          "WHERE u.UsuarioID = ?";
             try {
                 con = cn.getConexion();
@@ -218,7 +218,7 @@ public List<UsuarioDTO> obtenerTodosLosUsuarios() {
                  "e.NombreEstado, e.EstadoID " +
                  "FROM Usuario u " +
                  "LEFT JOIN Roles r ON u.Rol_Usuario = r.Roles_ID " +
-                 "LEFT JOIN EstadoCliente e ON u.Est_Vinculacion = e.EstadoID " +
+                 "LEFT JOIN EstadoUsuario e ON u.Est_Vinculacion = e.EstadoID " +
                  "WHERE u.Rol_Usuario != 2 " +  // excluir admins
                  "ORDER BY u.UsuarioID DESC";
     try {

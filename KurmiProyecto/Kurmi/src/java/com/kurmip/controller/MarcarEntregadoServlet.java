@@ -13,11 +13,12 @@ import java.util.Map;
 
 /**
  * MarcarEntregadoServlet — usado por el PROVEEDOR
- * Avanza el estado de su parte del pedido:
- *   4 = Preparando  →  5 = En bodega
+ * El proveedor gestiona todo el ciclo de entrega de sus pedidos:
+ *   1 (Pendiente) → 4 (Preparando) → 5 (En bodega)
+ *   → 6 (Empacando) → 7 (Transportando) → 8 (Entregado)
  *
  * POST /MarcarEntregadoServlet
- *   Params: idPedido (int), nuevoEstado (int) — solo 4 o 5 son válidos para el proveedor
+ *   Params: idPedido (int), nuevoEstado (int) — 4, 5, 6, 7 u 8
  */
 @WebServlet(name = "MarcarEntregadoServlet", urlPatterns = {"/MarcarEntregadoServlet"})
 public class MarcarEntregadoServlet extends HttpServlet {
@@ -40,30 +41,25 @@ public class MarcarEntregadoServlet extends HttpServlet {
         String idPedidoParam    = request.getParameter("idPedido");
         String nuevoEstadoParam = request.getParameter("nuevoEstado");
 
-        if (idPedidoParam == null || idPedidoParam.isBlank()) {
+        if (idPedidoParam == null || idPedidoParam.isBlank()
+                || nuevoEstadoParam == null || nuevoEstadoParam.isBlank()) {
             response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
             result.put("ok", false);
-            result.put("msg", "Falta idPedido");
+            result.put("msg", "Faltan parámetros");
             response.getWriter().write(gson.toJson(result));
             return;
         }
 
         try {
-            int idPedido = Integer.parseInt(idPedidoParam.trim());
-
-            if (nuevoEstadoParam == null || nuevoEstadoParam.isBlank()) {
-                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-                result.put("ok", false);
-                result.put("msg", "Falta nuevoEstado");
-                response.getWriter().write(gson.toJson(result));
-                return;
-            }
+            int idPedido    = Integer.parseInt(idPedidoParam.trim());
             int nuevoEstado = Integer.parseInt(nuevoEstadoParam.trim());
 
-            if (nuevoEstado != 4 && nuevoEstado != 5) {
+            // Solo se permiten estados del ciclo de entrega del proveedor
+            if (nuevoEstado < 4 || nuevoEstado > 8) {
                 response.setStatus(HttpServletResponse.SC_FORBIDDEN);
                 result.put("ok", false);
-                result.put("msg", "Estado no permitido para proveedor. Solo 4=Iniciar preparación o 5=Listo en bodega.");
+                result.put("msg", "Estado no permitido. El proveedor solo puede avanzar entre: " +
+                                  "4=Preparando, 5=En bodega, 6=Empacando, 7=Transportando, 8=Entregado");
                 response.getWriter().write(gson.toJson(result));
                 return;
             }
@@ -72,7 +68,7 @@ public class MarcarEntregadoServlet extends HttpServlet {
             result.put("ok", ok);
             result.put("msg", ok
                 ? "Estado actualizado a: " + PedidoDAO.etiquetaEstado(nuevoEstado)
-                : "No se pudo actualizar el pedido");
+                : "No se pudo actualizar. Verifica que la transición sea válida.");
             response.getWriter().write(gson.toJson(result));
 
         } catch (NumberFormatException e) {

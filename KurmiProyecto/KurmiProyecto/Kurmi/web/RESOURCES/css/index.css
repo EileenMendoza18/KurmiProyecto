@@ -19,8 +19,10 @@
     background-color: #f8f4ff;
 }
 
-.error {
-    border: 2px solid #ff4d4d !important;
+input.error,
+select.error,
+textarea.error {
+    border: 2px solid #ff4d4d;
     background-color: #fff2f2;
 }
     
@@ -45,56 +47,4 @@
     display: block;
     margin-top: 5px;
     font-weight: bold;
-}
-
-/* ==========================================================================
-   COMPONENTE: NOTIFICACIONES (TOAST) - KURMI
-   ========================================================================== */
-
-.toast-container {
-    /* Posicionamiento flotante por encima de todo */
-    position: fixed;
-    top: 10%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    z-index: 999999;
-    
-    /* Diseño visual e identidad de Kurmi */
-    background-color: #7c3aed; /* Color morado corporativo */
-    color: #ffffff; /* Texto blanco en alto contraste */
-    padding: 16px 32px;
-    border-radius: 12px;
-    box-shadow: 0px 10px 25px rgba(0, 0, 0, 0.3);
-    
-    /* Layout interno flexible */
-    display: flex;
-    align-items: center;
-    gap: 15px;
-    
-    /* Transición suave para las animaciones */
-    transition: opacity 0.3s ease, transform 0.3s ease;
-}
-
-/* Manejo de estados de visibilidad con opacidad */
-.toast-container.hidden {
-    opacity: 0;
-    pointer-events: none; /* Evita que bloquee clics mientras está invisible */
-    transform: translate(-50%, -60%); /* Ligero efecto de subida al ocultarse */
-}
-
-.toast-container.visible {
-    opacity: 1;
-    pointer-events: auto;
-    transform: translate(-50%, -50%);
-}
-
-/* Estilos internos opcionales para asegurar el tamaño de los textos */
-.toast-container p {
-    margin: 0;
-    font-size: 1rem;
-    font-weight: 500;
-}
-
-.toast-icon {
-    font-size: 1.3rem;
 }

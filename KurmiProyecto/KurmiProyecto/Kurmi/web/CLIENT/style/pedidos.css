@@ -588,3 +588,57 @@
     opacity: 1;
     transform: translateX(-50%) translateY(0);
 }
+
+/* ── Badge de estado dentro de la tarjeta de pedido (dinámico por estado) ── */
+.pedido__estado-badge {
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: .72rem;
+    font-weight: 600;
+    display: inline-block;
+    margin-bottom: 4px;
+    align-self: flex-start;
+    width: fit-content;
+}
+
+/* ── Indicador obligatorio en formularios ── */
+.cancel__obligatorio { color: #e74c3c; }
+
+/* ── Espaciado del label de imagen en el formulario de devolución ── */
+.dev__label--imagen { margin-top: 14px; }
+
+/* ── Línea de motivo dentro de la tarjeta de devolución ── */
+.dev__motivo-texto { font-size: .82rem; }
+
+/* ── Fecha de solicitud dentro de la tarjeta de devolución ── */
+.dev__fecha-solicitud { margin-top: 6px; }
+
+/* ── Total dentro del footer del modal de detalle de pedido ── */
+.modal__total-texto {
+    font-weight: 700;
+    color: #463877;
+    margin-right: auto;
+    font-size: 1rem;
+}
+
+/* ── Select de método de pago para recompra ── */
+#selectMetodoRecompra {
+    padding: 6px 10px;
+    border-radius: 8px;
+    border: 1px solid #c4b5e8;
+    font-size: 0.9rem;
+}
+
+/* ── Badge de estado dentro del modal de detalle de pedido ── */
+.modal__estado-badge {
+    padding: 4px 14px;
+    border-radius: 20px;
+    font-size: .82rem;
+    font-weight: 600;
+    display: inline-block;
+}
+
+/* === Contenedor del badge de estado en el modal de detalle de pedido === */
+#modalEstadoBadge {
+    margin-bottom: 14px;
+}

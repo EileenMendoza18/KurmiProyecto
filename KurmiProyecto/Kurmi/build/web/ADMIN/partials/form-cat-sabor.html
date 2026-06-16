@@ -1,0 +1,62 @@
+<div class="cs-form-card">
+    <h3 class="cs-form-titulo cs-form-titulo-val"></h3>
+
+    <!-- Campos de Categoría (se muestran/ocultan según tipo) -->
+    <div class="cs-grupo cs-grupo-cat" hidden>
+        <label class="cs-label">Nombre de la categoría <span class="cs-req">*</span></label>
+        <input id="cs-nombreCat" class="cs-input" type="text" maxlength="60"
+               placeholder="Ej: Helados artesanales" />
+    </div>
+    <div class="cs-grupo cs-grupo-cat" hidden>
+        <label class="cs-label">Descripción de la categoría</label>
+        <input id="cs-descCat" class="cs-input" type="text" maxlength="120"
+               placeholder="Ej: Helados elaborados con ingredientes naturales…" />
+    </div>
+    <div class="cs-grupo cs-grupo-cat" hidden>
+        <label class="cs-label">Imagen de la categoría</label>
+        <div class="cs-upload-area" id="cs-upload-area">
+            <span class="cs-upload-placeholder" id="cs-upload-placeholder">
+                Haz clic para subir una imagen
+            </span>
+            <img id="cs-preview-img" class="cs-preview-img" src="" alt="" style="display:none;" />
+        </div>
+        <input id="cs-imagenCat" type="file" accept="image/*" hidden />
+    </div>
+
+    <!-- Select sabor existente (solo para tipo Categoria) -->
+    <div class="cs-grupo cs-grupo-sel-sabor" hidden>
+        <label class="cs-label">Sabor existente a relacionar <span class="cs-req">*</span></label>
+        <select id="cs-idSaborExistente" class="cs-select">
+            <option value="">— Selecciona un sabor —</option>
+        </select>
+        <p class="cs-aviso-vacio cs-aviso-sabores" hidden>⚠️ No hay sabores registrados aún.</p>
+    </div>
+
+    <!-- Campos de Sabor (se muestran/ocultan según tipo) -->
+    <div class="cs-grupo cs-grupo-sabor" hidden>
+        <label class="cs-label">Nombre del sabor <span class="cs-req">*</span></label>
+        <input id="cs-nombreSabor" class="cs-input" type="text" maxlength="60"
+               placeholder="Ej: Maracuyá con coco" />
+    </div>
+    <div class="cs-grupo cs-grupo-sabor" hidden>
+        <label class="cs-label">Descripción del sabor</label>
+        <input id="cs-descSabor" class="cs-input" type="text" maxlength="120"
+               placeholder="Ej: Tropical, con notas cítricas y cremosas…" />
+    </div>
+
+    <!-- Select categoría existente (solo para tipo Sabor) -->
+    <div class="cs-grupo cs-grupo-sel-cat" hidden>
+        <label class="cs-label">Categoría existente a relacionar <span class="cs-req">*</span></label>
+        <select id="cs-idCatExistente" class="cs-select">
+            <option value="">— Selecciona una categoría —</option>
+        </select>
+        <p class="cs-aviso-vacio cs-aviso-cats" hidden>⚠️ No hay categorías registradas aún.</p>
+    </div>
+
+    <span class="cs-error" id="cs-error-msg"></span>
+
+    <div class="cs-form-footer">
+        <button class="btn-secundario" id="cs-btn-cancelar">Cancelar</button>
+        <button class="btn-primario"   id="cs-btn-guardar">Guardar</button>
+    </div>
+</div>

@@ -273,9 +273,6 @@ async function cargarCategoriasAside(contenedorId) {
                 divIcono.innerHTML = iconoPostre;
                 divIcono.style.cursor = 'pointer';
                 divIcono.title = nombreCat;
-                divIcono.addEventListener('click', () => {
-                    window.location.href = `Productos.html?categoria=${encodeURIComponent(nombreCat)}`;
-                });
                 contenedorIconos.appendChild(divIcono);
             }
 
@@ -315,7 +312,7 @@ async function cargarCategoriasAside(contenedorId) {
         if (contenedorIconos) {
             contenedorIconos.addEventListener('click', (e) => {
                 e.stopPropagation();
-                abrirAside();
+                letras.style.display === 'flex' ? cerrarAside() : abrirAside();
             });
         }
 
@@ -1097,7 +1094,7 @@ function inyectarEstilosModal() {
         .modal-detalle__precio {
             font-size: 1.45rem;
             font-weight: 800;
-            color: #7C4DFF;
+            color: #c5b8f0;
             margin: 0;
         }
         .modal-detalle__desc {
@@ -1129,7 +1126,7 @@ function inyectarEstilosModal() {
         .modal-detalle__btn-comprar {
             flex: 1;
             padding: 12px;
-            background: #7C4DFF;
+            background: #b79dff;
             color: #fff;
             border: none;
             border-radius: 12px;
@@ -1138,12 +1135,12 @@ function inyectarEstilosModal() {
             cursor: pointer;
             transition: background .15s;
         }
-        .modal-detalle__btn-comprar:hover { background: #6a3de8; }
+        .modal-detalle__btn-comprar:hover { background: #d6c8fd; }
         .modal-detalle__btn-carrito {
             padding: 12px 16px;
-            background: #F4EEFF;
-            color: #7C4DFF;
-            border: 2px solid #7C4DFF;
+            background: #fbf9ff;
+            color: #c5b8f0;
+            border: 2px solid #b79dff;
             border-radius: 12px;
             font-size: .95rem;
             font-weight: 700;
@@ -1472,7 +1469,7 @@ function inyectarEstilosModalCategoria() {
         }
         .modal-cat__btn-tienda {
             padding: 14px 48px;
-            background: #7C4DFF;
+            background: #beacf1;
             color: #fff;
             border: none;
             border-radius: 14px;
@@ -1480,10 +1477,9 @@ function inyectarEstilosModalCategoria() {
             font-weight: 700;
             cursor: pointer;
             transition: background .15s, transform .12s;
-            box-shadow: 0 4px 18px rgba(124,77,255,.3);
         }
         .modal-cat__btn-tienda:hover {
-            background: #6a3de8;
+            background: #e1d8f9;
             transform: translateY(-1px);
         }
     `;

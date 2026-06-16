@@ -49,9 +49,10 @@ public class PedidosServlet extends HttpServlet {
         String estadoParam = request.getParameter("estado");
         List<Map<String, Object>> pedidos;
 
-        if ("en_proceso".equalsIgnoreCase(estadoParam)) {
-            // Agrupa Preparando(4) + En bodega(5) + Empacando(6) + Transportando(7)
-            pedidos = pedidoDAO.obtenerPedidosEnProceso(idUsuario);
+        if ("en_proceso".equalsIgnoreCase(estadoParam) || "1".equals(estadoParam)) {
+            // Pendiente(1) y En proceso(4,5,6,7) — devuelve sub-pedidos por proveedor
+            // El JS filtra por estadoPedido para separar las dos pestañas
+            pedidos = pedidoDAO.obtenerPedidosEnProcesoConProveedores(idUsuario);
         } else {
             int estado = 1; // Pendiente por defecto
             if (estadoParam != null && !estadoParam.isBlank()) {

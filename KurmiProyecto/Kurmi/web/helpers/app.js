@@ -257,7 +257,7 @@ function verificarErroresURL() {
 
         } else if (errorParam === 'insert_failed') {
             console.log('[Kurmi - Registro]  Error: los datos ingresados ya existen en el sistema (correo o teléfono duplicado).');
-            alert('⚠️ Los datos ingresados no son válidos. Por favor verifica la información e intenta de nuevo.');
+            alert('Los datos ingresados no son válidos. Por favor verifica la información e intenta de nuevo.');
 
         } else if (errorParam === 'unexpected_system_error') {
             console.log('[Kurmi - Registro]  Error inesperado del sistema. Revisa los logs del servidor.');
