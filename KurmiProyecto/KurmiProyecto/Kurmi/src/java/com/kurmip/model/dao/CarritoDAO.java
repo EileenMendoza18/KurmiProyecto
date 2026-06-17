@@ -109,8 +109,10 @@ public class CarritoDAO {
                 // Se extrae la cantidad de unidades de este producto en el carrito.
                 dto.setCantidad(rs.getInt("Cantidad_Producto"));
 
-                // Se extrae el precio unitario que fue congelado en el momento de agregar el producto,
-                // de modo que cambios posteriores de precio no afecten el carrito en curso.
+                // Se extrae el precio unitario vigente para esta línea. Mientras el ítem no esté
+                // vendido (Estado_Carrito 4 o 5), este valor se mantiene sincronizado con el precio
+                // actual del producto (ver ProductoDAO.editarProducto); una vez vendido (estado 3)
+                // queda fijo como precio histórico de la venta.
                 dto.setPrecioUnitario(rs.getDouble("Precio_Unitario_Momento"));
 
                 // Se extrae el subtotal precalculado (cantidad × precio unitario) almacenado en la BD.
@@ -330,7 +332,9 @@ public class CarritoDAO {
                 double subtotal = cantidad * precio;
 
                 // Se inserta la nueva línea de detalle con todos los campos requeridos.
-                // El precio unitario se "congela" en Precio_Unitario_Momento para que cambios futuros de precio no afecten este carrito.
+                // El precio unitario se guarda en Precio_Unitario_Momento. Mientras el ítem siga
+                // en estado 4/5 (no vendido), este valor se actualiza si el proveedor cambia el
+                // precio del producto; al vender (estado 3) queda fijo como precio histórico.
                 String sqlInsertarDetalle = "INSERT INTO Carrito_Detalle " +
                     "(ID_Carrito, ID_Producto, Cantidad_Producto, Precio_Unitario_Momento, SubTotal) " +
                     "VALUES (?, ?, ?, ?, ?)";
@@ -500,7 +504,7 @@ public class CarritoDAO {
             if (nuevaCantidad > stockDisponible) return -1;
 
             // Se actualiza la cantidad en la fila del detalle y se recalcula el subtotal directamente en SQL
-            // multiplicando Precio_Unitario_Momento (precio congelado al momento de agregar) por la nueva cantidad.
+            // multiplicando Precio_Unitario_Momento (precio vigente de esta línea) por la nueva cantidad.
             // Se filtra por el ID exacto del detalle y se asegura que el ítem esté en estado activo (4 o 5).
             String sql = "UPDATE Carrito_Detalle " +
                          "SET Cantidad_producto = ?, SubTotal = Precio_Unitario_Momento * ? " +

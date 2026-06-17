@@ -3,13 +3,13 @@ package com.kurmip.controller;
 import com.google.gson.Gson;
 import com.kurmip.model.dao.ProductoDAO;
 import com.kurmip.model.dto.UsuarioDTO;
+import com.kurmip.util.AuthHelper;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.MultipartConfig;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import jakarta.servlet.http.HttpSession;
 import jakarta.servlet.http.Part;
 import java.io.File;
 import java.io.IOException;
@@ -30,10 +30,6 @@ import java.util.UUID;
  *
  * Todos los métodos requieren sesión activa.
  *
- * Ejemplos de uso en el frontend (reemplazar las URLs antiguas):
- *   fetch(`${BASE_URL}/GestionProductoServlet`, { method:'POST', body: fd })
- *   // fd debe incluir el campo: accion = 'crear' | 'editar' | 'eliminar'
- *
  * Campos por acción:
  *   crear   → nombre, precio, stockInicial, descripcion, unidadMedida,
  *              fechaVenc, idRelaCatSabor, [imagen]
@@ -43,16 +39,15 @@ import java.util.UUID;
  */
 @WebServlet(name = "GestionProductoServlet", urlPatterns = {"/GestionProductoServlet"})
 @MultipartConfig(
-    fileSizeThreshold = 1024 * 1024,       // 1 MB en memoria antes de ir a disco
-    maxFileSize       = 5  * 1024 * 1024,  // 5 MB por imagen
-    maxRequestSize    = 10 * 1024 * 1024   // 10 MB total por request
+    fileSizeThreshold = 1024 * 1024,
+    maxFileSize       = 5  * 1024 * 1024,
+    maxRequestSize    = 10 * 1024 * 1024
 )
 public class GestionProductoServlet extends HttpServlet {
 
     private static final String   CARPETA_IMG = "RESOURCES/img";
     private static final String[] EXTS_OK     = {"jpg", "jpeg", "png", "webp", "gif"};
 
-    // ── POST ──────────────────────────────────────────────────────────────────
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
@@ -62,20 +57,14 @@ public class GestionProductoServlet extends HttpServlet {
 
         try (PrintWriter out = response.getWriter()) {
 
-            // ── Verificar sesión ───────────────────────────────────────────────
-            HttpSession session = request.getSession(false);
-            if (session == null || session.getAttribute("usuarioLogueado") == null) {
-                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-                resp.put("ok", false);
-                resp.put("error", "No hay sesión activa");
-                out.print(new Gson().toJson(resp));
-                return;
-            }
+            // Se delega en AuthHelper la verificación de sesión activa.
+            // Si no hay sesión, AuthHelper escribe el 401 y retorna null.
+            UsuarioDTO usuario = AuthHelper.obtenerUsuario(request, response);
+            if (usuario == null) return;
 
-            UsuarioDTO usuario   = (UsuarioDTO) session.getAttribute("usuarioLogueado");
-            int        idUsuario = usuario.getId();
+            int    idUsuario = usuario.getId();
+            String accion    = param(request, "accion");
 
-            String accion = param(request, "accion");
             if (accion.isEmpty()) {
                 response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
                 resp.put("ok", false);
@@ -86,9 +75,6 @@ public class GestionProductoServlet extends HttpServlet {
 
             switch (accion) {
 
-                // ──────────────────────────────────────────────────────────────
-                // CREAR — antes: CrearProductoServlet
-                // ──────────────────────────────────────────────────────────────
                 case "crear" -> {
                     String nombre       = param(request, "nombre");
                     String precioStr    = param(request, "precio");
@@ -108,16 +94,15 @@ public class GestionProductoServlet extends HttpServlet {
                         return;
                     }
 
-                    double precio      = Double.parseDouble(precioStr);
+                    double precio        = Double.parseDouble(precioStr);
                     int    idRelaCatSabor = Integer.parseInt(idRelaCatStr);
 
-                    // Imagen: valor por defecto si no se sube ninguna
                     String nombreImg = "default.png";
                     String imgSubida = procesarImagen(request, response, out, resp, "default.png");
-                    if (imgSubida == null) return; // procesarImagen ya respondió con el error
+                    if (imgSubida == null) return;
                     if (!imgSubida.equals("default.png")) nombreImg = imgSubida;
 
-                    ProductoDAO dao  = new ProductoDAO();
+                    ProductoDAO dao    = new ProductoDAO();
                     int         idNuevo = dao.crearProducto(nombre, precio, descripcion,
                             unidadMedida, fechaVenc, idRelaCatSabor, nombreImg,
                             idUsuario, stockInicial);
@@ -136,9 +121,6 @@ public class GestionProductoServlet extends HttpServlet {
                     out.print(new Gson().toJson(resp));
                 }
 
-                // ──────────────────────────────────────────────────────────────
-                // EDITAR — antes: EditarProductoServlet
-                // ──────────────────────────────────────────────────────────────
                 case "editar" -> {
                     String idStr        = param(request, "idProducto");
                     String nombre       = param(request, "nombre");
@@ -161,12 +143,11 @@ public class GestionProductoServlet extends HttpServlet {
                         return;
                     }
 
-                    int    idProducto      = Integer.parseInt(idStr);
-                    double precio          = Double.parseDouble(precioStr);
-                    int    idRelaCatSabor  = Integer.parseInt(idRelaCatStr);
+                    int    idProducto       = Integer.parseInt(idStr);
+                    double precio           = Double.parseDouble(precioStr);
+                    int    idRelaCatSabor   = Integer.parseInt(idRelaCatStr);
                     int    cantidadAniadida = cantidadStr.isEmpty() ? 0 : Integer.parseInt(cantidadStr);
 
-                    // Imagen: null = no cambiar la imagen existente
                     String nombreImg = procesarImagen(request, response, out, resp, null);
                     if (nombreImg != null && nombreImg.equals("_ERROR_")) return;
 
@@ -186,9 +167,6 @@ public class GestionProductoServlet extends HttpServlet {
                     out.print(new Gson().toJson(resp));
                 }
 
-                // ──────────────────────────────────────────────────────────────
-                // ELIMINAR — antes: EliminarProductoServlet
-                // ──────────────────────────────────────────────────────────────
                 case "eliminar" -> {
                     String idStr = param(request, "idProducto");
                     if (idStr.isEmpty()) {
@@ -233,27 +211,16 @@ public class GestionProductoServlet extends HttpServlet {
     }
 
     // =========================================================================
-    // UTILIDADES PRIVADAS
+    // UTILIDADES PRIVADAS (sin cambios)
     // =========================================================================
 
-    /**
-     * Procesa la parte de imagen del request multipart.
-     *
-     * @param defaultValue valor a devolver si NO se sube ninguna imagen.
-     *                     Usar "default.png" para crear (imagen por defecto)
-     *                     y null para editar (no cambiar la imagen existente).
-     * @return el nombre del archivo guardado, defaultValue si no hay imagen,
-     *         o "_ERROR_" si la extensión no es válida (ya respondió el error).
-     */
     private String procesarImagen(HttpServletRequest request,
                                    HttpServletResponse response,
                                    PrintWriter out,
                                    Map<String, Object> resp,
                                    String defaultValue) throws IOException, ServletException {
         Part filePart = request.getPart("imagen");
-        if (filePart == null || filePart.getSize() == 0) {
-            return defaultValue;
-        }
+        if (filePart == null || filePart.getSize() == 0) return defaultValue;
 
         String original = new File(filePart.getSubmittedFileName()).getName();
         String ext      = extension(original);
@@ -268,11 +235,8 @@ public class GestionProductoServlet extends HttpServlet {
 
         String nombreImg = "producto_" + UUID.randomUUID().toString().substring(0, 8) + "." + ext;
 
-        // Ruta 1: build/web — donde Tomcat sirve los archivos en caliente
-        String buildWeb  = getServletContext().getRealPath("");
-        String rutaBuild = buildWeb + CARPETA_IMG.replace("/", File.separator);
-
-        // Ruta 2: carpeta fuente web — persiste después de Clean and Build
+        String buildWeb   = getServletContext().getRealPath("");
+        String rutaBuild  = buildWeb + CARPETA_IMG.replace("/", File.separator);
         String rutaFuente = buildWeb
                 .replace("build" + File.separator + "web" + File.separator, "")
                 + "web" + File.separator
@@ -292,19 +256,16 @@ public class GestionProductoServlet extends HttpServlet {
         return nombreImg;
     }
 
-    /** Limpia el parámetro del request; nunca devuelve null. */
     private String param(HttpServletRequest req, String name) {
         String v = req.getParameter(name);
         return (v == null) ? "" : v.trim();
     }
 
-    /** Extrae la extensión de un nombre de archivo en minúsculas. */
     private String extension(String filename) {
         int dot = filename.lastIndexOf('.');
         return (dot == -1) ? "" : filename.substring(dot + 1).toLowerCase();
     }
 
-    /** Verifica si la extensión está en la lista permitida. */
     private boolean extOk(String ext) {
         for (String e : EXTS_OK) if (e.equals(ext)) return true;
         return false;

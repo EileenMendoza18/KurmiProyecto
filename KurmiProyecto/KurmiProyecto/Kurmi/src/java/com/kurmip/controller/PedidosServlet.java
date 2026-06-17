@@ -2,6 +2,7 @@ package com.kurmip.controller;
 
 import com.kurmip.model.dao.PedidoDAO;
 import com.kurmip.model.dto.UsuarioDTO;
+import com.kurmip.util.AuthHelper;
 import com.google.gson.Gson;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
@@ -36,25 +37,23 @@ public class PedidosServlet extends HttpServlet {
         response.setContentType("application/json");
         response.setCharacterEncoding("UTF-8");
 
-        HttpSession session = request.getSession(false);
-        if (session == null || session.getAttribute("usuarioLogueado") == null) {
-            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+        // Se delega en AuthHelper la verificación de sesión activa.
+        // Si no hay sesión, AuthHelper escribe el 401 y retorna null.
+        UsuarioDTO usuario = AuthHelper.obtenerUsuario(request, response);
+        if (usuario == null) {
             response.getWriter().write("[]");
             return;
         }
 
-        UsuarioDTO usuario = (UsuarioDTO) session.getAttribute("usuarioLogueado");
         int idUsuario = usuario.getId();
 
         String estadoParam = request.getParameter("estado");
         List<Map<String, Object>> pedidos;
 
         if ("en_proceso".equalsIgnoreCase(estadoParam) || "1".equals(estadoParam)) {
-            // Pendiente(1) y En proceso(4,5,6,7) — devuelve sub-pedidos por proveedor
-            // El JS filtra por estadoPedido para separar las dos pestañas
             pedidos = pedidoDAO.obtenerPedidosEnProcesoConProveedores(idUsuario);
         } else {
-            int estado = 1; // Pendiente por defecto
+            int estado = 1;
             if (estadoParam != null && !estadoParam.isBlank()) {
                 try { estado = Integer.parseInt(estadoParam); } catch (NumberFormatException ignored) {}
             }

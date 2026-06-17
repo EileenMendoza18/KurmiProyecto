@@ -4,6 +4,7 @@ import com.google.gson.Gson;
 import com.kurmip.model.dao.FavoritosDAO;
 import com.kurmip.model.dto.ProductoDTO;
 import com.kurmip.model.dto.UsuarioDTO;
+import com.kurmip.util.AuthHelper;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.*;
@@ -24,17 +25,16 @@ public class FavoritosServlet extends HttpServlet {
         response.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
 
         try (PrintWriter out = response.getWriter()) {
-            HttpSession session = request.getSession(false);
-
-            if (session == null || session.getAttribute("usuarioLogueado") == null) {
-                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            // Se delega en AuthHelper la verificación de sesión activa.
+            // Si no hay sesión, AuthHelper escribe el 401 y retorna null.
+            UsuarioDTO user = AuthHelper.obtenerUsuario(request, response);
+            if (user == null) {
+                // El frontend espera [] cuando no hay sesión en este endpoint.
                 out.print("[]");
                 return;
             }
 
-            UsuarioDTO user = (UsuarioDTO) session.getAttribute("usuarioLogueado");
             List<ProductoDTO> favoritos = favoritosDAO.listarFavoritos(user.getId());
-
             out.print(new Gson().toJson(favoritos));
         }
     }
@@ -47,16 +47,16 @@ public class FavoritosServlet extends HttpServlet {
         response.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
 
         try (PrintWriter out = response.getWriter()) {
-            HttpSession session = request.getSession(false);
-
-            if (session == null || session.getAttribute("usuarioLogueado") == null) {
+            // Nota: este endpoint responde texto plano en vez de JSON y usa un
+            // mensaje de texto en lugar de 401 cuando no hay sesión, para que el
+            // frontend (que evalúa el texto directamente) no se rompa.
+            UsuarioDTO user = AuthHelper.obtenerUsuario(request, response);
+            if (user == null) {
                 out.write("Debes iniciar sesión");
                 return;
             }
 
-            UsuarioDTO user = (UsuarioDTO) session.getAttribute("usuarioLogueado");
             String idProductoParam = request.getParameter("idProducto");
-
             if (idProductoParam == null || idProductoParam.isEmpty()) {
                 out.write("ID de Producto ausente");
                 return;
@@ -86,17 +86,15 @@ public class FavoritosServlet extends HttpServlet {
         response.setContentType("text/plain;charset=UTF-8");
 
         try (PrintWriter out = response.getWriter()) {
-            HttpSession session = request.getSession(false);
-
-            if (session == null || session.getAttribute("usuarioLogueado") == null) {
-                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            // Se delega en AuthHelper la verificación de sesión activa.
+            // Si no hay sesión, AuthHelper escribe el 401 y retorna null.
+            UsuarioDTO user = AuthHelper.obtenerUsuario(request, response);
+            if (user == null) {
                 out.write("Sin sesión");
                 return;
             }
 
-            UsuarioDTO user = (UsuarioDTO) session.getAttribute("usuarioLogueado");
             String idProductoParam = request.getParameter("idProducto");
-
             if (idProductoParam == null || idProductoParam.isEmpty()) {
                 response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
                 out.write("ID ausente");

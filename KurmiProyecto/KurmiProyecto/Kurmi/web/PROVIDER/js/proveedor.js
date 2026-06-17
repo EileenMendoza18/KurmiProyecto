@@ -181,6 +181,11 @@ function abrirModalCrear() {
         const el = document.getElementById(id);
         if (el) el.value = '';
     });
+    const minFechaCrear = new Date();
+    minFechaCrear.setDate(minFechaCrear.getDate() + 7);
+    const minStrCrear = minFechaCrear.toISOString().split('T')[0];
+    const fechaInpCrear = document.getElementById('inp-fechaVenc');
+    if (fechaInpCrear) fechaInpCrear.min = minStrCrear;
     const sel = document.getElementById('inp-relaCatSabor');
     if (sel) sel.innerHTML = '<option value="">Cargando…</option>';
     document.getElementById('preview-wrap')?.classList.add('preview-wrap--oculto');
@@ -371,6 +376,12 @@ function abrirModalEditar(idProducto) {
     if (imgInp) imgInp.value = '';
     document.getElementById('feedback-editar')?.classList.add('feedback--oculto');
 
+    const minFechaEditar = new Date();
+    minFechaEditar.setDate(minFechaEditar.getDate() + 7);
+    const minStrEditar = minFechaEditar.toISOString().split('T')[0];
+    const fechaInpEditar = document.getElementById('edit-fechaVenc');
+    if (fechaInpEditar) fechaInpEditar.min = minStrEditar;
+
     document.getElementById('modalEditar').classList.remove('modal-overlay--oculto');
     cargarCategoriasSaboresConSeleccion('edit-relaCatSabor', producto.idRelaCatSabor);
 }
@@ -508,8 +519,11 @@ function validarCamposProducto(campos, modo) {
     else {
         const hoy = new Date();
         hoy.setHours(0, 0, 0, 0);
+        const minFecha = new Date(hoy);
+        minFecha.setDate(minFecha.getDate() + 7);
         const fechaSeleccionada = new Date(fechaVenc + 'T00:00:00');
         if (fechaSeleccionada <= hoy) { errores.push('La fecha de vencimiento debe ser posterior a hoy.'); }
+        else if (fechaSeleccionada < minFecha) { errores.push('La fecha de vencimiento debe ser al menos 1 semana desde hoy.'); }
     }
 
     if (!idRelaCatSabor) { errores.push('Debes seleccionar una categoría y sabor.'); }

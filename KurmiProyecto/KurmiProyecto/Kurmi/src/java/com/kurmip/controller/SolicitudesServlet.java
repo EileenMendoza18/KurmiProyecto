@@ -12,6 +12,7 @@ import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
+import com.kurmip.util.AuthHelper;
 import jakarta.servlet.http.Part;
 import java.io.File;
 import java.io.IOException;
@@ -67,17 +68,11 @@ public class SolicitudesServlet extends HttpServlet {
 
         try (PrintWriter out = response.getWriter()) {
 
-            // Verificar sesión
-            HttpSession session = request.getSession(false);
-            if (session == null || session.getAttribute("usuarioLogueado") == null) {
-                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-                resp.put("ok", false);
-                resp.put("error", "No hay sesión activa");
-                out.print(new Gson().toJson(resp));
-                return;
-            }
+            // Se delega en AuthHelper la verificación de sesión activa.
+            // Si no hay sesión, AuthHelper escribe el 401 y retorna null.
+            UsuarioDTO usuario = AuthHelper.obtenerUsuario(request, response);
+            if (usuario == null) return;
 
-            UsuarioDTO usuario = (UsuarioDTO) session.getAttribute("usuarioLogueado");
             String accion = param(request, "accion");
 
             switch (accion) {
@@ -162,17 +157,11 @@ public class SolicitudesServlet extends HttpServlet {
 
         try (PrintWriter out = response.getWriter()) {
 
-            // Verificar sesión
-            HttpSession session = request.getSession(false);
-            if (session == null || session.getAttribute("usuarioLogueado") == null) {
-                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-                resp.put("ok", false);
-                resp.put("error", "No hay sesión activa");
-                out.print(new Gson().toJson(resp));
-                return;
-            }
+            // Se delega en AuthHelper la verificación de sesión activa.
+            // Si no hay sesión, AuthHelper escribe el 401 y retorna null.
+            UsuarioDTO usuario = AuthHelper.obtenerUsuario(request, response);
+            if (usuario == null) return;
 
-            UsuarioDTO usuario = (UsuarioDTO) session.getAttribute("usuarioLogueado");
             String accion = param(request, "accion");
 
             switch (accion) {

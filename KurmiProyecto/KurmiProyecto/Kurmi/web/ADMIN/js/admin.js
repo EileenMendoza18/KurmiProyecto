@@ -2345,6 +2345,7 @@ async function _enviarFormCS(tipo) {
             const fb = document.getElementById('cs-feedback');
             const _fbDiv = document.createElement('div'); _fbDiv.className = 'feedback feedback--ok cs-feedback-ok'; _fbDiv.textContent = `✅ ${data.mensaje}`; fb.innerHTML = ''; fb.appendChild(_fbDiv);
             fb.style.display = 'block';
+            setTimeout(() => { fb.style.display = 'none'; fb.innerHTML = ''; }, 3000);
 
             // Recargar lista para próximo uso y actualizar vistas
             await _cargarListasCatSabor();
