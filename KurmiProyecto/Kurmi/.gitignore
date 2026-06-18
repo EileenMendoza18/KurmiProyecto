@@ -1,0 +1,14 @@
+# NetBeans
+/nbproject
+/build
+/nbbuild
+/dist
+/nbdist
+/nb-configuration.xml
+
+# Archivos de sistema
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
