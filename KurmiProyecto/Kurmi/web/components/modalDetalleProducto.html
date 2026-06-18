@@ -1,0 +1,39 @@
+<div class="modal-detalle-overlay" id="modal-detalle-root">
+    <div class="modal-detalle" role="dialog" aria-modal="true">
+        <div class="modal-detalle__img-wrap">
+            <img id="mdImagen" src="" alt="" />
+            <button class="modal-detalle__cerrar" id="btnCerrarModalDetalle" title="Cerrar">✕</button>
+        </div>
+        <div class="modal-detalle__body">
+            <p class="modal-detalle__nombre" id="mdNombre"></p>
+            <p class="modal-detalle__precio" id="mdPrecio"></p>
+            <p class="modal-detalle__desc" id="mdDescripcion"></p>
+            <div class="modal-detalle__grid">
+                <div class="modal-detalle__campo">
+                    <span class="modal-detalle__label">Categoría</span>
+                    <span class="modal-detalle__valor" id="mdCategoria">—</span>
+                </div>
+                <div class="modal-detalle__campo">
+                    <span class="modal-detalle__label">Sabor</span>
+                    <span class="modal-detalle__valor" id="mdSabor">—</span>
+                </div>
+                <div class="modal-detalle__campo">
+                    <span class="modal-detalle__label">Unidad de medida</span>
+                    <span class="modal-detalle__valor" id="mdUnidad">—</span>
+                </div>
+                <div class="modal-detalle__campo">
+                    <span class="modal-detalle__label">Vence</span>
+                    <span class="modal-detalle__valor" id="mdFecha">—</span>
+                </div>
+                <div class="modal-detalle__campo" style="grid-column:span 2">
+                    <span class="modal-detalle__label">Proveedor</span>
+                    <span class="modal-detalle__valor" id="mdProveedor">—</span>
+                </div>
+            </div>
+        </div>
+        <div class="modal-detalle__footer">
+            <button class="modal-detalle__btn-carrito" id="mdBtnCarrito">Añadir al carrito</button>
+            <button class="modal-detalle__btn-comprar" id="mdBtnComprar">Comprar ahora</button>
+        </div>
+    </div>
+</div>

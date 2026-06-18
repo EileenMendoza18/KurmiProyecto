@@ -139,6 +139,12 @@
     color: white;
 }
 
+/* ── Modo edición activo (Guardar cambios) ── */
+.btn__actualizar--edicion {
+    background-color: #463877;
+    color: white;
+}
+
 /* ---- BOTONES NAVEGACIÓN ---- */
 .perfil__nav-botones {
     display: flex;

@@ -1,0 +1,40 @@
+<!--
+    seccion-base.html — Componente reutilizable: cabecera de sección
+    ─────────────────────────────────────────────────────────────────
+    Contiene:
+      · .seccion-header  → título + botón de acción principal (opcional)
+      · .filtros-bar     → inputs/selects de filtrado (opcional)
+      · .contador-resultados → párrafo de conteo dinámico
+      · Contenedor de lista vacío listo para inyectar tarjetas
+
+    Slots:
+      · [SECCION_TITULO]      → texto del <h2>
+      · [BTN_NUEVO_ID]        → id del botón de creación  (omite el bloque si no lo necesitas)
+      · [BTN_NUEVO_TXT]       → texto del botón de creación
+      · [FILTROS_HTML]        → HTML interno de .filtros-bar (inputs, selects, etc.)
+      · [BTN_LIMPIAR_ID]      → id del botón "✕ Limpiar"
+      · [CONTADOR_ID]         → id del <p> de conteo
+      · [LISTA_ID]            → id del contenedor de resultados
+      · [LISTA_CLASE]         → clase CSS del contenedor (ej: grid-productos, solicitudes-lista)
+      · [LISTA_LOADING_TXT]   → texto del estado de carga inicial
+
+    Uso típico en JS:
+        main.innerHTML = await loadTemplate(`${BASE_URL}/components/seccion-base.html`);
+        // luego reemplazar los slots o ajustar con querySelector
+-->
+
+<div class="seccion-header">
+    <h2>[SECCION_TITULO]</h2>
+    <button class="btn-primario" id="[BTN_NUEVO_ID]">[BTN_NUEVO_TXT]</button>
+</div>
+
+<div class="filtros-bar">
+    [FILTROS_HTML]
+    <button class="btn-limpiar" id="[BTN_LIMPIAR_ID]">✕ Limpiar</button>
+</div>
+
+<p class="contador-resultados" id="[CONTADOR_ID]"></p>
+
+<div id="[LISTA_ID]" class="[LISTA_CLASE]">
+    <p class="cargando">[LISTA_LOADING_TXT]</p>
+</div>
