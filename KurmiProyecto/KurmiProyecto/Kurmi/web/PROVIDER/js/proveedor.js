@@ -1042,7 +1042,7 @@ function filaMotivoRechazo(motivo) {
     const div = document.createElement('div');
     div.className = 'sol-card__rechazo';
     const span = document.createElement('span');
-    span.textContent = '💬 Motivo del rechazo:';
+    span.textContent = 'Motivo del rechazo:';
     const p = document.createElement('p');
     p.textContent = motivo;
     div.append(span, p);

@@ -2293,20 +2293,49 @@ async function _enviarFormCS(tipo) {
     const nombreSabor = document.getElementById('cs-nombreSabor')?.value.trim() ?? '';
     const descSabor   = document.getElementById('cs-descSabor')?.value.trim()   ?? '';
 
-    // Validaciones
-    if ((tipo === 'Categoria' || tipo === 'Ambos') && !nombreCat) {
-        errorEl.textContent = 'El nombre de la categoría es obligatorio.'; return;
+    // Expresión regular que acepta solo letras (incluyendo tildes y ñ), espacios y guiones.
+    // Se usa para rechazar nombres que contengan números u otros caracteres no válidos.
+    const soloLetras = /^[a-zA-ZáéíóúÁÉÍÓÚüÜñÑ\s\-]+$/;
+
+    // Validaciones de nombre de categoría
+    if (tipo === 'Categoria' || tipo === 'Ambos') {
+        if (!nombreCat) {
+            errorEl.textContent = 'El nombre de la categoría es obligatorio.';
+            errorEl.hidden = false; return;
+        }
+        if (nombreCat.length < 5) {
+            errorEl.textContent = 'El nombre de la categoría debe tener al menos 5 caracteres.';
+            errorEl.hidden = false; return;
+        }
+        if (!soloLetras.test(nombreCat)) {
+            errorEl.textContent = 'El nombre de la categoría solo puede contener letras, espacios y guiones. No se permiten números.';
+            errorEl.hidden = false; return;
+        }
     }
-    if ((tipo === 'Sabor' || tipo === 'Ambos') && !nombreSabor) {
-        errorEl.textContent = 'El nombre del sabor es obligatorio.'; return;
+
+    // Validaciones de nombre de sabor
+    if (tipo === 'Sabor' || tipo === 'Ambos') {
+        if (!nombreSabor) {
+            errorEl.textContent = 'El nombre del sabor es obligatorio.';
+            errorEl.hidden = false; return;
+        }
+        if (nombreSabor.length < 5) {
+            errorEl.textContent = 'El nombre del sabor debe tener al menos 5 caracteres.';
+            errorEl.hidden = false; return;
+        }
+        if (!soloLetras.test(nombreSabor)) {
+            errorEl.textContent = 'El nombre del sabor solo puede contener letras, espacios y guiones. No se permiten números.';
+            errorEl.hidden = false; return;
+        }
     }
+
     if (tipo === 'Categoria') {
         const sel = document.getElementById('cs-idSaborExistente');
-        if (!sel || !sel.value) { errorEl.textContent = 'Selecciona un sabor existente.'; return; }
+        if (!sel || !sel.value) { errorEl.textContent = 'Selecciona un sabor existente.'; errorEl.hidden = false; return; }
     }
     if (tipo === 'Sabor') {
         const sel = document.getElementById('cs-idCatExistente');
-        if (!sel || !sel.value) { errorEl.textContent = 'Selecciona una categoría existente.'; return; }
+        if (!sel || !sel.value) { errorEl.textContent = 'Selecciona una categoría existente.'; errorEl.hidden = false; return; }
     }
 
     const fd = new FormData();
@@ -2505,7 +2534,7 @@ async function renderSeccionBackup() {
     btn.addEventListener('click', async () => {
         // Estado de carga
         btn.disabled = true;
-        btn.innerHTML = '<span class="backup-btn__icono" aria-hidden="true">⏳</span> Generando copia…';
+        btn.innerHTML = '<span class="backup-btn__icono" aria-hidden="true"></span> Generando copia…';
         feedback.style.display = 'none';
 
         try {
@@ -2549,7 +2578,7 @@ async function renderSeccionBackup() {
             feedback.style.display = 'block';
         } finally {
             btn.disabled = false;
-            btn.innerHTML = '<span class="backup-btn__icono" aria-hidden="true">⬇</span> Descargar copia de seguridad';
+            btn.innerHTML = '<span class="backup-btn__icono" aria-hidden="true"></span> Descargar copia de seguridad';
         }
     });
 }

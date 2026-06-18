@@ -28,6 +28,13 @@ import java.util.ArrayList;
 // Se importa la interfaz List para declarar las colecciones de forma genérica y flexible.
 import java.util.List;
 
+// Se importa HashMap como implementación concreta de mapa para construir cada fila en los métodos
+// que el servlet consume directamente como JSON (sin pasar por SolicitudDTO).
+import java.util.HashMap;
+
+// Se importa la interfaz Map para declarar de forma genérica las filas devueltas al servlet.
+import java.util.Map;
+
 /**
  * Se define esta clase como el Data Access Object (DAO) responsable de toda la lógica
  * de persistencia relacionada con solicitudes de proveedores en Kurmi.
@@ -38,9 +45,12 @@ import java.util.List;
  * Se documentan los métodos disponibles:
  * ┌─────────────────────────────────────────────────────────────────────┐
  * │  insertar(dto)                → Se crea una solicitud por proveedor │
+ * │  insertarSolicitud(...)       → Se crea solicitud + cat/sabor exist.│
  * │  responder(id, estado, motivo)→ Se aprueba o rechaza por el admin   │
  * │  obtenerPorProveedor(id)      → Se listan solicitudes del proveedor │
+ * │  obtenerSolicitudesProveedor(id)→ Se listan (Map) + cat/sabor exist.│
  * │  obtenerTodas(filtroEstado)   → Se listan todas (panel admin)       │
+ * │  obtenerTodasSolicitudes(f)   → Se listan todas (Map) + cat/sabor   │
  * │  obtenerPorId(id)             → Se obtiene una solicitud por su PK  │
  * │  contarPendientes()           → Se cuentan solicitudes sin respuesta │
  * │  insertarCategoria(...)       → Se inserta categoría aprobada        │
@@ -118,6 +128,85 @@ public class SolicitudDAO {
         } catch (Exception e) {
             // Se imprime el error en consola del servidor para facilitar el diagnóstico.
             System.err.println("SolicitudDAO.insertar → " + e.getMessage());
+        } finally {
+            // Se liberan todos los recursos JDBC a través del método auxiliar centralizado.
+            cerrar();
+        }
+
+        // Se retorna -1 para indicar al servlet que la inserción falló.
+        return -1;
+    }
+
+    // =========================================================================
+    // INSERTAR SOLICITUD — Variante que además admite relacionar con una
+    // categoría o sabor YA EXISTENTE (ID_Cat_Existente / ID_Sabor_Existente).
+    // Se usa cuando el tipo es "Categoria" (relacionando con un sabor existente)
+    // o "Sabor" (relacionando con una categoría existente).
+    // =========================================================================
+
+    /**
+     * Se inserta una nueva solicitud de categoría o sabor en la tabla Solicitudes,
+     * incluyendo además el ID de la categoría o sabor existente con el que se desea
+     * relacionar la nueva propuesta (cuando el tipo es "Categoria" o "Sabor" en solitario).
+     * Se deja el estado en "Pendiente" por defecto (definido en la BD) sin asignarlo explícitamente.
+     *
+     * @param idProveedor       Se recibe el UsuarioID del proveedor que crea la solicitud.
+     * @param tipo              Se recibe el tipo de solicitud: "Categoria", "Sabor" o "Ambos".
+     * @param nombreCat         Se recibe el nombre de la categoría propuesta; se guarda null si está vacío.
+     * @param nombreSabor       Se recibe el nombre del sabor propuesto; se guarda null si está vacío.
+     * @param descripcion       Se recibe la descripción opcional; se guarda null si está vacía.
+     * @param idCatExistente    Se recibe el ID de la categoría existente a relacionar (0 = ninguna).
+     * @param idSaborExistente  Se recibe el ID del sabor existente a relacionar (0 = ninguno).
+     * @return                  Se retorna el ID generado por la BD si el INSERT fue exitoso, o -1 si falló.
+     */
+    public int insertarSolicitud(int idProveedor, String tipo,
+                                  String nombreCat, String nombreSabor, String descripcion,
+                                  int idCatExistente, int idSaborExistente) {
+
+        // Se define el SQL de inserción incluyendo las columnas de categoría/sabor existente.
+        String sql =
+            "INSERT INTO Solicitudes (ID_Proveedor, Tipo, Nombre_Cat, Nombre_Sabor, Descripcion, ID_Cat_Existente, ID_Sabor_Existente) " +
+            "VALUES (?, ?, ?, ?, ?, ?, ?)";
+        try {
+            // Se obtiene la conexión activa desde el gestor centralizado.
+            con = cn.getConexion();
+
+            // Se prepara el INSERT solicitando que se devuelvan las claves generadas automáticamente.
+            ps  = con.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
+
+            // Se asigna el ID del proveedor que realiza la solicitud.
+            ps.setInt(1, idProveedor);
+
+            // Se asigna el tipo de solicitud ("Categoria", "Sabor" o "Ambos").
+            ps.setString(2, tipo);
+
+            // Se asigna el nombre de la categoría propuesta, o null si el campo está vacío.
+            ps.setString(3, (nombreCat == null || nombreCat.isEmpty())     ? null : nombreCat);
+
+            // Se asigna el nombre del sabor propuesto, o null si el campo está vacío.
+            ps.setString(4, (nombreSabor == null || nombreSabor.isEmpty()) ? null : nombreSabor);
+
+            // Se asigna la descripción adicional, o null si el campo está vacío.
+            ps.setString(5, (descripcion == null || descripcion.isEmpty()) ? null : descripcion);
+
+            // Se asigna el ID de categoría existente como Object para poder guardar NULL cuando es 0.
+            ps.setObject(6, idCatExistente   > 0 ? idCatExistente   : null);
+
+            // Se asigna el ID de sabor existente como Object para poder guardar NULL cuando es 0.
+            ps.setObject(7, idSaborExistente > 0 ? idSaborExistente : null);
+
+            // Se ejecuta el INSERT en la tabla Solicitudes.
+            ps.executeUpdate();
+
+            // Se recupera el ResultSet con las claves autogeneradas para obtener el ID_Solicitud asignado por MySQL.
+            rs = ps.getGeneratedKeys();
+
+            // Se retorna el ID generado si MySQL devolvió al menos una clave.
+            if (rs.next()) return rs.getInt(1);
+
+        } catch (Exception e) {
+            // Se imprime el error en consola del servidor para facilitar el diagnóstico.
+            System.err.println("SolicitudDAO.insertarSolicitud → " + e.getMessage());
         } finally {
             // Se liberan todos los recursos JDBC a través del método auxiliar centralizado.
             cerrar();
@@ -241,6 +330,82 @@ public class SolicitudDAO {
     }
 
     // =========================================================================
+    // OBTENER SOLICITUDES PROVEEDOR (Map) — Variante consumida directamente como
+    // JSON por el servlet, que además incluye los datos de la categoría/sabor
+    // existente con el que la solicitud quedó relacionada (vía LEFT JOIN).
+    // =========================================================================
+
+    /**
+     * Se consultan todas las solicitudes enviadas por un proveedor específico,
+     * devolviendo cada fila como un Map listo para serializar a JSON con Gson.
+     * Se incluyen, además de los campos básicos, el nombre de la categoría y del
+     * sabor existente relacionados (si los hay) mediante LEFT JOIN.
+     *
+     * @param idProveedor  Se recibe el UsuarioID del proveedor cuyas solicitudes se desean listar.
+     * @return             Se retorna la lista de filas como Map; nunca null, puede estar vacía.
+     */
+    public List<Map<String, Object>> obtenerSolicitudesProveedor(int idProveedor) {
+
+        // Se inicializa la lista vacía para acumular las filas del proveedor.
+        List<Map<String, Object>> lista = new ArrayList<>();
+
+        // Se define el SQL que trae los campos de la solicitud junto con el nombre de la
+        // categoría y del sabor existente relacionados, mediante LEFT JOIN.
+        String sql =
+            "SELECT s.ID_Solicitud, s.Tipo, s.Nombre_Cat, s.Nombre_Sabor, s.Descripcion, " +
+            "       s.Estado, s.Fecha_Solicitud, s.Fecha_Respuesta, s.Motivo_Rechazo, " +
+            "       s.ID_Cat_Existente, s.ID_Sabor_Existente, " +
+            "       cat.Nombre_Categoria AS Nombre_Cat_Existente, " +
+            "       sab.Nombre_Sabor     AS Nombre_Sabor_Existente " +
+            "FROM Solicitudes s " +
+            "LEFT JOIN Categorias cat ON s.ID_Cat_Existente = cat.ID_Categoria " +
+            "LEFT JOIN Sabores    sab ON s.ID_Sabor_Existente = sab.ID_Sabor " +
+            "WHERE s.ID_Proveedor = ? " +
+            "ORDER BY s.Fecha_Solicitud DESC";
+        try {
+            // Se obtiene la conexión activa desde el gestor centralizado.
+            con = cn.getConexion();
+
+            // Se prepara la sentencia con el parámetro de filtro por proveedor.
+            ps  = con.prepareStatement(sql);
+
+            // Se asigna el ID del proveedor como filtro principal de la consulta.
+            ps.setInt(1, idProveedor);
+
+            // Se ejecuta la consulta y se almacena el resultado en el ResultSet.
+            rs  = ps.executeQuery();
+
+            // Se recorre el ResultSet fila por fila, una por cada solicitud del proveedor.
+            while (rs.next()) {
+                // Se construye un Map con las claves exactas que el frontend espera en el JSON.
+                Map<String, Object> fila = new HashMap<>();
+                fila.put("idSolicitud",     rs.getInt("ID_Solicitud"));
+                fila.put("tipo",            rs.getString("Tipo"));
+                fila.put("nombreCat",       rs.getString("Nombre_Cat"));
+                fila.put("nombreSabor",     rs.getString("Nombre_Sabor"));
+                fila.put("descripcion",     rs.getString("Descripcion"));
+                fila.put("estado",          rs.getString("Estado"));
+                fila.put("fechaSolicitud",  DAOUtil.formatFecha(rs.getTimestamp("Fecha_Solicitud")));
+                fila.put("fechaRespuesta",  DAOUtil.formatFecha(rs.getTimestamp("Fecha_Respuesta")));
+                fila.put("motivoRechazo",   rs.getString("Motivo_Rechazo"));
+                fila.put("idCatExistente",        rs.getObject("ID_Cat_Existente"));
+                fila.put("idSaborExistente",       rs.getObject("ID_Sabor_Existente"));
+                fila.put("nombreCatExistente",     rs.getString("Nombre_Cat_Existente"));
+                fila.put("nombreSaborExistente",   rs.getString("Nombre_Sabor_Existente"));
+                lista.add(fila);
+            }
+
+        } catch (Exception e) {
+            // Se imprime el error en consola del servidor para facilitar el diagnóstico.
+            System.err.println("SolicitudDAO.obtenerSolicitudesProveedor → " + e.getMessage());
+        } finally {
+            // Se liberan todos los recursos JDBC al finalizar, con o sin error.
+            cerrar();
+        }
+        return lista;
+    }
+
+    // =========================================================================
     // OBTENER TODAS — Panel del administrador con filtro opcional por estado
     // Se incluye el nombre completo del proveedor mediante JOIN con Usuario.
     // FIELD() ordena: Pendiente → Aprobado → Rechazado, y dentro de cada grupo por fecha DESC.
@@ -307,6 +472,98 @@ public class SolicitudDAO {
         }
 
         // Se retorna la lista completa de solicitudes; estará vacía si no hay registros o hubo error.
+        return lista;
+    }
+
+    // =========================================================================
+    // OBTENER TODAS SOLICITUDES (Map) — Variante consumida directamente como
+    // JSON por el servlet, que además incluye los datos de la categoría/sabor
+    // existente con el que cada solicitud quedó relacionada (vía LEFT JOIN),
+    // y separa el ID y el nombre del proveedor en lugar de un único campo.
+    // =========================================================================
+
+    /**
+     * Se consultan todas las solicitudes del sistema para el panel del admin,
+     * devolviendo cada fila como un Map listo para serializar a JSON con Gson.
+     * Si estadoFiltro no está vacío, se filtra por ese estado (Pendiente / Aprobado / Rechazado).
+     * Se incluyen el ID y nombre completo del proveedor, además del nombre de la categoría
+     * y del sabor existente relacionados (si los hay) mediante LEFT JOIN.
+     *
+     * @param estadoFiltro  Se recibe "Pendiente", "Aprobado", "Rechazado" para filtrar, o "" para traer todas.
+     * @return              Se retorna la lista de filas como Map; nunca null, puede estar vacía.
+     */
+    public List<Map<String, Object>> obtenerTodasSolicitudes(String estadoFiltro) {
+
+        // Se inicializa la lista vacía para acumular todas las filas encontradas.
+        List<Map<String, Object>> lista = new ArrayList<>();
+
+        // Se construye el SQL base con StringBuilder para poder agregar la cláusula WHERE condicionalmente.
+        StringBuilder sql = new StringBuilder(
+            "SELECT s.ID_Solicitud, s.Tipo, s.Nombre_Cat, s.Nombre_Sabor, s.Descripcion, " +
+            "       s.Estado, s.Fecha_Solicitud, s.Fecha_Respuesta, s.Motivo_Rechazo, " +
+            "       u.Nombres AS NombreProveedor, u.Apellidos AS ApellidoProveedor, " +
+            "       u.UsuarioID AS IDProveedor, " +
+            "       s.ID_Cat_Existente, s.ID_Sabor_Existente, " +
+            "       cat.Nombre_Categoria AS Nombre_Cat_Existente, " +
+            "       sab.Nombre_Sabor     AS Nombre_Sabor_Existente " +
+            "FROM Solicitudes s " +
+            "JOIN Usuario u ON s.ID_Proveedor = u.UsuarioID " +
+            "LEFT JOIN Categorias cat ON s.ID_Cat_Existente = cat.ID_Categoria " +
+            "LEFT JOIN Sabores    sab ON s.ID_Sabor_Existente = sab.ID_Sabor "
+        );
+
+        // Se agrega la cláusula WHERE solo si el filtro de estado no está vacío.
+        if (!esVacio(estadoFiltro)) {
+            sql.append("WHERE s.Estado = ? ");
+        }
+
+        // Se agrega el ORDER BY que prioriza pendientes y dentro de cada grupo ordena por fecha descendente.
+        sql.append("ORDER BY FIELD(s.Estado, 'Pendiente', 'Aprobado', 'Rechazado'), s.Fecha_Solicitud DESC");
+
+        try {
+            // Se obtiene la conexión activa desde el gestor centralizado.
+            con = cn.getConexion();
+
+            // Se prepara la sentencia con el SQL construido dinámicamente.
+            ps  = con.prepareStatement(sql.toString());
+
+            // Se asigna el filtro de estado como parámetro solo si fue indicado.
+            if (!esVacio(estadoFiltro)) {
+                ps.setString(1, estadoFiltro);
+            }
+
+            // Se ejecuta la consulta y se almacena el resultado en el ResultSet.
+            rs = ps.executeQuery();
+
+            // Se recorre el ResultSet fila por fila, una por cada solicitud encontrada.
+            while (rs.next()) {
+                // Se construye un Map con las claves exactas que el frontend espera en el JSON.
+                Map<String, Object> fila = new HashMap<>();
+                fila.put("idSolicitud",       rs.getInt("ID_Solicitud"));
+                fila.put("tipo",              rs.getString("Tipo"));
+                fila.put("nombreCat",         rs.getString("Nombre_Cat"));
+                fila.put("nombreSabor",       rs.getString("Nombre_Sabor"));
+                fila.put("descripcion",       rs.getString("Descripcion"));
+                fila.put("estado",            rs.getString("Estado"));
+                fila.put("fechaSolicitud",    DAOUtil.formatFecha(rs.getTimestamp("Fecha_Solicitud")));
+                fila.put("fechaRespuesta",    DAOUtil.formatFecha(rs.getTimestamp("Fecha_Respuesta")));
+                fila.put("motivoRechazo",     rs.getString("Motivo_Rechazo"));
+                fila.put("idProveedor",       rs.getInt("IDProveedor"));
+                fila.put("nombreProveedor",   rs.getString("NombreProveedor") + " " + rs.getString("ApellidoProveedor"));
+                fila.put("idCatExistente",       rs.getObject("ID_Cat_Existente"));
+                fila.put("idSaborExistente",      rs.getObject("ID_Sabor_Existente"));
+                fila.put("nombreCatExistente",    rs.getString("Nombre_Cat_Existente"));
+                fila.put("nombreSaborExistente",  rs.getString("Nombre_Sabor_Existente"));
+                lista.add(fila);
+            }
+
+        } catch (Exception e) {
+            // Se imprime el error en consola del servidor para facilitar el diagnóstico.
+            System.err.println("SolicitudDAO.obtenerTodasSolicitudes → " + e.getMessage());
+        } finally {
+            // Se liberan todos los recursos JDBC al finalizar, con o sin error.
+            cerrar();
+        }
         return lista;
     }
 

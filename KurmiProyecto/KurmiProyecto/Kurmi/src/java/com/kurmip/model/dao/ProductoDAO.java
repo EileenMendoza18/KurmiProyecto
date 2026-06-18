@@ -994,8 +994,8 @@ public class ProductoDAO {
                 // Se define el SQL para insertar un nuevo registro de movimiento en Inventario.
                 // StockInicial = 0 porque este registro representa una adición, no el stock inicial.
                 String sqlInv =
-                    "INSERT INTO Inventario (ID_Producto, StockInicial, CantidadAnadida) " +
-                    "VALUES (?, 0, ?)";
+                    "INSERT INTO Inventario (ID_Producto, CantidadAnadida) " +
+                    "VALUES (?,?)";
 
                 // Se prepara el INSERT de inventario.
                 ps = con.prepareStatement(sqlInv);

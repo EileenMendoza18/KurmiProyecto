@@ -164,7 +164,8 @@ public class SessionFilter implements Filter {
                 // Es privada la ruta del Servlet que cambia el estado de un pedido.
                 path.contains("CambiarEstadoPedidoServlet") ||
                 // Es privada la ruta del Servlet de respaldo (Backup) de la base de datos.
-                path.contains("BackupServlet");
+                path.contains("BackupServlet") ||
+                path.contains("Productos.html");
 
         // Se verifica si la ruta solicitada quedó marcada como pública.
         if (esPublico) {

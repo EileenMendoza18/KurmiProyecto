@@ -742,7 +742,9 @@ public class PedidoDAO {
         pedido.put("idPedido",       idPedido);
         pedido.put("idCarrito",      idCarrito);
         // Se recorta la fecha al formato yyyy-MM-dd eliminando la parte de hora que viene del timestamp.
-        pedido.put("fechaPedido",    fechaPedido.substring(0, 10));
+        pedido.put("fechaPedido",         fechaPedido.substring(0, 10));
+        // Se conserva la fecha completa con hora para que el frontend pueda calcular la ventana de 24 h de devolución.
+        pedido.put("fechaPedidoCompleta", fechaPedido);
         pedido.put("totalPago",      rs.getDouble("Total_Pago"));
         pedido.put("totalProductos", totalUnidades);
         // Se usa "No registrado" como fallback si el pedido no tiene método de pago asociado.
@@ -1277,16 +1279,23 @@ public class PedidoDAO {
      * @return              Se retorna la lista de pedidos con sus proveedores, productos y flag todosEnBodega anidados.
      */
     public List<Map<String, Object>> obtenerPedidosAdminAgrupados(int filtroEstado) {
+        // Se inicializa la lista vacía que acumulará un mapa por cada pedido encontrado en la plataforma.
         List<Map<String, Object>> lista = new ArrayList<>();
 
-        // Se construye la condición SQL dinámica según el filtro recibido para no duplicar toda la query.
+        // Se inicializa vacía la condición SQL adicional; se rellenará según el filtro recibido.
         String condicion = "";
+        // Se excluyen cancelados(3), entregados(8), devueltos(9) y con cancelación solicitada(11)
+        // porque "activos" debe mostrar solo pedidos que aún están en curso normal.
         if (filtroEstado == 0)      condicion = "AND p.Estado_Pedido NOT IN (3, 8, 9, 11)";
+        // Se filtra exclusivamente por el estado 8 (Entregado) cuando el admin pide ver el histórico de entregas.
         else if (filtroEstado == 8) condicion = "AND p.Estado_Pedido = 8";
+        // Se filtra exclusivamente por el estado 3 (Cancelado) cuando el admin pide ver las cancelaciones.
         else if (filtroEstado == 3) condicion = "AND p.Estado_Pedido = 3";
-        // filtroEstado == -1 no añade condición adicional para retornar todos los pedidos sin excepción.
+        // Si filtroEstado es -1 no se añade ninguna condición extra, por lo que se listan todos los pedidos sin excepción.
 
-        // Se unen las tablas de pedido, cliente, pago y método de pago para tener todos los datos de cabecera.
+        // Se unen Pedidos_Cliente con Usuario (para el nombre del cliente) y, con LEFT JOIN,
+        // con Pago_Pedido y Metodo_Pago (porque un pedido podría no tener pago registrado todavía).
+        // Se aplica la condición dinámica de filtro y se ordena del más reciente al más antiguo.
         String sqlPedidos =
             "SELECT p.ID_Pedido, p.ID_Carrito, p.Fecha_Pedido, p.Estado_Pedido, " +
             "p.Total_Pago, p.Nombre_Receptor, p.Direccion_Envio, p.Telefono_Envio, " +
@@ -1298,7 +1307,9 @@ public class PedidoDAO {
             "WHERE 1=1 " + condicion +
             " ORDER BY p.Fecha_Pedido DESC";
 
-        // Se consultan los proveedores y sus estados de PPE para cada pedido en el bucle interior.
+        // Se prepara la query que, dado un ID de pedido, trae cada proveedor involucrado junto con
+        // su nombre completo y su estado individual de avance (Estado_Item) desde la tabla PPE.
+        // Se ejecutará una vez por cada pedido dentro del bucle principal (parámetro posicional "?").
         String sqlProveedores =
             "SELECT ppe.ID_Proveedor, ppe.Estado_Item, " +
             "u.Nombres, u.Apellidos " +
@@ -1306,39 +1317,62 @@ public class PedidoDAO {
             "JOIN Usuario u ON u.UsuarioID = ppe.ID_Proveedor " +
             "WHERE ppe.ID_Pedido = ?";
 
+        // Se declara la conexión local fuera del try para poder cerrarla siempre en el finally,
+        // incluso si ocurre una excepción a mitad de la construcción del resultado.
         Connection conLocal = null;
         try {
+            // Se obtiene una conexión nueva del pool/gestor de conexiones.
             conLocal = cn.getConexion();
+
+            // Se prepara y ejecuta la consulta principal de cabecera de pedidos con el filtro ya aplicado.
             PreparedStatement psPed = conLocal.prepareStatement(sqlPedidos);
             ResultSet rsPed = psPed.executeQuery();
 
-            // Se recorre cada pedido de la plataforma para construir su mapa completo con proveedores anidados.
+            // Se recorre cada fila de pedido devuelta por la consulta principal, una iteración por pedido.
             while (rsPed.next()) {
+                // Se extrae el ID del pedido actual para usarlo como parámetro en las subconsultas siguientes.
                 int idPedido = rsPed.getInt("ID_Pedido");
 
+                // Se inicializa la lista que contendrá un mapa por cada proveedor de este pedido en particular.
                 List<Map<String, Object>> proveedores = new ArrayList<>();
-                // Se asume que todos los proveedores están en bodega hasta encontrar uno con estado < 5.
+
+                // Se asume optimistamente que todos los proveedores ya están en bodega (estado >= 5);
+                // esta bandera se baja a false en cuanto se encuentre un proveedor por debajo de ese estado.
                 boolean todosEnBodega = true;
 
-                // Se consultan los proveedores del pedido con su estado individual desde PPE.
+                // Se prepara y ejecuta la subconsulta de proveedores, fijando el ID del pedido actual como parámetro.
                 PreparedStatement psProv = conLocal.prepareStatement(sqlProveedores);
                 psProv.setInt(1, idPedido);
                 ResultSet rsProv = psProv.executeQuery();
+
+                // Se recorre cada proveedor que participa en este pedido específico.
                 while (rsProv.next()) {
+                    // Se extrae el estado individual (Estado_Item) del sub-pedido de este proveedor.
                     int est = rsProv.getInt("Estado_Item");
+                    // Se extrae el ID del proveedor actual, necesario para la subconsulta de sus productos.
                     int idProveedor = rsProv.getInt("ID_Proveedor");
-                    // Se marca como false si algún proveedor aún no ha llegado a estado 5 (En bodega).
+
+                    // Se actualiza el flag global del pedido a false si este proveedor aún no llegó
+                    // al estado 5 (En bodega); basta con que uno solo esté atrasado para bajar la bandera.
                     if (est < 5) todosEnBodega = false;
 
+                    // Se construye el mapa con los datos visibles del proveedor para el frontend del admin.
+                    // Se usa LinkedHashMap para que el JSON resultante mantenga el orden de inserción de las claves.
                     Map<String, Object> prov = new java.util.LinkedHashMap<>();
                     prov.put("idProveedor",  idProveedor);
                     prov.put("nombre",       rsProv.getString("Nombres") + " " + rsProv.getString("Apellidos"));
                     prov.put("estadoItem",   est);
+                    // Se traduce el código numérico de estado a su etiqueta legible reutilizando etiquetaEstado().
                     prov.put("nombreEstado", etiquetaEstado(est));
 
-                    // Se traen los productos de este proveedor en este pedido filtrando por fecha de venta.
+                    // Se recuperan, del ResultSet del pedido, el carrito y la fecha que sirven para
+                    // filtrar exactamente qué ítems del carrito le pertenecen a este proveedor en esta venta.
                     int idCarritoProv = rsPed.getInt("ID_Carrito");
                     String fechaProv  = rsPed.getString("Fecha_Pedido");
+
+                    // Se prepara la consulta de productos del proveedor: se unen Carrito_Detalle, Productos
+                    // y RelaProductoVendedor para filtrar solo los productos que pertenecen a ESTE proveedor
+                    // dentro de ESTE carrito, en estado vendido (3 o 6) y en la fecha exacta de la venta.
                     PreparedStatement psProvProd = conLocal.prepareStatement(
                         "SELECT pr.Nombre_Producto, cd.Cantidad_producto, " +
                         "cd.Precio_Unitario_Momento, cd.SubTotal " +
@@ -1347,54 +1381,79 @@ public class PedidoDAO {
                         "JOIN RelaProductoVendedor rpv ON rpv.ID_Productos = pr.ID_Producto " +
                         "WHERE cd.ID_Carrito = ? AND rpv.ID_Usuario = ? " +
                         "AND cd.Estado_Carrito IN (3, 6) AND cd.Fecha_Venta = ?");
+                    // Se asignan en orden los tres parámetros posicionales de la consulta anterior.
                     psProvProd.setInt(1, idCarritoProv);
                     psProvProd.setInt(2, idProveedor);
                     psProvProd.setString(3, fechaProv);
                     ResultSet rsProvProd = psProvProd.executeQuery();
 
-                    // Se acumula cada producto del proveedor en una sublista para anidarlo en el mapa del proveedor.
+                    // Se inicializa la sublista que guardará cada producto vendido por este proveedor en este pedido.
                     List<Map<String, Object>> prodsProv = new ArrayList<>();
+
+                    // Se recorre cada producto encontrado para este proveedor y se mapea a un Map plano.
                     while (rsProvProd.next()) {
                         Map<String, Object> pp = new java.util.LinkedHashMap<>();
                         pp.put("nombre",      rsProvProd.getString("Nombre_Producto"));
                         pp.put("cantidad",    rsProvProd.getInt("Cantidad_producto"));
                         pp.put("precio",      rsProvProd.getDouble("Precio_Unitario_Momento"));
                         pp.put("subtotal",    rsProvProd.getDouble("SubTotal"));
+                        // Se agrega el producto recién mapeado a la sublista de productos de este proveedor.
                         prodsProv.add(pp);
                     }
+
+                    // Se cierran explícitamente el ResultSet y el PreparedStatement de productos del proveedor,
+                    // ya que aquí no se usa try-with-resources (el método se escribió con cierres manuales).
                     rsProvProd.close(); psProvProd.close();
+
+                    // Se anida la sublista de productos dentro del mapa de este proveedor.
                     prov.put("productos", prodsProv);
 
+                    // Se agrega el mapa completo de este proveedor (con sus productos ya anidados) a la lista del pedido.
                     proveedores.add(prov);
                 }
+
+                // Se cierran el ResultSet y el PreparedStatement de la subconsulta de proveedores de este pedido.
                 rsProv.close(); psProv.close();
 
-                // Se construye el mapa del pedido con todos sus datos de cabecera, proveedores y flag de bodega.
+                // Se construye el mapa de cabecera del pedido con todos los datos que el admin necesita ver
+                // en la tabla principal de su panel; se usa LinkedHashMap para preservar el orden en el JSON.
                 Map<String, Object> pedido = new java.util.LinkedHashMap<>();
                 pedido.put("idPedido",      idPedido);
+                // Se recorta la fecha a los primeros 10 caracteres (formato YYYY-MM-DD) para no exponer la hora exacta.
                 pedido.put("fechaPedido",   rsPed.getString("Fecha_Pedido").substring(0, 10));
                 pedido.put("estadoPedido",  rsPed.getInt("Estado_Pedido"));
+                // Se traduce el estado numérico del pedido a su etiqueta legible en español.
                 pedido.put("nombreEstado",  etiquetaEstado(rsPed.getInt("Estado_Pedido")));
                 pedido.put("totalPago",     rsPed.getDouble("Total_Pago"));
                 pedido.put("receptor",      rsPed.getString("Nombre_Receptor"));
                 pedido.put("direccion",     rsPed.getString("Direccion_Envio"));
                 pedido.put("telefono",      rsPed.getString("Telefono_Envio"));
                 pedido.put("cliente",       rsPed.getString("Nombres") + " " + rsPed.getString("Apellidos"));
+                // Se usa un operador ternario para mostrar "No registrado" cuando el LEFT JOIN con Pago_Pedido
+                // no encontró ninguna fila (es decir, el pedido todavía no tiene un método de pago asociado).
                 pedido.put("metodoPago",    rsPed.getString("metodoPago") != null
                                             ? rsPed.getString("metodoPago") : "No registrado");
+                // Se anida la lista completa de proveedores (con sus productos ya dentro) en el mapa del pedido.
                 pedido.put("proveedores",   proveedores);
-                // Se expone el flag al frontend para que el admin sepa si puede avanzar el estado global.
+                // Se expone el flag todosEnBodega al frontend para que el admin sepa, sin calcular nada más,
+                // si ya puede avanzar el estado global del pedido (botón habilitado/deshabilitado en la vista).
                 pedido.put("todosEnBodega", todosEnBodega);
 
-                // Se traen los productos del proveedor de este pedido para la vista de detalle del admin.
-                // Se usa el primer proveedor de la lista como referencia ya que cada pedido tiene uno solo.
+                // A continuación se construye una segunda lista de productos, esta vez "plana" (sin agrupar
+                // por proveedor), pensada para la vista de detalle simple del pedido en el panel del admin.
                 int idCarrito = rsPed.getInt("ID_Carrito");
                 String fechaPedido = rsPed.getString("Fecha_Pedido");
+
+                // Se toma el ID del primer proveedor de la lista ya construida como referencia para filtrar
+                // productos; se asume que en la práctica cada pedido individual tiene un solo proveedor dominante.
+                // Si la lista de proveedores está vacía (no debería pasar, pero se cubre por seguridad), se usa 0.
                 int idProvAdmin = proveedores.isEmpty() ? 0
                     : (int) proveedores.get(0).get("idProveedor");
                 List<Map<String, Object>> productos = new ArrayList<>();
 
-                // Se selecciona la query con o sin filtro de proveedor según si se encontró uno en PPE.
+                // Se elige dinámicamente la consulta SQL según si se encontró un proveedor de referencia:
+                // con proveedor, se filtra también por RelaProductoVendedor.ID_Usuario para mayor precisión;
+                // sin proveedor (idProvAdmin == 0), se omite ese filtro y se listan todos los productos del carrito.
                 String sqlProdAdmin = idProvAdmin > 0
                     ? "SELECT pr.Nombre_Producto, cd.Cantidad_producto, " +
                       "cd.Precio_Unitario_Momento, cd.SubTotal " +
@@ -1410,12 +1469,15 @@ public class PedidoDAO {
                       "WHERE cd.ID_Carrito = ? AND cd.Estado_Carrito IN (3, 6) " +
                       "AND cd.Fecha_Venta = ?";
                 PreparedStatement psProd = conLocal.prepareStatement(sqlProdAdmin);
+                // Se asignan los dos primeros parámetros, comunes a ambas variantes de la consulta.
                 psProd.setInt(1, idCarrito);
                 psProd.setString(2, fechaPedido);
+                // Se asigna el tercer parámetro (ID del proveedor) únicamente si la consulta elegida lo requiere;
+                // de lo contrario el PreparedStatement solo tiene dos signos de interrogación y fallaría si se asignara un tercero.
                 if (idProvAdmin > 0) psProd.setInt(3, idProvAdmin);
                 ResultSet rsProd = psProd.executeQuery();
 
-                // Se acumula cada producto del pedido en la lista plana para la vista principal del admin.
+                // Se recorre cada fila resultante y se acumula como un producto más en la lista plana del pedido.
                 while (rsProd.next()) {
                     Map<String, Object> prod = new java.util.LinkedHashMap<>();
                     prod.put("nombre",      rsProd.getString("Nombre_Producto"));
@@ -1424,18 +1486,28 @@ public class PedidoDAO {
                     prod.put("precioTotal", rsProd.getDouble("SubTotal"));
                     productos.add(prod);
                 }
+                // Se cierran el ResultSet y el PreparedStatement de la consulta plana de productos.
                 rsProd.close(); psProd.close();
+
+                // Se anida la lista plana de productos en el mapa del pedido bajo la clave "productos".
                 pedido.put("productos", productos);
 
+                // Se agrega el mapa completo de este pedido (cabecera + proveedores + productos) a la lista final.
                 lista.add(pedido);
             }
+            // Se cierran el ResultSet y el PreparedStatement de la consulta principal de pedidos.
             rsPed.close(); psPed.close();
 
         } catch (Exception e) {
+            // Se captura Exception de forma genérica (en vez de solo SQLException) porque dentro del bloque
+            // también podrían producirse errores de casteo u otros imprevistos al recorrer los ResultSet anidados.
             System.err.println("Error en obtenerPedidosAdminAgrupados: " + e.getMessage());
         } finally {
+            // Se cierra la conexión local en el finally para garantizar su liberación
+            // incluso si ocurrió una excepción a mitad del procesamiento de los pedidos.
             try { if (conLocal != null) conLocal.close(); } catch (Exception ignored) {}
         }
+        // Se retorna la lista completa de pedidos ya armada (puede estar vacía si no hay pedidos que cumplan el filtro).
         return lista;
     }
 
@@ -1461,33 +1533,52 @@ public class PedidoDAO {
         if (nuevoEstado < 1 || nuevoEstado > 8 || nuevoEstado == 3) return false;
 
         try {
+            // Se obtiene la conexión de instancia (atributo "con" de la clase) en lugar de una local,
+            // porque este método sí reutiliza los campos con/ps/rs declarados a nivel de DAO.
             con = cn.getConexion();
+            // Se desactiva el autocommit para controlar manualmente la transacción: el UPDATE de
+            // Pedidos_Cliente y el posible UPDATE de Pago_Pedido deben confirmarse juntos o no confirmarse.
             con.setAutoCommit(false);
 
             // Se actualiza el estado visible al cliente en la tabla principal de pedidos.
             ps = con.prepareStatement(
                 "UPDATE Pedidos_Cliente SET Estado_Pedido = ? WHERE ID_Pedido = ?");
+            // Se asigna el nuevo estado como primer parámetro del UPDATE.
             ps.setInt(1, nuevoEstado);
+            // Se asigna el ID del pedido a actualizar como segundo parámetro.
             ps.setInt(2, idPedido);
+            // Se ejecuta el UPDATE; si no afectó ninguna fila (el pedido no existe), se revierte
+            // la transacción de inmediato y se retorna false sin intentar el segundo UPDATE.
             if (ps.executeUpdate() == 0) { con.rollback(); return false; }
 
             // Se marca el pago como completado (Estado_Pago = 2) cuando el admin confirma la entrega (estado 8).
+            // Solo se ejecuta este segundo UPDATE si el nuevo estado es exactamente 8 (Entregado).
             if (nuevoEstado == 8) {
                 ps = con.prepareStatement(
                     "UPDATE Pago_Pedido SET Estado_Pago = 2 WHERE ID_Pedido = ?");
+                // Se asigna el ID del pedido como único parámetro de este segundo UPDATE.
                 ps.setInt(1, idPedido);
+                // Se ejecuta el UPDATE del pago; no se valida su resultado porque podría no existir
+                // todavía un registro de pago asociado, y eso no debe impedir confirmar el pedido como entregado.
                 ps.executeUpdate();
             }
 
+            // Se confirma la transacción completa: tanto el cambio de estado del pedido como, si aplicó,
+            // el cambio de estado del pago quedan guardados de forma permanente y atómica.
             con.commit();
             return true;
 
         } catch (SQLException e) {
+            // Se captura cualquier error de SQL ocurrido durante los UPDATE o el commit.
             System.err.println("Error en avanzarEstadoGrupoAdmin: " + e.getMessage());
+            // Se intenta revertir la transacción para no dejar la base de datos en un estado intermedio inconsistente.
             try { if (con != null) con.rollback(); } catch (Exception ignored) {}
             return false;
         } finally {
+            // Se restaura el autocommit a true antes de cerrar, para no afectar el comportamiento
+            // de futuras operaciones que reutilicen esta misma conexión desde otros métodos del DAO.
             try { if (con != null) con.setAutoCommit(true); } catch (Exception ignored) {}
+            // Se cierran todos los recursos JDBC abiertos (con/ps/rs) mediante el método utilitario del DAO.
             cerrarConexiones();
         }
     }
@@ -1504,6 +1595,8 @@ public class PedidoDAO {
      * @return        Se retorna la etiqueta en español correspondiente al estado, o "Desconocido" si no existe mapeo.
      */
     public static String etiquetaEstado(int estado) {
+        // Se usa un switch expression (sintaxis "->") de Java 14+ que retorna directamente
+        // el valor de texto sin necesitar "break" ni una variable intermedia.
         return switch (estado) {
             case 1  -> "Pendiente";
             case 2  -> "Completado";
