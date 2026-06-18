@@ -1,5 +1,7 @@
 import { components } from '../../helpers/index.js';
 
+let plantillaTarjetaFavorito = null;
+
 async function cargarModulos() {
     await Promise.all([
         components('header', '../../components/header.html'),
@@ -31,10 +33,19 @@ async function verificarSesion() {
     }
 }
 
+// ── Helpers de mensajes de estado ───────────────────────────────────────────
+function mostrarMensajeEstado(grid, clase, texto) {
+    grid.innerHTML = '';
+    const p = document.createElement('p');
+    p.className = clase;
+    p.textContent = texto;
+    grid.appendChild(p);
+}
+
 // ── Cargar favoritos del servidor ─────────────────────────────────────────────
 async function cargarFavoritos() {
     const grid = document.getElementById('favoritosGrid');
-    grid.innerHTML = '<p class="favoritos__cargando">Cargando...</p>';
+    mostrarMensajeEstado(grid, 'favoritos__cargando', 'Cargando...');
 
     try {
         const res = await fetch('/KurmiProyect/FavoritosServlet');
@@ -47,8 +58,17 @@ async function cargarFavoritos() {
         grid.innerHTML = '';
 
         if (!productos || productos.length === 0) {
-            grid.innerHTML = '<p class="favoritos__vacio"> :( Aún no tienes productos en favoritos.</p>';
+            mostrarMensajeEstado(grid, 'favoritos__vacio', ':( Aún no tienes productos en favoritos.');
             return;
+        }
+
+        // Cargar la plantilla de la tarjeta una sola vez
+        if (!plantillaTarjetaFavorito) {
+            const responseTemplate = await fetch('/KurmiProyect/components/tarjetaFavorito.html');
+            const templateHTML = await responseTemplate.text();
+            const parser = new DOMParser();
+            const docTemplate = parser.parseFromString(templateHTML, 'text/html');
+            plantillaTarjetaFavorito = docTemplate.querySelector('.tarjeta__fav');
         }
 
         productos.forEach(prod => {
@@ -58,7 +78,7 @@ async function cargarFavoritos() {
 
     } catch (e) {
         console.error('Error cargando favoritos:', e);
-        grid.innerHTML = '<p class="favoritos__vacio">Error al cargar favoritos. Intenta de nuevo.</p>';
+        mostrarMensajeEstado(grid, 'favoritos__vacio', 'Error al cargar favoritos. Intenta de nuevo.');
     }
 }
 
@@ -69,27 +89,16 @@ function crearTarjetaFavorito(prod) {
     const precioReal = prod.precio || 0;
     const imagenSrc  = `/KurmiProyect/RESOURCES/img/${prod.imagen || 'inicioHelado.png'}`;
 
-    const card = document.createElement('div');
-    card.className = 'tarjeta__fav';
+    const card = plantillaTarjetaFavorito.cloneNode(true);
     card.dataset.id = idReal;
 
-    card.innerHTML = `
-        <img class="fav__imagen" src="${imagenSrc}" alt="${nombreReal}">
-        <div class="fav__info">
-            <p class="fav__nombre">${nombreReal}</p>
-            <p class="fav__descripcion">${prod.descripcion || ''}</p>
-            <p class="fav__precio">$${Number(precioReal).toLocaleString()}</p>
-            <div class="fav__botones">
-                <button class="btn__fav-comprar">Comprar</button>
-                <button class="btn__fav-carrito" title="Añadir al carrito">
-                    <img src="../../RESOURCES/img/carrito.png" alt="Carrito">
-                </button>
-                <button class="btn__fav-quitar" title="Quitar de favoritos">
-                    <img src="../../RESOURCES/img/like.png" alt="Quitar">
-                </button>
-            </div>
-        </div>
-    `;
+    const imgEl = card.querySelector('.fav__imagen');
+    imgEl.src = imagenSrc;
+    imgEl.alt = nombreReal;
+
+    card.querySelector('.fav__nombre').textContent = nombreReal;
+    card.querySelector('.fav__descripcion').textContent = prod.descripcion || '';
+    card.querySelector('.fav__precio').textContent = `$${Number(precioReal).toLocaleString()}`;
 
     // Comprar
     card.querySelector('.btn__fav-comprar').onclick = () => {
@@ -139,7 +148,7 @@ function crearTarjetaFavorito(prod) {
                     // Si ya no quedan tarjetas, mostrar mensaje vacío
                     const grid = document.getElementById('favoritosGrid');
                     if (grid && grid.children.length === 0) {
-                        grid.innerHTML = '<p class="favoritos__vacio">:( Aún no tienes productos en favoritos.</p>';
+                        mostrarMensajeEstado(grid, 'favoritos__vacio', ':( Aún no tienes productos en favoritos.');
                     }
                 }, 300);
                 mostrarNotificacion('Producto eliminado de favoritos');
@@ -163,21 +172,7 @@ function mostrarNotificacion(mensaje) {
         document.body.appendChild(noti);
     }
     noti.textContent = mensaje;
-    noti.style.cssText = `
-        position: fixed;
-        bottom: 30px;
-        right: 30px;
-        background: #463877;
-        color: white;
-        padding: 14px 24px;
-        border-radius: 12px;
-        font-size: 0.9rem;
-        font-weight: 600;
-        z-index: 9999;
-        box-shadow: 0 4px 16px rgba(70,56,119,0.25);
-        opacity: 1;
-        transition: opacity 0.4s;
-    `;
+    noti.style.opacity = '1';
     clearTimeout(noti._timer);
     noti._timer = setTimeout(() => {
         noti.style.opacity = '0';

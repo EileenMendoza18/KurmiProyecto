@@ -6,7 +6,7 @@
 
     <!-- Tarjeta informativa -->
     <div class="backup-card">
-        <div class="backup-card__icono" aria-hidden="true">🗄️</div>
+        <div class="backup-card__icono" aria-hidden="true"></div>
         <div class="backup-card__texto">
             <h3>¿Qué incluye la copia?</h3>
             <ul class="backup-lista">
@@ -19,160 +19,25 @@
 
     <!-- Advertencia -->
     <div class="backup-aviso">
-        <strong>⚠ Importante:</strong> guarda el archivo en un lugar seguro. Contiene contraseñas y datos de clientes.
+        <strong>Importante:</strong> guarda el archivo en un lugar seguro. Contiene contraseñas y datos de clientes.
     </div>
 
     <!-- Acción principal -->
     <div class="backup-accion">
         <button class="btn-primario backup-btn" id="btnDescargarBackup">
-            <span class="backup-btn__icono" aria-hidden="true">⬇</span>
+            <span class="backup-btn__icono" aria-hidden="true"></span>
             Descargar copia de seguridad
         </button>
         <p class="backup-hint">El archivo se descargará en formato <code>.zip</code> con la fecha y hora actual.</p>
     </div>
 
     <!-- Feedback -->
-    <div id="feedbackBackup" class="feedback" style="display:none"></div>
+    <div id="feedbackBackup" class="feedback hidden"></div>
 
     <!-- Historial de la sesión -->
-    <div class="backup-historial" id="backupHistorial" style="display:none">
+    <div class="backup-historial hidden" id="backupHistorial">
         <h4>Descargas en esta sesión</h4>
         <ul id="listaBackups" class="backup-historial__lista"></ul>
     </div>
 
 </div>
-
-<style>
-.backup-wrap {
-    max-width: 680px;
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-    padding: 8px 0;
-}
-
-.backup-card {
-    display: flex;
-    gap: 20px;
-    align-items: flex-start;
-    background: var(--color-blanco);
-    border: 1.5px solid var(--color-divider);
-    border-radius: 12px;
-    padding: 24px;
-}
-
-.backup-card__icono {
-    font-size: 2.4rem;
-    line-height: 1;
-    flex-shrink: 0;
-}
-
-.backup-card__texto h3 {
-    margin: 0 0 12px;
-    font-size: 1rem;
-    font-weight: 600;
-    color: var(--color-texto);
-}
-
-.backup-lista {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-}
-
-.backup-lista li {
-    font-size: 0.9rem;
-    color: var(--color-texto);
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.backup-badge {
-    font-size: 0.7rem;
-    font-weight: 700;
-    padding: 2px 7px;
-    border-radius: 4px;
-    flex-shrink: 0;
-    letter-spacing: 0.04em;
-}
-
-.backup-badge--sql { background: #e8eaf6; color: #3949ab; }
-.backup-badge--img { background: #e8f5e9; color: #2e7d32; }
-.backup-badge--cfg { background: #fff3e0; color: #e65100; }
-
-.backup-aviso {
-    background: #fff8e1;
-    border: 1px solid #ffe082;
-    border-radius: 8px;
-    padding: 14px 18px;
-    font-size: 0.88rem;
-    color: #5d4037;
-    line-height: 1.5;
-}
-
-.backup-accion {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-}
-
-.backup-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 0.95rem;
-    padding: 12px 24px;
-    width: fit-content;
-}
-
-.backup-btn__icono {
-    font-size: 1.1rem;
-}
-
-.backup-hint {
-    font-size: 0.82rem;
-    color: #888;
-    margin: 0;
-}
-
-.backup-historial {
-    background: var(--color-blanco);
-    border: 1.5px solid var(--color-divider);
-    border-radius: 10px;
-    padding: 18px 22px;
-}
-
-.backup-historial h4 {
-    margin: 0 0 12px;
-    font-size: 0.9rem;
-    font-weight: 600;
-    color: var(--color-texto);
-}
-
-.backup-historial__lista {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-}
-
-.backup-historial__lista li {
-    font-size: 0.84rem;
-    color: #555;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.backup-historial__lista li::before {
-    content: "✓";
-    color: #2e7d32;
-    font-weight: 700;
-}
-</style>

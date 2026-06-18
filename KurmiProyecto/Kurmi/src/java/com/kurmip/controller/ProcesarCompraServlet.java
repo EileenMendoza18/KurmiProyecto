@@ -3,6 +3,7 @@ package com.kurmip.controller;
 import com.kurmip.model.dao.PedidoDAO;
 import com.kurmip.model.dto.PedidoDTO;
 import com.kurmip.model.dto.UsuarioDTO;
+import com.kurmip.util.AuthHelper;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.*;
@@ -25,6 +26,9 @@ public class ProcesarCompraServlet extends HttpServlet {
             throws ServletException, IOException {
 
         // ── Verificar sesión ──────────────────────────────────────────────────
+        // Nota: este servlet redirige al login en vez de responder JSON,
+        // por eso se verifica la sesión manualmente en lugar de usar AuthHelper
+        // (que escribe una respuesta JSON 401 que el navegador no puede seguir).
         HttpSession session = request.getSession(false);
         UsuarioDTO usuarioLogueado = (session != null)
                 ? (UsuarioDTO) session.getAttribute("usuarioLogueado") : null;
@@ -76,15 +80,20 @@ public class ProcesarCompraServlet extends HttpServlet {
                 nuevoPedido.setIdCarrito(Integer.parseInt(idCarParam));
             }
 
+            boolean compraExitosa;
+
             if (esRecompra) {
                 String fechaOriginal = param(request, "fechaPedidoOriginal");
                 nuevoPedido.setFechaPedidoOriginal(fechaOriginal != null ? fechaOriginal : "");
+                compraExitosa = new PedidoDAO().registrarCompraCompleta(nuevoPedido);
             } else if (idProd != null) {
-                // ── Compra directa: marcar el ítem como seleccionado ──────────
-                new PedidoDAO().marcarItemComoSeleccionado(Integer.parseInt(idProd), idUsuario);
+                int cantidadDirecta = 1;
+                compraExitosa = new PedidoDAO().registrarCompraDirecta(
+                    nuevoPedido, Integer.parseInt(idProd), cantidadDirecta, totalPago
+                );
+            } else {
+                compraExitosa = new PedidoDAO().registrarCompraCompleta(nuevoPedido);
             }
-
-            boolean compraExitosa = new PedidoDAO().registrarCompraCompleta(nuevoPedido);
 
             if (compraExitosa) {
                 response.sendRedirect(request.getContextPath() + BASE_PAGO + "?status=success");
@@ -103,8 +112,6 @@ public class ProcesarCompraServlet extends HttpServlet {
             throws ServletException, IOException {
         response.sendRedirect(request.getContextPath() + "/CLIENT/html/carrito.html");
     }
-
-    // ── Helpers privados ──────────────────────────────────────────────────────
 
     /** Retorna null si el parámetro es nulo o vacío, su valor trim() en caso contrario. */
     private String param(HttpServletRequest req, String name) {

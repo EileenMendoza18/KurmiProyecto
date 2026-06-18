@@ -79,8 +79,8 @@ const REGLAS = {
     inputCorreo: {
         required: true,
         requiredMessage: 'El correo electrónico es obligatorio',
-        custom: (v) => /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(v.trim()),
-        message: 'El correo debe tener un @ y un dominio válido (ejemplo@dominio.com)',
+        custom: (v) => /^[a-zA-Z][a-zA-Z0-9._%+-]*@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(v.trim()),
+        message: 'El correo debe empezar con una letra y tener un dominio válido (ejemplo@dominio.com)',
         errorId: 'errorCorreo'
     },
     inputFecha: {
@@ -152,8 +152,7 @@ function inicializarBotones() {
                 });
                 asignarLimpiezaEnTiempoReal();
                 btnActualizar.textContent = 'Guardar cambios';
-                btnActualizar.style.backgroundColor = '#463877';
-                btnActualizar.style.color = 'white';
+                btnActualizar.classList.add('btn__actualizar--edicion');
                 modoEdicion = true;
 
             } else {
@@ -187,8 +186,7 @@ function inicializarBotones() {
                             if (errorEl && el)  clearError(errorEl, el);
                         });
                         btnActualizar.textContent = 'Actualizar datos';
-                        btnActualizar.style.backgroundColor = '';
-                        btnActualizar.style.color = '';
+                        btnActualizar.classList.remove('btn__actualizar--edicion');
                         modoEdicion = false;
 
                         const spanNombre = document.getElementById('nombreUsuario');
@@ -201,6 +199,21 @@ function inicializarBotones() {
                     alert('Error de conexión al guardar.');
                 }
             }
+        });
+    }
+
+    // ── Navegación a otras secciones ───────────────────────────────────────────
+    const btnPedidos = document.getElementById('btnVerPedidos');
+    if (btnPedidos) {
+        btnPedidos.addEventListener('click', () => {
+            window.location.href = '../html/pedidos.html';
+        });
+    }
+
+    const btnFavoritos = document.getElementById('btnVerFavoritos');
+    if (btnFavoritos) {
+        btnFavoritos.addEventListener('click', () => {
+            window.location.href = '../html/favoritos.html';
         });
     }
 

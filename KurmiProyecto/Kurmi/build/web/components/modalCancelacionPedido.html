@@ -1,0 +1,20 @@
+<div class="modal__card cancel__card">
+    <button class="modal__cerrar" id="cancelModalCerrar">✕</button>
+    <h2 class="modal__titulo">Cancelar pedido</h2>
+    <p class="cancel__subtitulo" id="cancelSubtitulo"></p>
+
+    <label class="cancel__label">
+        Motivo <span class="cancel__obligatorio">*</span>
+    </label>
+    <textarea id="cancelMotivo" class="cancel__textarea"
+              placeholder="Ej: Cambié de opinión, compré el producto en otro lugar…"
+              maxlength="500"></textarea>
+    <p class="cancel__contador"><span id="cancelContador">0</span>/500</p>
+
+    <p class="cancel__error hidden" id="cancelError"></p>
+
+    <div class="cancel__footer">
+        <button class="cancel__btn-volver"  id="cancelBtnVolver">Volver</button>
+        <button class="cancel__btn-confirmar" id="cancelBtnConfirmar">Enviar solicitud</button>
+    </div>
+</div>
