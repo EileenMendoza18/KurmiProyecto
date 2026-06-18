@@ -1,3 +1,5 @@
+@import url("../../RESOURCES/css/mediaqueries.css");
+
 /* ============================================================
    VARIABLES Y RESET
    ============================================================ */
@@ -6,22 +8,6 @@
     margin: 0;
     padding: 0;
     font-family: 'Franklin Gothic Medium', 'Arial Narrow', Arial, sans-serif;
-}
-
-:root {
-    --color-fondo:       #f0edf9;
-    --color-sidebar:     #e8e2f8;
-    --color-morado:      #7c5cbf;
-    --color-morado-osc:  #463877;
-    --color-morado-clr:  #c5b8f0;
-    --color-blanco:      #ffffff;
-    --color-texto:       #3a2d5e;
-    --color-divider:     #c9bfea;
-    --color-btn-hover:   #d4caee;
-    --color-btn-activo:  #7c5cbf;
-    --radio:             14px;
-    --sombra:            0 4px 18px rgba(124, 92, 191, 0.13);
-    --sombra-btn:        0 2px 8px rgba(124, 92, 191, 0.18);
 }
 
 html, body {
@@ -719,7 +705,7 @@ html, body {
 .modal__body input.input-error,
 .modal__body textarea.input-error,
 .modal__body select.input-error {
-    border-color: #e53935 !important;
+    border-color: #e53935;
     background-color: #fff5f5;
     box-shadow: 0 0 0 2px rgba(229, 57, 53, 0.18);
     animation: shake 0.3s ease;
@@ -735,7 +721,7 @@ html, body {
 .modal__body input.input-error:focus,
 .modal__body textarea.input-error:focus,
 .modal__body select.input-error:focus {
-    border-color: #9c27b0 !important;
+    border-color: #9c27b0;
     background-color: #fff;
     box-shadow: 0 0 0 3px rgba(156, 39, 176, 0.15);
 }
@@ -919,6 +905,11 @@ html, body {
     font-size: 0.78rem;
     margin-top: 2px;
     display: block;
+}
+
+/* Reserva espacio solo en formularios de perfil/registro, no en modales */
+.perfil-campo .error-msg,
+.registro-campo .error-msg {
     min-height: 16px;
 }
 .perfil-campo input.input-error {
@@ -960,6 +951,12 @@ html, body {
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
+}
+
+.stat-card__icon img {
+    width: 24px;
+    height: 24px;
+    object-fit: contain;
 }
 
 .stat-card__info {
@@ -1205,8 +1202,13 @@ html, body {
     background: #faf9ff;
     min-height: 90px;
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
+    overflow: hidden;
+}
+.cs-upload-area input[type="file"] {
+    display: none;
 }
 
 .cs-upload-area:hover {
@@ -1378,10 +1380,27 @@ html, body {
 
 .cs-lista-item {
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
     padding: 9px 16px;
     border-bottom: 1px solid #f0edf8;
     transition: background .15s;
+}
+
+.cs-lista-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1;
+    min-width: 0;
+}
+
+.cs-lista-acciones {
+    display: flex;
+    gap: 0.4rem;
+    flex-shrink: 0;
 }
 
 .cs-lista-item:last-child {
@@ -1427,8 +1446,14 @@ html, body {
     background: #faf9ff;
     min-height: 80px;
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
+    overflow: hidden;
+}
+/* Ocultar el input nativo — el área entera es el trigger */
+.p2-upload-area input[type="file"] {
+    display: none;
 }
 
 .p2-upload-area:hover {
@@ -1556,7 +1581,7 @@ html, body {
 .mda-precio {
     font-size: 1.45rem;
     font-weight: 800;
-    color: #7C4DFF;
+    color: #c5b8f0;
     margin: 0;
 }
 
@@ -1610,7 +1635,7 @@ html, body {
 .mda-btn-estado {
     flex: 1;
     padding: 12px;
-    background: #7C4DFF;
+    background: #b79dff;
     color: #fff;
     border: none;
     border-radius: 12px;
@@ -1621,7 +1646,7 @@ html, body {
 }
 
 .mda-btn-estado:hover {
-    background: #6a3de8;
+    background: #d6c8fd;
 }
 
 /* ============================================================
@@ -2016,4 +2041,407 @@ html, body {
 /* ── Pedido vacío con padding ────────────────────────────────── */
 .ped-vacio {
     padding: 30px 0;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   BACKUP
+   ══════════════════════════════════════════════════════════════ */
+.backup-wrap {
+    max-width: 680px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    padding: 8px 0;
+}
+
+.backup-card {
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+    background: var(--color-blanco);
+    border: 1.5px solid var(--color-divider);
+    border-radius: 12px;
+    padding: 24px;
+}
+
+.backup-card__icono {
+    font-size: 2.4rem;
+    line-height: 1;
+    flex-shrink: 0;
+}
+
+.backup-card__texto h3 {
+    margin: 0 0 12px;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--color-texto);
+}
+
+.backup-lista {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.backup-lista li {
+    font-size: 0.9rem;
+    color: var(--color-texto);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.backup-badge {
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 4px;
+    flex-shrink: 0;
+    letter-spacing: 0.04em;
+}
+
+.backup-badge--sql { background: #e8eaf6; color: #3949ab; }
+.backup-badge--img { background: #e8f5e9; color: #2e7d32; }
+.backup-badge--cfg { background: #fff3e0; color: #e65100; }
+
+.backup-aviso {
+    background: #fff8e1;
+    border: 1px solid #ffe082;
+    border-radius: 8px;
+    padding: 14px 18px;
+    font-size: 0.88rem;
+    color: #5d4037;
+    line-height: 1.5;
+}
+
+.backup-accion {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.backup-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.95rem;
+    padding: 12px 24px;
+    width: fit-content;
+}
+
+.backup-btn__icono {
+    font-size: 1.1rem;
+}
+
+.backup-hint {
+    font-size: 0.82rem;
+    color: #888;
+    margin: 0;
+}
+
+.backup-historial {
+    background: var(--color-blanco);
+    border: 1.5px solid var(--color-divider);
+    border-radius: 10px;
+    padding: 18px 22px;
+}
+
+.backup-historial h4 {
+    margin: 0 0 12px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--color-texto);
+}
+
+.backup-historial__lista {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.backup-historial__lista li {
+    font-size: 0.84rem;
+    color: #555;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.backup-historial__lista li::before {
+    content: "✓";
+    color: #2e7d32;
+    font-weight: 700;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   UTILIDAD — ocultar elementos gestionados por JS
+   ══════════════════════════════════════════════════════════════ */
+.hidden { display: none; }
+
+/* Preview de imagen oculta por defecto hasta que se seleccione */
+.cs-preview-img,
+.p2-preview-img { display: none; }
+
+/* Tarjetas de producto con cursor pointer (se activa por JS al hacer clic) */
+.tarjeta-prov--clickable { cursor: pointer; }
+/* ══════════════════════════════════════════════════════════════════════════
+   Categorías y Sabores — botones de edición, items inactivos, modal editar
+   ══════════════════════════════════════════════════════════════════════════ */
+.cs-item-btn {
+    background: none;
+    border: 1.5px solid var(--color-primario, #7c3aed);
+    border-radius: 6px;
+    color: var(--color-primario, #7c3aed);
+    cursor: pointer;
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 0.2rem 0.6rem;
+    line-height: 1.4;
+    white-space: nowrap;
+    transition: background 0.15s, color 0.15s;
+}
+.cs-item-btn:hover {
+    background: var(--color-primario, #7c3aed);
+    color: #fff;
+}
+.cs-item-btn--toggle {
+    border-color: #e53e3e;
+    color: #e53e3e;
+}
+.cs-item-btn--toggle:hover {
+    background: #e53e3e;
+    color: #fff;
+}
+.cs-item-btn--activar {
+    border-color: #38a169;
+    color: #38a169;
+}
+.cs-item-btn--activar:hover {
+    background: #38a169;
+    color: #fff;
+}
+.cs-lista-item--inactivo .cs-lista-nombre {
+    text-decoration: line-through;
+    opacity: 0.45;
+}
+
+/* Modal editar */
+.cs-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    animation: fadeIn 0.15s ease;
+}
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+.cs-modal-card {
+    background: #fff;
+    border-radius: 14px;
+    padding: 1.75rem 2rem;
+    width: min(90vw, 440px);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    animation: slideUp 0.18s ease;
+}
+@keyframes slideUp { from { transform: translateY(16px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+.cs-modal-titulo {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--color-primario, #7c3aed);
+    margin: 0;
+}
+/* ============================================================
+   TARJETAS: SOLICITUDES, CANCELACIONES Y DEVOLUCIONES
+   Diseño consistente con pedido-card
+   ============================================================ */
+
+/* ── Contenedor base ─────────────────────────────────────── */
+.sol-card {
+    background: #ffffff;
+    border-radius: 12px;
+    border-left: 4px solid #DCD6F7;
+    box-shadow: 0 1px 4px rgba(124, 92, 191, 0.08);
+    padding: 16px 20px;
+    margin-bottom: 16px;
+    transition: box-shadow .2s, transform .15s;
+}
+.sol-card:hover {
+    box-shadow: 0 4px 14px rgba(124, 92, 191, 0.13);
+    transform: translateY(-1px);
+}
+
+/* ── Variantes de color por estado ──────────────────────── */
+.sol-card--pendiente  { border-left-color: #f59e0b; }
+.sol-card--aprobado,
+.sol-card--aprobada   { border-left-color: #22c55e; }
+.sol-card--rechazado,
+.sol-card--rechazada  { border-left-color: #ef4444; }
+
+/* ── Header ─────────────────────────────────────────────── */
+.sol-card__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+}
+
+.sol-card__header-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.sol-card__header-right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+}
+
+/* ── ID del pedido ───────────────────────────────────────── */
+.sol-card__id {
+    font-weight: 700;
+    color: #6d28d9;
+    font-size: 1rem;
+}
+
+/* ── Nombre del proveedor / cliente ─────────────────────── */
+.sol-card__proveedor {
+    font-size: .88rem;
+    color: #6b7280;
+    font-style: normal;
+}
+
+/* ── Fecha en header ─────────────────────────────────────── */
+.sol-card__fecha {
+    font-size: .82rem;
+    color: #9ca3af;
+}
+
+/* ── Fecha de respuesta en body ──────────────────────────── */
+.sol-card__fecha-resp {
+    font-size: .78rem;
+    color: #9ca3af;
+    margin-top: 6px;
+}
+
+/* ── Body ────────────────────────────────────────────────── */
+.sol-card__body {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    margin-bottom: 14px;
+}
+
+/* ── Fila de dato ────────────────────────────────────────── */
+.sol-card__fila {
+    font-size: .9rem;
+    color: #374151;
+    margin: 0;
+}
+
+/* ── Etiqueta negrita ────────────────────────────────────── */
+.sol-card__etiq {
+    font-weight: 600;
+    color: #4b5563;
+}
+
+/* ── Monto destacado ─────────────────────────────────────── */
+.sol-card__monto {
+    font-weight: 700;
+    color: #6d28d9;
+}
+
+/* ── Rechazo box ─────────────────────────────────────────── */
+.sol-card__rechazo {
+    background: #fff5f5;
+    border-left: 3px solid #ef4444;
+    border-radius: 6px;
+    padding: 8px 12px;
+    margin-top: 6px;
+    font-size: .88rem;
+    color: #b91c1c;
+}
+.sol-card__rechazo p {
+    margin: 4px 0 0;
+    color: #374151;
+}
+
+/* ── Footer / acciones ───────────────────────────────────── */
+.sol-card__footer,
+.sol-card__acciones {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    border-top: 1px solid #f3f4f6;
+    padding-top: 10px;
+    margin-top: 4px;
+    gap: 8px;
+}
+.sol-card__footer[hidden],
+.sol-card__acciones[hidden] {
+    display: none;
+}
+
+/* ── Botón responder ─────────────────────────────────────── */
+.sol-btn-responder {
+    padding: 7px 20px;
+    background: #7C4DFF;
+    color: #fff;
+    border: none;
+    border-radius: 20px;
+    font-size: .85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background .18s;
+}
+.sol-btn-responder:hover {
+    background: #6a3de8;
+}
+
+/* ── Badge de estado (cancelaciones — color dinámico vía JS) */
+.sol-card__badge {
+    padding: 3px 12px;
+    border-radius: 20px;
+    font-size: .78rem;
+    font-weight: 600;
+    color: #fff;
+}
+.sol-card__badge--pendiente  { background: #f59e0b; }
+.sol-card__badge--aprobada   { background: #22c55e; }
+.sol-card__badge--rechazada  { background: #ef4444; }
+
+/* ── Badge de estado (devoluciones — .sol-badge) ─────────── */
+.sol-badge {
+    padding: 3px 12px;
+    border-radius: 20px;
+    font-size: .78rem;
+    font-weight: 600;
+    color: #fff;
+    background: #9ca3af;
+}
+.sol-badge--pendiente  { background: #f59e0b; }
+.sol-badge--aprobada   { background: #22c55e; }
+.sol-badge--rechazada  { background: #ef4444; }
+
+/* ── "Ya respondida" texto ───────────────────────────────── */
+.sol-ya-respondida {
+    font-size: .8rem;
+    color: #9ca3af;
 }

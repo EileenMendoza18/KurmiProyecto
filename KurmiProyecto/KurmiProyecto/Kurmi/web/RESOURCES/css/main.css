@@ -15,4 +15,5 @@ main{
     justify-content: center;
     justify-items: center;
     height: auto; /* IMPORTANTE: quitamos el height: 100vh para que crezca */
+    margin-bottom: 25px;
 }

@@ -4,7 +4,7 @@
 .div__body {
     background-color: #F4EEFF;
     display: grid;
-    grid-template-columns: 80px 1fr;
+    grid-template-columns: 50px 1fr;
     grid-template-rows: auto 1fr auto;
     min-height: 100vh;
     width: 100%;
@@ -19,7 +19,6 @@
 /* --- CONTENEDOR DE LA TIENDA (MAIN) --- */
 main.tienda-main {
     grid-column: 2;
-    padding: 40px 40px 40px 40px; 
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -27,26 +26,19 @@ main.tienda-main {
     height: auto;
     min-height: 80vh;
     gap: 40px;
-}
-
-main.tienda-main {
-    display: flex !important;
+    padding-bottom: 60px;
 }
 
 .tienda-titulo {
-    color: #463877;
-    font-size: 2.2rem;
-    font-weight: bold;
-    margin-bottom: 30px;
-    width: 100%;
+    font-size: 1.9rem;
+    color: #000000a1;
     text-align: center;
 }
 
 /* --- BARRA DE BÚSQUEDA CONTROLADA --- */
 .buscador-seccion {
-    width: 100%;
+    width: 90%;
     max-width: 900px;
-    margin-bottom: 40px;
 }
 
 .buscador-contenedor {
@@ -66,6 +58,7 @@ main.tienda-main {
 /* Fila que contiene input + select lado a lado */
 .buscador-fila {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: 12px;
     width: 100%;
@@ -75,7 +68,7 @@ main.tienda-main {
 
 .buscador-input-wrapper {
     position: relative;
-    width: 350px;
+    width: 400px;
     flex-shrink: 0;
 }
 
@@ -91,15 +84,15 @@ main.tienda-main {
 }
 
 .buscador-icono {
-    position: absolute !important;
-    right: 15px !important;
-    top: 50% !important;
-    transform: translateY(-50%) !important;
-    width: 24px !important;  
-    height: 24px !important; 
-    object-fit: contain !important;
-    margin: 0 !important;
-    padding: 0 !important;
+    position: absolute;
+    right: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 24px;
+    height: 24px;
+    object-fit: contain;
+    margin: 0;
+    padding: 0;
 }
 
 /* --- AJUSTES EXTRA PARA LAS TARJETAS DENTRO DE LA TIENDA --- */
@@ -111,7 +104,6 @@ main.tienda-main {
     gap: 20px;
     justify-items: center;
     align-self: center;
-    text-align: center;
 }
 
 .products__grid{
@@ -124,11 +116,11 @@ main.tienda-main {
     font-size: 0.9rem;
 }
 
-.products__title {
-    color: #463877 !important;
+.div__body .products__title {
+    color: #463877;
     font-size: 1.5rem;
     margin-bottom: 10px;
-    text-align: left;
+    text-align: center;
 }
 .products .tarjeta{
     background-color: #ffffff;
@@ -235,12 +227,11 @@ main.tienda-main {
 .tienda-productos-grid{
     display: flex;
     flex-wrap: wrap;
-    width: 90%;
+    width: 100%;
     height: auto;
     gap: 20px;
-    justify-items: center;
+    justify-content: center;
     align-items: center;
-    text-align: center;
 }
 
 /* ── Filtro de proveedor al lado del buscador ── */
@@ -274,8 +265,69 @@ main.tienda-main {
 .categoria-bloque{
     display: flex;
     flex-direction: column;
-    align-items: center;
+    align-items: flex-start;
     gap: 20px;
     width: 100%;
     height: auto;
+}
+
+@media (max-width: 466px) {
+    .tienda-titulo{
+        font-size: 1.2rem;
+    }
+
+    .buscador-texto{
+        font-size: 1rem;
+    }
+
+    .buscador-seccion{
+        max-width: 300px;
+    }
+
+    .buscador-contenedor{
+        max-width: 300px;
+    }
+    .buscador-fila{
+        max-width: 300px;
+    }
+
+    .buscador-input-wrapper{
+        width: 300px;
+    }
+
+    .buscador-input{
+        width: 100%;
+    }
+    .buscador-select-proveedor{
+        width: 100%;
+    }
+
+    .products div>img{
+        width: 280px;
+    }
+}
+
+/* === Estado oculto inicial (controlado por JS) === */
+.oculto-inicial {
+    display: none;
+}
+
+/* === Título de sección por categoría (generado dinámicamente en index.js) === */
+.categoria-titulo {
+    font-size: 1.6rem;
+    color: #4A3B53;
+    margin-bottom: 20px;
+    font-weight: 600;
+    width: 100%;
+    text-align: center;
+}
+
+/* Variante compacta usada en resultados de búsqueda */
+.categoria-titulo--compacta {
+    font-size: 1.4rem;
+}
+
+/* Separación entre bloques de categoría */
+.categoria-bloque + .categoria-bloque {
+    margin-top: 20px;
 }

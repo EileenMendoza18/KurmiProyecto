@@ -260,9 +260,6 @@ async function cargarCategoriasAside(contenedorId) {
         contenedor.innerHTML = '';
         if (contenedorIconos) contenedorIconos.innerHTML = '';
 
-        // SVG genérico de postre (cupcake)
-        const iconoPostre = `<img src="../../RESOURCES/img/postreAside.png" alt="Toggle">`;
-
         categorias.forEach(cat => {
             // cat ahora es { nombre, foto } — extraemos solo el nombre para el aside
             const nombreCat = typeof cat === 'string' ? cat : cat.nombre;
@@ -270,12 +267,12 @@ async function cargarCategoriasAside(contenedorId) {
             // --- Icono lateral ---
             if (contenedorIconos) {
                 const divIcono = document.createElement('div');
-                divIcono.innerHTML = iconoPostre;
+                const imgIcono = document.createElement('img');
+                imgIcono.src = '../../RESOURCES/img/postreAside.png';
+                imgIcono.alt = 'Toggle';
+                divIcono.appendChild(imgIcono);
                 divIcono.style.cursor = 'pointer';
                 divIcono.title = nombreCat;
-                divIcono.addEventListener('click', () => {
-                    window.location.href = `Productos.html?categoria=${encodeURIComponent(nombreCat)}`;
-                });
                 contenedorIconos.appendChild(divIcono);
             }
 
@@ -315,7 +312,7 @@ async function cargarCategoriasAside(contenedorId) {
         if (contenedorIconos) {
             contenedorIconos.addEventListener('click', (e) => {
                 e.stopPropagation();
-                abrirAside();
+                letras.style.display === 'flex' ? cerrarAside() : abrirAside();
             });
         }
 
@@ -482,15 +479,10 @@ async function cargarSeccionesTienda(contenedorId) {
         for (const [nombreCategoria, listaProductos] of Object.entries(categoriasMap)) {
             const seccionBloque = document.createElement('section');
             seccionBloque.className = 'categoria-bloque';
-            seccionBloque.style.marginBottom = '40px';
 
             const tituloCat = document.createElement('h2');
             tituloCat.textContent = nombreCategoria;
             tituloCat.className = 'categoria-titulo';
-            tituloCat.style.fontSize = '1.6rem';
-            tituloCat.style.color = '#4A3B53';
-            tituloCat.style.marginBottom = '20px';
-            tituloCat.style.fontWeight = '600';
             seccionBloque.appendChild(tituloCat);
 
             const gridTarjetas = document.createElement('div');
@@ -522,7 +514,10 @@ async function cargarProductosPorCategoriaPagina() {
         const categoriaSeleccionada = urlParams.get('categoria');
 
         if (!categoriaSeleccionada) {
-            contenedorGrid.innerHTML = '<p>No se ha seleccionado ninguna categoría.</p>';
+            contenedorGrid.innerHTML = '';
+            const p = document.createElement('p');
+            p.textContent = 'No se ha seleccionado ninguna categoría.';
+            contenedorGrid.appendChild(p);
             return;
         }
 
@@ -534,7 +529,10 @@ async function cargarProductosPorCategoriaPagina() {
         const todosLosProductos = await response.json();
 
         if (todosLosProductos.length === 0) {
-            contenedorGrid.innerHTML = `<p>No hay productos registrados en la categoría: ${categoriaSeleccionada}</p>`;
+            contenedorGrid.innerHTML = '';
+            const p = document.createElement('p');
+            p.textContent = `No hay productos registrados en la categoría: ${categoriaSeleccionada}`;
+            contenedorGrid.appendChild(p);
             return;
         }
 
@@ -737,7 +735,10 @@ async function cargarCarrito() {
             btnEliminar.classList.add("btn-eliminar");
             btnEliminar.type = "button";
             btnEliminar.title = "Eliminar producto";
-            btnEliminar.innerHTML = `<img src="../../RESOURCES/img/delete.png" alt="Eliminar">`; // Usar un ícono de basura o cruz para representar la acción de eliminación
+            const imgEliminar = document.createElement("img");
+            imgEliminar.src = "../../RESOURCES/img/delete.png";
+            imgEliminar.alt = "Eliminar";
+            btnEliminar.appendChild(imgEliminar); // Usar un ícono de basura o cruz para representar la acción de eliminación
 
             btnEliminar.onclick = async () => {
             if (!confirm(`¿Deseas remover ${item.nombre} de tu carrito?`)) return;
@@ -932,9 +933,7 @@ function inicializarBuscador() {
 
         const filtrados = todosLosProductosTienda.filter(p => {
             const coincideTexto = !termino || (
-                (p.nombre || '').toLowerCase().includes(termino) ||
-                (p.categoria || '').toLowerCase().includes(termino) ||
-                (p.nombreSabor || '').toLowerCase().includes(termino)
+                (p.nombre || '').toLowerCase().includes(termino)
             );
             const provProd = (p.proveedor ?? '').trim();
             const coincideProveedor = !proveedor || provProd === proveedor;
@@ -942,11 +941,24 @@ function inicializarBuscador() {
         });
 
         if (filtrados.length === 0) {
-            contenedor.innerHTML = `
-                <div class="buscador__sin-resultados">
-                    <p>:( No encontramos productos con "<strong>${inputBuscador.value.trim() || proveedor}</strong>"</p>
-                    <p>Intenta con otro nombre, categoría o proveedor.</p>
-                </div>`;
+            contenedor.innerHTML = '';
+            const sinResultados = document.createElement('div');
+            sinResultados.className = 'buscador__sin-resultados';
+
+            const p1 = document.createElement('p');
+            const terminoOProveedor = inputBuscador.value.trim() || proveedor;
+            p1.append(':( No encontramos productos con "');
+            const strong = document.createElement('strong');
+            strong.textContent = terminoOProveedor;
+            p1.appendChild(strong);
+            p1.append('"');
+
+            const p2 = document.createElement('p');
+            p2.textContent = 'Intenta con otro nombre, categoría o proveedor.';
+
+            sinResultados.appendChild(p1);
+            sinResultados.appendChild(p2);
+            contenedor.appendChild(sinResultados);
             return;
         }
 
@@ -954,11 +966,9 @@ function inicializarBuscador() {
         contenedor.innerHTML = '';
         const seccion = document.createElement('section');
         seccion.className = 'categoria-bloque';
-        seccion.style.marginBottom = '40px';
 
         const titulo = document.createElement('h2');
-        titulo.className = 'categoria-titulo';
-        titulo.style.cssText = 'font-size:1.4rem;color:#4A3B53;margin-bottom:20px;font-weight:600;';
+        titulo.className = 'categoria-titulo categoria-titulo--compacta';
         const labelFiltro = proveedor ? `Proveedor: ${proveedor}` : `"${inputBuscador.value.trim()}"`;
         titulo.textContent = `Resultados para ${labelFiltro} (${filtrados.length})`;
         seccion.appendChild(titulo);
@@ -992,11 +1002,9 @@ function renderizarPorCategorias(productos, contenedor) {
     for (const [nombreCategoria, lista] of Object.entries(categoriasMap)) {
         const seccion = document.createElement('section');
         seccion.className = 'categoria-bloque';
-        seccion.style.marginBottom = '40px';
 
         const titulo = document.createElement('h2');
         titulo.className = 'categoria-titulo';
-        titulo.style.cssText = 'font-size:1.6rem;color:#4A3B53;margin-bottom:20px;font-weight:600;';
         titulo.textContent = nombreCategoria;
         seccion.appendChild(titulo);
 
@@ -1017,147 +1025,14 @@ function renderizarPorCategorias(productos, contenedor) {
 // MODAL DE DETALLE DE PRODUCTO
 // ─────────────────────────────────────────────────────────────────────────────
 
-function inyectarEstilosModal() {
-    if (document.getElementById('estilos-modal-detalle')) return;
-    const style = document.createElement('style');
-    style.id = 'estilos-modal-detalle';
-    style.textContent = `
-        .modal-detalle-overlay {
-            position: fixed;
-            inset: 0;
-            background: rgba(74, 59, 83, 0.55);
-            backdrop-filter: blur(3px);
-            z-index: 20000;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 16px;
-            animation: fadeInOverlay .18s ease;
-        }
-        @keyframes fadeInOverlay { from { opacity: 0; } to { opacity: 1; } }
-        .modal-detalle {
-            background: #fff;
-            border-radius: 20px;
-            max-width: 520px;
-            width: 100%;
-            box-shadow: 0 12px 48px rgba(74,59,83,.22);
-            overflow: hidden;
-            animation: slideUpModal .22s ease;
-            display: flex;
-            flex-direction: column;
-        }
-        @keyframes slideUpModal {
-            from { transform: translateY(28px); opacity: 0; }
-            to   { transform: translateY(0);    opacity: 1; }
-        }
-        .modal-detalle__img-wrap {
-            position: relative;
-            width: 100%;
-            height: 220px;
-            background: #F4EEFF;
-            overflow: hidden;
-            flex-shrink: 0;
-        }
-        .modal-detalle__img-wrap img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-        .modal-detalle__cerrar {
-            position: absolute;
-            top: 12px;
-            right: 14px;
-            background: rgba(255,255,255,.85);
-            border: none;
-            border-radius: 50%;
-            width: 32px;
-            height: 32px;
-            font-size: 1rem;
-            cursor: pointer;
-            color: #4A3B53;
-            box-shadow: 0 2px 8px rgba(0,0,0,.15);
-            transition: background .15s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .modal-detalle__cerrar:hover { background: #fff; }
-        .modal-detalle__body {
-            padding: 24px 28px 16px;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-        .modal-detalle__nombre {
-            font-size: 1.35rem;
-            font-weight: 700;
-            color: #4A3B53;
-            margin: 0;
-        }
-        .modal-detalle__precio {
-            font-size: 1.45rem;
-            font-weight: 800;
-            color: #7C4DFF;
-            margin: 0;
-        }
-        .modal-detalle__desc {
-            font-size: .9rem;
-            color: #666;
-            line-height: 1.5;
-            margin: 0;
-        }
-        .modal-detalle__grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 8px 16px;
-            margin-top: 4px;
-        }
-        .modal-detalle__campo { display: flex; flex-direction: column; gap: 2px; }
-        .modal-detalle__label {
-            font-size: .72rem;
-            font-weight: 700;
-            color: #a68fc0;
-            text-transform: uppercase;
-            letter-spacing: .04em;
-        }
-        .modal-detalle__valor { font-size: .88rem; color: #333; font-weight: 500; }
-        .modal-detalle__footer {
-            padding: 0 28px 24px;
-            display: flex;
-            gap: 10px;
-        }
-        .modal-detalle__btn-comprar {
-            flex: 1;
-            padding: 12px;
-            background: #7C4DFF;
-            color: #fff;
-            border: none;
-            border-radius: 12px;
-            font-size: .95rem;
-            font-weight: 700;
-            cursor: pointer;
-            transition: background .15s;
-        }
-        .modal-detalle__btn-comprar:hover { background: #6a3de8; }
-        .modal-detalle__btn-carrito {
-            padding: 12px 16px;
-            background: #F4EEFF;
-            color: #7C4DFF;
-            border: 2px solid #7C4DFF;
-            border-radius: 12px;
-            font-size: .95rem;
-            font-weight: 700;
-            cursor: pointer;
-            transition: background .15s;
-        }
-        .modal-detalle__btn-carrito:hover { background: #e8d8ff; }
-    `;
-    document.head.appendChild(style);
-}
-
-function abrirModalDetalle(prod) {
-    inyectarEstilosModal();
+async function abrirModalDetalle(prod) {
     document.getElementById('modal-detalle-root')?.remove();
+
+    const responseTemplate = await fetch('/KurmiProyect/components/modalDetalleProducto.html');
+    const templateHTML = await responseTemplate.text();
+    document.body.insertAdjacentHTML('beforeend', templateHTML);
+
+    const overlay = document.getElementById('modal-detalle-root');
 
     const BASE_IMG_MODAL = '/KurmiProyect/RESOURCES/img/';
     const imgSrc = (prod.imagen && prod.imagen !== 'inicioHelado.png')
@@ -1167,51 +1042,20 @@ function abrirModalDetalle(prod) {
         ? prod.fechaVencimiento.substring(0, 10)
         : '—';
 
-    const overlay = document.createElement('div');
-    overlay.className = 'modal-detalle-overlay';
-    overlay.id = 'modal-detalle-root';
-    overlay.innerHTML = `
-        <div class="modal-detalle" role="dialog" aria-modal="true">
-            <div class="modal-detalle__img-wrap">
-                <img src="${imgSrc}" alt="${prod.nombre}"
-                     onerror="this.src='${BASE_IMG_MODAL}inicioHelado.png'" />
-                <button class="modal-detalle__cerrar" id="btnCerrarModalDetalle" title="Cerrar">✕</button>
-            </div>
-            <div class="modal-detalle__body">
-                <p class="modal-detalle__nombre">${prod.nombre}</p>
-                <p class="modal-detalle__precio">$${Number(prod.precio).toLocaleString('es-CO')}</p>
-                <p class="modal-detalle__desc">${prod.descripcion || 'Sin descripción.'}</p>
-                <div class="modal-detalle__grid">
-                    <div class="modal-detalle__campo">
-                        <span class="modal-detalle__label">Categoría</span>
-                        <span class="modal-detalle__valor">${prod.categoria || '—'}</span>
-                    </div>
-                    <div class="modal-detalle__campo">
-                        <span class="modal-detalle__label">Sabor</span>
-                        <span class="modal-detalle__valor">${prod.nombreSabor || '—'}</span>
-                    </div>
-                    <div class="modal-detalle__campo">
-                        <span class="modal-detalle__label">Unidad de medida</span>
-                        <span class="modal-detalle__valor">${prod.unidadMedida || '—'}</span>
-                    </div>
-                    <div class="modal-detalle__campo">
-                        <span class="modal-detalle__label">Vence</span>
-                        <span class="modal-detalle__valor">${fechaFormateada}</span>
-                    </div>
-                    <div class="modal-detalle__campo" style="grid-column:span 2">
-                        <span class="modal-detalle__label">Proveedor</span>
-                        <span class="modal-detalle__valor">${prod.proveedor || '—'}</span>
-                    </div>
-                </div>
-            </div>
-            <div class="modal-detalle__footer">
-                <button class="modal-detalle__btn-carrito" id="mdBtnCarrito">Añadir al carrito</button>
-                <button class="modal-detalle__btn-comprar" id="mdBtnComprar">Comprar ahora</button>
-            </div>
-        </div>
-    `;
+    // Rellenar contenido dinámico
+    const mdImagen = overlay.querySelector('#mdImagen');
+    mdImagen.src = imgSrc;
+    mdImagen.alt = prod.nombre;
+    mdImagen.onerror = () => { mdImagen.src = `${BASE_IMG_MODAL}inicioHelado.png`; };
 
-    document.body.appendChild(overlay);
+    overlay.querySelector('#mdNombre').textContent = prod.nombre;
+    overlay.querySelector('#mdPrecio').textContent = `$${Number(prod.precio).toLocaleString('es-CO')}`;
+    overlay.querySelector('#mdDescripcion').textContent = prod.descripcion || 'Sin descripción.';
+    overlay.querySelector('#mdCategoria').textContent = prod.categoria || '—';
+    overlay.querySelector('#mdSabor').textContent = prod.nombreSabor || '—';
+    overlay.querySelector('#mdUnidad').textContent = prod.unidadMedida || '—';
+    overlay.querySelector('#mdFecha').textContent = fechaFormateada;
+    overlay.querySelector('#mdProveedor').textContent = prod.proveedor || '—';
 
     // Cerrar al click en fondo o en X
     overlay.addEventListener('click', (e) => {
@@ -1257,262 +1101,16 @@ function abrirModalDetalle(prod) {
 // MODAL DE PRODUCTOS POR CATEGORÍA
 // ─────────────────────────────────────────────────────────────────────────────
 
-function inyectarEstilosModalCategoria() {
-    if (document.getElementById('estilos-modal-categoria')) return;
-    const style = document.createElement('style');
-    style.id = 'estilos-modal-categoria';
-    style.textContent = `
-        .modal-cat-overlay {
-            position: fixed;
-            inset: 0;
-            background: rgba(74, 59, 83, 0.6);
-            backdrop-filter: blur(4px);
-            z-index: 10000;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 16px;
-            animation: fadeInCatOverlay .2s ease;
-        }
-        @keyframes fadeInCatOverlay { from { opacity: 0; } to { opacity: 1; } }
-
-        .modal-cat {
-            background: #fff;
-            border-radius: 24px;
-            max-width: 860px;
-            width: 100%;
-            max-height: 90vh;
-            display: flex;
-            flex-direction: column;
-            box-shadow: 0 16px 60px rgba(74,59,83,.28);
-            animation: slideUpCat .22s ease;
-            overflow: hidden;
-        }
-        @keyframes slideUpCat {
-            from { transform: translateY(32px); opacity: 0; }
-            to   { transform: translateY(0);    opacity: 1; }
-        }
-
-        .modal-cat__header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 22px 28px 16px;
-            border-bottom: 1px solid #f0e8ff;
-            flex-shrink: 0;
-        }
-        .modal-cat__titulo {
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: #4A3B53;
-            margin: 0;
-        }
-        .modal-cat__cerrar {
-            background: #F4EEFF;
-            border: none;
-            border-radius: 50%;
-            width: 36px;
-            height: 36px;
-            font-size: 1.1rem;
-            cursor: pointer;
-            color: #4A3B53;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: background .15s;
-            flex-shrink: 0;
-        }
-        .modal-cat__cerrar:hover { background: #e4d4ff; }
-
-        .modal-cat__body {
-            overflow-y: auto;
-            padding: 24px 28px 16px;
-            flex: 1;
-        }
-
-        .modal-cat__grid {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 20px;
-            justify-content: center;
-        }
-
-        /* Scoped: tarjetas dentro del modal de categoría */
-        .modal-cat__grid .tarjeta {
-            background-color: #ffffff;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-            border-radius: 10px;
-            width: 180px;
-            min-width: 160px;
-            max-width: 200px;
-            height: auto;
-            box-shadow: 0 2px 12px rgba(74,59,83,.10);
-            cursor: pointer;
-            transition: transform .15s, box-shadow .15s;
-        }
-        .modal-cat__grid .tarjeta:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 6px 20px rgba(74,59,83,.18);
-        }
-        .modal-cat__grid .tarjeta > img {
-            width: 100%;
-            height: 140px !important;
-            object-fit: cover;
-            display: block;
-        }
-        .modal-cat__grid .tarjeta > div {
-            padding: 10px 12px;
-            display: flex;
-            flex-direction: column;
-            text-align: left;
-            gap: 6px;
-        }
-        .modal-cat__grid .tarjeta > div > p:nth-child(1) {
-            font-size: 0.82rem;
-            font-weight: 600;
-            color: #4A3B53;
-            margin: 0;
-            line-height: 1.3;
-            display: -webkit-box;
-            -webkit-line-clamp: 2;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
-        }
-        .modal-cat__grid .tarjeta > div > p:nth-child(2) {
-            font-size: 0.75rem;
-            color: #888;
-            margin: 0;
-            display: -webkit-box;
-            -webkit-line-clamp: 1;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
-        }
-        .modal-cat__grid .tarjeta > div > p:nth-child(3) {
-            font-size: 0.88rem;
-            font-weight: 700;
-            color: #7C4DFF;
-            margin: 0;
-        }
-        .modal-cat__grid .botones {
-            display: grid;
-            grid-template-columns: auto 28px 28px;
-            gap: 4px;
-            align-items: center;
-        }
-        .modal-cat__grid .botones button:nth-child(1) {
-            padding: 6px 10px;
-            font-size: 0.75rem;
-            border-radius: 7px;
-            border: none;
-            background-color: #B1B2FF;
-            color: #333;
-            cursor: pointer;
-            font-weight: 600;
-            white-space: nowrap;
-            transition: background .15s;
-        }
-        .modal-cat__grid .botones button:nth-child(1):hover { background-color: #9b9cff; }
-        .modal-cat__grid .like,
-        .modal-cat__grid .carrito {
-            width: 28px !important;
-            height: 28px !important;
-            border-radius: 50% !important;
-            overflow: hidden;
-            border: none;
-            background-color: #B1B2FF;
-            cursor: pointer;
-            padding: 5px !important;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: background .15s;
-            margin-left: 0 !important;
-        }
-        .modal-cat__grid .like:hover,
-        .modal-cat__grid .carrito:hover { background-color: #9b9cff; }
-        .modal-cat__grid .like img,
-        .modal-cat__grid .carrito img {
-            width: 100% !important;
-            height: 100% !important;
-            object-fit: contain;
-        }
-
-        .modal-cat__vacio {
-            text-align: center;
-            padding: 40px 20px;
-            color: #888;
-            font-size: 1rem;
-        }
-
-        .modal-cat__spinner {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 60px 20px;
-        }
-        .modal-cat__spinner::after {
-            content: '';
-            width: 40px;
-            height: 40px;
-            border: 4px solid #F4EEFF;
-            border-top-color: #7C4DFF;
-            border-radius: 50%;
-            animation: spinCat .7s linear infinite;
-        }
-        @keyframes spinCat { to { transform: rotate(360deg); } }
-
-        .modal-cat__footer {
-            padding: 16px 28px 24px;
-            display: flex;
-            justify-content: center;
-            border-top: 1px solid #f0e8ff;
-            flex-shrink: 0;
-        }
-        .modal-cat__btn-tienda {
-            padding: 14px 48px;
-            background: #7C4DFF;
-            color: #fff;
-            border: none;
-            border-radius: 14px;
-            font-size: 1rem;
-            font-weight: 700;
-            cursor: pointer;
-            transition: background .15s, transform .12s;
-            box-shadow: 0 4px 18px rgba(124,77,255,.3);
-        }
-        .modal-cat__btn-tienda:hover {
-            background: #6a3de8;
-            transform: translateY(-1px);
-        }
-    `;
-    document.head.appendChild(style);
-}
-
 async function abrirModalCategoria(nombreCategoria) {
-    inyectarEstilosModalCategoria();
     document.getElementById('modal-cat-root')?.remove();
 
-    // Crear overlay y estructura del modal
-    const overlay = document.createElement('div');
-    overlay.className = 'modal-cat-overlay';
-    overlay.id = 'modal-cat-root';
-    overlay.innerHTML = `
-        <div class="modal-cat" role="dialog" aria-modal="true">
-            <div class="modal-cat__header">
-                <p class="modal-cat__titulo">${nombreCategoria}</p>
-                <button class="modal-cat__cerrar" id="btnCerrarModalCat" title="Cerrar">✕</button>
-            </div>
-            <div class="modal-cat__body" id="modalCatBody">
-                <div class="modal-cat__spinner"></div>
-            </div>
-            <div class="modal-cat__footer">
-                <button class="modal-cat__btn-tienda" id="btnIrTiendaCat">Ir a la tienda</button>
-            </div>
-        </div>
-    `;
-    document.body.appendChild(overlay);
+    // Cargar plantilla del modal de categoría
+    const responseModal = await fetch('/KurmiProyect/components/modalCategoria.html');
+    const modalHTML = await responseModal.text();
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+
+    const overlay = document.getElementById('modal-cat-root');
+    overlay.querySelector('#modalCatTitulo').textContent = nombreCategoria;
 
     // Cerrar al click en fondo o en X
     overlay.addEventListener('click', (e) => {
@@ -1548,7 +1146,13 @@ async function abrirModalCategoria(nombreCategoria) {
         if (!body) return;
 
         if (!productos || productos.length === 0) {
-            body.innerHTML = `<div class="modal-cat__vacio"><p>No hay productos disponibles en esta categoría aún.</p></div>`;
+            body.innerHTML = '';
+            const vacio = document.createElement('div');
+            vacio.className = 'modal-cat__vacio';
+            const p = document.createElement('p');
+            p.textContent = 'No hay productos disponibles en esta categoría aún.';
+            vacio.appendChild(p);
+            body.appendChild(vacio);
             return;
         }
 
@@ -1574,7 +1178,15 @@ async function abrirModalCategoria(nombreCategoria) {
 
     } catch (error) {
         const body = document.getElementById('modalCatBody');
-        if (body) body.innerHTML = `<div class="modal-cat__vacio"><p>Ocurrió un error al cargar los productos.</p></div>`;
+        if (body) {
+            body.innerHTML = '';
+            const vacio = document.createElement('div');
+            vacio.className = 'modal-cat__vacio';
+            const p = document.createElement('p');
+            p.textContent = 'Ocurrió un error al cargar los productos.';
+            vacio.appendChild(p);
+            body.appendChild(vacio);
+        }
         console.error('Error cargando productos por categoría en modal:', error);
     }
 }

@@ -48,7 +48,7 @@ aside {
 .menudos div {
     background-color: #DCD6F7;
     width: 100%;
-    padding: 12px;
+    padding: 13px;
     border-top: 1px solid rgb(186, 153, 233);
     display: flex;
     justify-content: center;
@@ -80,7 +80,7 @@ aside {
     border: 1px solid rgb(186, 153, 233);
     width: auto;
     height: auto;
-    max-height: 443px;
+    max-height: 351px;
     overflow-y: auto;
     box-shadow: 4px 4px 12px rgba(70, 56, 119, 0.1);
 }
