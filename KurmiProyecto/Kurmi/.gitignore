@@ -1,9 +1,9 @@
 # NetBeans
-/nbproject
-/build
-/nbbuild
+/nbproject/
+/build/
+/nbbuild/
 /dist
-/nbdist
+/nbdist/
 /nb-configuration.xml
 
 # Archivos de sistema
