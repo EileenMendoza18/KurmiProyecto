@@ -30,7 +30,7 @@ public class Conexion {
     private static final String USER = "root"; 
 
     // Se almacena la contraseña requerida para autenticar y autorizar el acceso del usuario root al servidor.
-    private static final String PASSWORD = "e1leen987456*/-+"; 
+    private static final String PASSWORD = "#Aprendiz2024"; 
 
     // Se define la ruta completamente calificada del Driver de MySQL (Connector/J), necesario para que Java sepa cómo comunicarse con MySQL.
     private static final String DRIVER = "com.mysql.cj.jdbc.Driver";

@@ -1,25 +1,25 @@
 <div class="sol-card">
     <div class="sol-card__header">
-        <div class="sol-card__info">
-            <strong class="dev-id-pedido"></strong>
-            <em class="dev-nombre-cliente"></em>
+        <div class="sol-card__header-left">
+            <strong class="dev-id-pedido sol-card__id"></strong>
+            <em class="dev-nombre-cliente sol-card__proveedor"></em>
         </div>
         <span class="sol-badge"></span>
     </div>
 
     <div class="sol-card__body">
-        <p><strong>Total del pedido:</strong> <span class="dev-total"></span></p>
-        <p><strong>Fecha pedido:</strong> <span class="dev-fecha-pedido"></span></p>
-        <p><strong>Solicitud enviada:</strong> <span class="dev-fecha-solicitud"></span></p>
-        <p class="dev-motivo"><strong>Motivo del cliente:</strong><br><span class="dev-motivo-texto"></span></p>
+        <p class="sol-card__fila"><span class="sol-card__etiq">Total del pedido:</span> <span class="dev-total sol-card__monto"></span></p>
+        <p class="sol-card__fila"><span class="sol-card__etiq">Fecha pedido:</span> <span class="dev-fecha-pedido"></span></p>
+        <p class="sol-card__fila"><span class="sol-card__etiq">Solicitud enviada:</span> <span class="dev-fecha-solicitud"></span></p>
+        <p class="sol-card__fila dev-motivo"><span class="sol-card__etiq">Motivo del cliente:</span><br><span class="dev-motivo-texto"></span></p>
 
         <div class="dev-img-wrap" hidden>
-            <strong>Imagen de prueba:</strong><br>
+            <span class="sol-card__etiq">Imagen de prueba:</span><br>
             <img src="" alt="Prueba devolución" onerror="this.style.display='none'" class="dev-img-prueba" />
         </div>
 
-        <p class="dev-respuesta" hidden>
-            <strong>Respuesta registrada:</strong> <span class="dev-respuesta-texto"></span>
+        <p class="sol-card__fila dev-respuesta" hidden>
+            <span class="sol-card__etiq">Respuesta registrada:</span> <span class="dev-respuesta-texto"></span>
         </p>
         <p class="dev-fecha-respuesta" hidden></p>
     </div>
