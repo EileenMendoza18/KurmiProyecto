@@ -2,6 +2,7 @@ package com.kurmip.controller;
 
 import com.kurmip.model.dao.UsuarioDAO;
 import com.kurmip.model.dto.UsuarioDTO;
+import com.kurmip.util.AuthHelper;
 import com.google.gson.Gson;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
@@ -24,8 +25,9 @@ public class PerfilServlet extends HttpServlet {
 
         String accion = request.getParameter("accion");
 
-        // ── accion=testimonios — antes: ObtenerTestimoniosServlet ─────────────
-        // Endpoint público: no requiere sesión activa (se muestra en inicio.html)
+        // ── accion=testimonios — endpoint público: NO requiere sesión ─────────
+        // Se muestra en inicio.html antes de que el usuario inicie sesión,
+        // por eso se evalúa antes de llamar a AuthHelper.
         if ("testimonios".equals(accion)) {
             try (PrintWriter out = response.getWriter()) {
                 List<String> nombres = usuarioDAO.obtenerNombresParaTestimonios(3);
@@ -38,15 +40,16 @@ public class PerfilServlet extends HttpServlet {
             return;
         }
 
-        // ── Sin accion: datos del perfil del usuario en sesión ────────────────
-        HttpSession session = request.getSession(false);
-        if (session == null || session.getAttribute("usuarioLogueado") == null) {
-            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+        // ── Sin accion: datos del perfil — requiere sesión activa ─────────────
+        // Se delega en AuthHelper la verificación de sesión activa.
+        // Si no hay sesión, AuthHelper escribe el 401 y retorna null.
+        UsuarioDTO usuario = AuthHelper.obtenerUsuario(request, response);
+        if (usuario == null) {
+            // El frontend espera {} (objeto vacío) cuando no hay sesión en este endpoint.
             response.getWriter().write("{}");
             return;
         }
 
-        UsuarioDTO usuario = (UsuarioDTO) session.getAttribute("usuarioLogueado");
         UsuarioDTO completo = usuarioDAO.obtenerPorId(usuario.getId());
         if (completo == null) completo = usuario;
 
@@ -60,14 +63,13 @@ public class PerfilServlet extends HttpServlet {
         response.setContentType("text/plain");
         response.setCharacterEncoding("UTF-8");
 
-        HttpSession session = request.getSession(false);
-        if (session == null || session.getAttribute("usuarioLogueado") == null) {
-            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+        // Se delega en AuthHelper la verificación de sesión activa.
+        // Si no hay sesión, AuthHelper escribe el 401 y retorna null.
+        UsuarioDTO usuarioSesion = AuthHelper.obtenerUsuario(request, response);
+        if (usuarioSesion == null) {
             response.getWriter().write("NO_SESSION");
             return;
         }
-
-        UsuarioDTO usuarioSesion = (UsuarioDTO) session.getAttribute("usuarioLogueado");
 
         try {
             String nombres         = request.getParameter("nombres").trim();
@@ -89,13 +91,17 @@ public class PerfilServlet extends HttpServlet {
             boolean ok = usuarioDAO.actualizarPerfil(actualizado);
 
             if (ok) {
-                // Refrescar sesión
-                usuarioSesion.setNombres(nombres);
-                usuarioSesion.setApellidos(apellidos);
-                usuarioSesion.setTelefono(telefono);
-                usuarioSesion.setCorreo(correo);
-                usuarioSesion.setDireccion(direccion);
-                session.setAttribute("usuarioLogueado", usuarioSesion);
+                // Se refresca la sesión con los datos actualizados para que
+                // el resto de la aplicación refleje los cambios sin necesidad de relogin.
+                HttpSession session = request.getSession(false);
+                if (session != null) {
+                    usuarioSesion.setNombres(nombres);
+                    usuarioSesion.setApellidos(apellidos);
+                    usuarioSesion.setTelefono(telefono);
+                    usuarioSesion.setCorreo(correo);
+                    usuarioSesion.setDireccion(direccion);
+                    session.setAttribute("usuarioLogueado", usuarioSesion);
+                }
                 response.getWriter().write("OK");
             } else {
                 response.getWriter().write("ERROR");

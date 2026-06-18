@@ -165,7 +165,11 @@ function crearTarjetaPedido(pedido, filtroActivo) {
 
     // Botón devolver — SOLO en Entregado (8) y si no pasó más de 24 horas
     if (filtroActivo === '8' && pedido.estadoPedido === 8) {
-        const fechaEntrega = new Date(pedido.fechaPedido + 'T00:00:00');
+        // Se usa fechaPedidoCompleta (con hora exacta) para que el cálculo de 24 h sea preciso.
+        // Usar solo la fecha recortada (yyyy-MM-dd) forzaría el inicio a medianoche
+        // y haría expirar la ventana horas antes de lo que corresponde.
+        const fechaRaw     = pedido.fechaPedidoCompleta || pedido.fechaPedido;
+        const fechaEntrega = new Date(fechaRaw.replace(' ', 'T'));
         const ahora        = new Date();
         const diffHoras    = (ahora - fechaEntrega) / (1000 * 60 * 60);
 
