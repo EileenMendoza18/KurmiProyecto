@@ -109,7 +109,7 @@ public class AdminServlet extends HttpServlet {
 
     // Se define como constante la ruta relativa donde se guardarán físicamente las imágenes de las categorías,
     // construida con File.separator para que funcione igual en Windows ("\") y en Linux/Mac ("/").
-    // Se nota en el comentario original que esta ruta es la misma que usa GestionProductoServlet, para mantener
+    // Esta ruta es la misma que usa GestionProductoServlet, para mantener
     // organizadas todas las imágenes del proyecto dentro de la misma carpeta raíz "RESOURCES/img".
     private static final String IMG_DIR = "RESOURCES" + File.separator + "img" + File.separator + "categorias";
 

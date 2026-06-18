@@ -1,10 +1,10 @@
 # NetBeans
-nbproject/
-build/
-nbbuild/
-dist/
-nbdist/
-nb-configuration.xml
+/nbproject/
+/build/
+/nbbuild/
+/dist
+/nbdist/
+/nb-configuration.xml
 
 # Archivos de sistema
 .DS_Store
