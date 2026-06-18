@@ -134,9 +134,11 @@
     background-color: #fdeaea;
     padding: 7px;
     overflow: hidden;
-    border: 1.5px solid #f0a0a0 !important;
 }
-.btn__fav-quitar:hover { background-color: #c0392b !important; }
+.fav__botones .btn__fav-quitar {
+    border: 1.5px solid #f0a0a0;
+}
+.fav__botones .btn__fav-quitar:hover { background-color: #c0392b; }
 .btn__fav-quitar:hover img { filter: brightness(10); }
 .btn__fav-quitar img { width: 100%; height: 100%; object-fit: contain; }
 
@@ -144,4 +146,22 @@
 @media (max-width: 600px) {
     .favoritos__titulo { font-size: 1.3rem; }
     .tarjeta__fav img.fav__imagen { height: 120px; }
+}
+
+/* ── Notificación toast (esquina inferior derecha) ── */
+#notificacion {
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    background: #463877;
+    color: white;
+    padding: 14px 24px;
+    border-radius: 12px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    z-index: 9999;
+    box-shadow: 0 4px 16px rgba(70,56,119,0.25);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.4s;
 }
