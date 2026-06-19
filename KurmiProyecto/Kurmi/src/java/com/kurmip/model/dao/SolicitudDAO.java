@@ -57,6 +57,7 @@ import java.util.Map;
  * │  insertarCategoriaConFoto(...)→ Se inserta categoría con imagen      │
  * │  insertarSabor(...)           → Se inserta sabor aprobado            │
  * │  insertarRelacion(...)        → Se vincula categoría con sabor       │
+ * │  existeRelacion(...)          → Se verifica si la relación ya existe │
  * └─────────────────────────────────────────────────────────────────────┘
  */
 public class SolicitudDAO {
@@ -819,6 +820,43 @@ public class SolicitudDAO {
 
         // Se retorna -1 para indicar al servlet que la inserción del sabor falló.
         return -1;
+    }
+
+    // =========================================================================
+    // VERIFICAR RELACIÓN — Evita duplicar una combinación ya existente en RelaCatSabor
+    // Se llama antes de insertar para no crear dos filas idénticas Categoría-Sabor.
+    // =========================================================================
+
+    /**
+     * Se verifica si ya existe una relación entre la categoría y el sabor indicados en RelaCatSabor.
+     * Se usa antes de insertar una nueva relación (por ejemplo, al editar una categoría o sabor
+     * desde el panel admin y asignarle una combinación adicional) para evitar filas duplicadas.
+     *
+     * @param idCategoria  Se recibe el ID de la categoría a verificar.
+     * @param idSabor      Se recibe el ID del sabor a verificar.
+     * @return             Se retorna true si ya existe esa combinación exacta en RelaCatSabor.
+     */
+    public boolean existeRelacion(int idCategoria, int idSabor) {
+
+        // Se cuenta cuántas filas de RelaCatSabor coinciden con ambos IDs a la vez.
+        String sql = "SELECT COUNT(*) AS total FROM RelaCatSabor WHERE ID_Categoria = ? AND ID_Sabor = ?";
+        try {
+            con = cn.getConexion();
+            ps  = con.prepareStatement(sql);
+            ps.setInt(1, idCategoria);
+            ps.setInt(2, idSabor);
+            rs  = ps.executeQuery();
+
+            // Se retorna true si el conteo es mayor a 0, indicando que la combinación ya existe.
+            if (rs.next()) return rs.getInt("total") > 0;
+        } catch (Exception e) {
+            System.err.println("existeRelacion → " + e.getMessage());
+        } finally {
+            cerrar();
+        }
+
+        // Se retorna false como valor por defecto si no se pudo verificar (evita bloquear el flujo por error).
+        return false;
     }
 
     // =========================================================================

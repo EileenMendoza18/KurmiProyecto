@@ -235,8 +235,23 @@ button {
 .cantidad-valor {
     font-size: 0.9rem;
     font-weight: bold;
-    min-width: 12px;
+    width: 44px;
     text-align: center;
+    border: 1.5px solid #c9b8f0;
+    border-radius: 6px;
+    padding: 2px 4px;
+    background: #fff;
+    color: inherit;
+    -moz-appearance: textfield;
+}
+.cantidad-valor::-webkit-inner-spin-button,
+.cantidad-valor::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+.cantidad-valor:focus {
+    outline: none;
+    border-color: #7c4dff;
 }
 
 .btn-eliminar {

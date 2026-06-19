@@ -14,6 +14,10 @@ import com.kurmip.model.dao.PedidoDAO;
 // Se importa el DAO de Producto, que contiene la lógica para cambiar el estado de un producto (disponible, agotado, etc.).
 import com.kurmip.model.dao.ProductoDAO;
 
+// Se importa el DAO de Solicitud, que contiene la lógica para insertar y verificar relaciones
+// en la tabla RelaCatSabor (usada aquí para vincular una categoría/sabor existente con otra combinación).
+import com.kurmip.model.dao.SolicitudDAO;
+
 // Se importa el DAO de Usuario, que contiene la lógica para listar usuarios y cambiar su estado de cuenta.
 import com.kurmip.model.dao.UsuarioDAO;
 
@@ -79,12 +83,17 @@ import java.util.Map;
  * GET  ?accion=ventasTotales         → Devuelve un resumen con el total de ventas, el total de pedidos,
  *                                       cuántos se entregaron y cuántos están pendientes.
  * GET  ?accion=clientes              → Devuelve la lista completa de usuarios registrados en el sistema.
- * GET  ?accion=listarCatSaborAdmin   → Devuelve todas las categorías y sabores, incluyendo si están activos o no.
+ * GET  ?accion=listarCatSaborAdmin   → Devuelve categorías, sabores (con su estado activo/inactivo)
+ *                                       y la lista de relaciones idCategoria/idSabor ya existentes.
  *
  * POST ?accion=cambiarEstadoProducto → Recibe idProducto e idEstado (1=Disponible, 2=Agotado, 3=Descontinuado).
  * POST ?accion=cambiarEstadoUsuario  → Recibe idUsuario e idEstado (1=Activo, 2=Inactivo, 3=Pendiente).
- * POST ?accion=editarCategoria       → Recibe idCategoria, nombre, descripcion y, opcionalmente, una imagen.
- * POST ?accion=editarSabor           → Recibe idSabor, nombre y descripcion.
+ * POST ?accion=editarCategoria       → Recibe idCategoria, nombre, descripcion, opcionalmente una imagen,
+ *                                       y opcionalmente idSaborNuevo para crear una relación adicional
+ *                                       en RelaCatSabor (sin eliminar las combinaciones existentes).
+ * POST ?accion=editarSabor           → Recibe idSabor, nombre, descripcion y opcionalmente idCatNuevo
+ *                                       para crear una relación adicional en RelaCatSabor (sin eliminar
+ *                                       las combinaciones existentes).
  * POST ?accion=toggleCategoria       → Recibe idCategoria y activar (true/false) para activar o desactivar.
  * POST ?accion=toggleSabor           → Recibe idSabor y activar (true/false) para activar o desactivar.
  *
@@ -106,6 +115,10 @@ public class AdminServlet extends HttpServlet {
 
     // Se crea una única instancia de CategoriaDAO para reutilizarla en todos los métodos que tocan categorías y sabores.
     private final CategoriaDAO categoriaDAO = new CategoriaDAO();
+
+    // Se crea una única instancia de SolicitudDAO para reutilizarla al insertar relaciones adicionales
+    // en RelaCatSabor cuando el admin asigna una categoría/sabor existente a otra combinación al editar.
+    private final SolicitudDAO solicitudDAO = new SolicitudDAO();
 
     // Se define como constante la ruta relativa donde se guardarán físicamente las imágenes de las categorías,
     // construida con File.separator para que funcione igual en Windows ("\") y en Linux/Mac ("/").
@@ -211,6 +224,11 @@ public class AdminServlet extends HttpServlet {
                     // Se agrega bajo la clave "sabores" la lista de sabores (con su estado activo/inactivo)
                     // de la misma forma que se hizo con las categorías.
                     data.put("sabores",    categoriaDAO.obtenerSaboresAdmin());
+
+                    // Se agrega bajo la clave "relaciones" la lista de pares idCategoria/idSabor que ya
+                    // existen en RelaCatSabor, para que el frontend pueda avisar (o evitar) que el admin
+                    // seleccione una combinación duplicada al editar una categoría o sabor.
+                    data.put("relaciones", categoriaDAO.obtenerParesIdsRelacion());
 
                     // Se convierte el mapa completo (categorías + sabores) a JSON y se escribe en la respuesta.
                     out.print(gson.toJson(data));
@@ -488,6 +506,25 @@ public class AdminServlet extends HttpServlet {
                     if (ok) resp.put("mensaje", "Categoría actualizada correctamente.");
                     else  { response.setStatus(500); resp.put("error", "No se pudo actualizar la categoría."); }
 
+                    // Se lee el parámetro opcional "idSaborNuevo": si el admin seleccionó un sabor existente
+                    // en el modal de edición, se crea una relación adicional en RelaCatSabor sin tocar
+                    // ni eliminar las combinaciones que la categoría ya tenía.
+                    String idSaborNuevoStr = request.getParameter("idSaborNuevo");
+                    if (ok && !isBlank(idSaborNuevoStr)) {
+                        int idSaborNuevo = Integer.parseInt(idSaborNuevoStr.trim());
+
+                        // Se verifica que esa combinación no exista ya, para no duplicar la fila en RelaCatSabor.
+                        if (!solicitudDAO.existeRelacion(idCategoria, idSaborNuevo)) {
+                            boolean relOk = solicitudDAO.insertarRelacion(idCategoria, idSaborNuevo);
+                            resp.put("relacionCreada", relOk);
+                            if (relOk) resp.put("mensaje", "Categoría actualizada y nueva relación creada.");
+                        } else {
+                            // Se informa al frontend que la combinación ya existía, sin tratarlo como error.
+                            resp.put("relacionCreada", false);
+                            resp.put("relacionYaExistia", true);
+                        }
+                    }
+
                     // Se escribe el mapa de respuesta convertido a JSON.
                     out.print(gson.toJson(resp));
                 }
@@ -526,6 +563,25 @@ public class AdminServlet extends HttpServlet {
                     // Se decide el mensaje final según si la actualización tuvo éxito o no.
                     if (ok) resp.put("mensaje", "Sabor actualizado correctamente.");
                     else  { response.setStatus(500); resp.put("error", "No se pudo actualizar el sabor."); }
+
+                    // Se lee el parámetro opcional "idCatNuevo": si el admin seleccionó una categoría existente
+                    // en el modal de edición, se crea una relación adicional en RelaCatSabor sin tocar
+                    // ni eliminar las combinaciones que el sabor ya tenía.
+                    String idCatNuevoStr = request.getParameter("idCatNuevo");
+                    if (ok && !isBlank(idCatNuevoStr)) {
+                        int idCatNuevo = Integer.parseInt(idCatNuevoStr.trim());
+
+                        // Se verifica que esa combinación no exista ya, para no duplicar la fila en RelaCatSabor.
+                        if (!solicitudDAO.existeRelacion(idCatNuevo, idSabor)) {
+                            boolean relOk = solicitudDAO.insertarRelacion(idCatNuevo, idSabor);
+                            resp.put("relacionCreada", relOk);
+                            if (relOk) resp.put("mensaje", "Sabor actualizado y nueva relación creada.");
+                        } else {
+                            // Se informa al frontend que la combinación ya existía, sin tratarlo como error.
+                            resp.put("relacionCreada", false);
+                            resp.put("relacionYaExistia", true);
+                        }
+                    }
 
                     // Se escribe el mapa de respuesta convertido a JSON.
                     out.print(gson.toJson(resp));

@@ -3,6 +3,7 @@ package com.kurmip.model.dao;
 
 // Se importa la clase personalizada Conexion para obtener conexiones activas hacia la base de datos MySQL.
 import com.kurmip.db.Conexion;
+import com.kurmip.model.dao.DevolucionDAO;
 
 // Se importa el DTO PedidoDTO que encapsula los datos de entrega y pago para transportarlos desde el Servlet hasta este DAO.
 import com.kurmip.model.dto.PedidoDTO;
@@ -587,6 +588,158 @@ public class PedidoDAO {
     }
 
     // =========================================================================
+    // OBTENER PEDIDOS ENTREGADOS AGRUPADOS POR CARRITO (estado 8) — CLIENTE
+    // Cuando el cliente compra productos de varios proveedores en un mismo
+    // carrito, el sistema crea un Pedidos_Cliente por proveedor. Este método
+    // los reagrupa por ID_Carrito para mostrar UNA SOLA tarjeta unificada
+    // con todos los productos y el total sumado de todos los sub-pedidos.
+    // =========================================================================
+
+    /**
+     * Se consultan los pedidos entregados (estado 8) del cliente y se agrupan por ID_Carrito
+     * para que una compra con varios proveedores aparezca como una sola tarjeta.
+     * Cada grupo incluye todos los productos del carrito, la suma de totales de cada proveedor
+     * y una lista de los IDs de pedido originales para gestión de devoluciones.
+     *
+     * @param idUsuario  Se recibe el ID del cliente autenticado en sesión.
+     * @return           Se retorna la lista de grupos de pedidos entregados, uno por carrito único.
+     */
+    public List<Map<String, Object>> obtenerPedidosEntregadosAgrupados(int idUsuario) {
+
+        // Se consultan todos los pedidos entregados del cliente ordenados de más reciente a más antiguo.
+        // Se excluyen los pedidos cuyo carrito y fecha ya tienen algún sub-pedido en estado 9 (Devolución)
+        // o 10 (Devolución Solicitada), porque el lote completo debe migrar fuera de la pestaña Entregado
+        // en cuanto cualquier parte de él inicia o completa el proceso de devolución.
+        String sqlPedidos =
+            "SELECT p.ID_Pedido, p.ID_Carrito, p.Fecha_Pedido, p.Total_Pago, " +
+            "p.Nombre_Receptor, p.Direccion_Envio, p.Telefono_Envio, " +
+            "mp.Nombre_Metodo AS metodoPago " +
+            "FROM Pedidos_Cliente p " +
+            "LEFT JOIN Pago_Pedido pp ON pp.ID_Pedido = p.ID_Pedido " +
+            "LEFT JOIN Metodo_Pago mp ON mp.ID_Metodo = pp.ID_Metodo " +
+            "WHERE p.ID_Cliente = ? AND p.Estado_Pedido = 8 " +
+            "AND NOT EXISTS ( " +
+            "    SELECT 1 FROM Pedidos_Cliente p2 " +
+            "    WHERE p2.ID_Carrito = p.ID_Carrito " +
+            "      AND p2.Fecha_Pedido = p.Fecha_Pedido " +
+            "      AND p2.Estado_Pedido IN (9, 10) " +
+            ") " +
+            "ORDER BY p.Fecha_Pedido DESC, p.ID_Carrito";
+
+        // Se traen todos los productos de un carrito vendidos en una fecha concreta,
+        // sin filtrar por proveedor para incluir los de todos los sub-pedidos a la vez.
+        String sqlProductos =
+            "SELECT pr.ID_Producto, pr.Nombre_Producto, pr.Imagen_Producto, " +
+            "cd.Cantidad_producto, cd.Precio_Unitario_Momento, cd.SubTotal " +
+            "FROM Carrito_Detalle cd " +
+            "JOIN Productos pr ON cd.ID_Producto = pr.ID_Producto " +
+            "WHERE cd.ID_Carrito = ? AND cd.Estado_Carrito IN (3, 6) AND cd.Fecha_Venta = ?";
+
+        // La clave de agrupación es "idCarrito_yyyy-MM-dd":
+        // el mismo carrito puede reutilizarse en compras distintas (recompras),
+        // y cada fecha representa un lote independiente de sub-pedidos por proveedor.
+        // Agrupar solo por carrito colapsaría compras históricas distintas en una sola tarjeta.
+        java.util.LinkedHashMap<String, Map<String, Object>> grupos = new java.util.LinkedHashMap<>();
+
+        Connection conLocal = null;
+        try {
+            conLocal = cn.getConexion();
+            PreparedStatement psPed = conLocal.prepareStatement(sqlPedidos);
+            psPed.setInt(1, idUsuario);
+            ResultSet rsPed = psPed.executeQuery();
+
+            while (rsPed.next()) {
+                int    idPedido  = rsPed.getInt("ID_Pedido");
+                int    idCarrito = rsPed.getInt("ID_Carrito");
+                String fechaRaw  = rsPed.getString("Fecha_Pedido");
+                double totalProv = rsPed.getDouble("Total_Pago");
+
+                // Se construye la clave combinando carrito y el timestamp completo (Fecha_Pedido exacto).
+                // Cada transacción (compra de carrito o compra directa) usa su propio NOW() como timestamp,
+                // por lo que el timestamp exacto identifica de forma única cada lote de sub-pedidos.
+                // Usar solo la fecha truncada (yyyy-MM-dd) colapsaría en un mismo grupo dos compras
+                // distintas hechas el mismo día con el mismo carrito (por ejemplo, una compra de carrito
+                // y una compra directa posterior), dejando sin mostrar los productos de la segunda compra.
+                String fechaDia   = (fechaRaw != null && fechaRaw.length() >= 10)
+                                    ? fechaRaw.substring(0, 10) : (fechaRaw != null ? fechaRaw : "");
+                String claveGrupo = idCarrito + "_" + (fechaRaw != null ? fechaRaw : fechaDia);
+
+                if (!grupos.containsKey(claveGrupo)) {
+                    // Primera vez que aparece este lote: se crea el grupo con datos de cabecera.
+                    Map<String, Object> grupo = new java.util.LinkedHashMap<>();
+                    grupo.put("idPedido",           idPedido);
+                    List<Integer> ids = new ArrayList<>();
+                    ids.add(idPedido);
+                    grupo.put("idsPedidos",          ids);
+                    grupo.put("idCarrito",           idCarrito);
+                    grupo.put("fechaPedido",         fechaDia);
+                    grupo.put("fechaPedidoCompleta", fechaRaw != null ? fechaRaw : "");
+                    grupo.put("totalPago",           totalProv);
+                    grupo.put("metodoPago",          rsPed.getString("metodoPago") != null
+                                                     ? rsPed.getString("metodoPago") : "No registrado");
+                    grupo.put("receptor",            rsPed.getString("Nombre_Receptor"));
+                    grupo.put("direccion",           rsPed.getString("Direccion_Envio"));
+                    grupo.put("telefono",            rsPed.getString("Telefono_Envio"));
+                    grupo.put("estadoPedido",        8);
+                    grupo.put("nombreEstado",        etiquetaEstado(8));
+                    grupo.put("subpedidos",          new ArrayList<>());
+
+                    // Se cargan todos los productos del carrito para este lote (timestamp exacto).
+                    List<Map<String, Object>> productos = new ArrayList<>();
+                    int totalUnidades = 0;
+                    String imagenPrimera = "inicioHelado.png";
+
+                    PreparedStatement psProd = conLocal.prepareStatement(sqlProductos);
+                    psProd.setInt(1, idCarrito);
+                    psProd.setString(2, fechaRaw);
+                    ResultSet rsProd = psProd.executeQuery();
+                    while (rsProd.next()) {
+                        int cantidad = rsProd.getInt("Cantidad_producto");
+                        totalUnidades += cantidad;
+                        String img = rsProd.getString("Imagen_Producto");
+                        Map<String, Object> prod = new java.util.LinkedHashMap<>();
+                        prod.put("idProducto",  rsProd.getInt("ID_Producto"));
+                        prod.put("nombre",      rsProd.getString("Nombre_Producto"));
+                        prod.put("cantidad",    cantidad);
+                        prod.put("precio",      rsProd.getDouble("Precio_Unitario_Momento"));
+                        prod.put("precioTotal", rsProd.getDouble("SubTotal"));
+                        prod.put("imagen",      (img != null && !img.isBlank()) ? img : "inicioHelado.png");
+                        productos.add(prod);
+                    }
+                    rsProd.close(); psProd.close();
+
+                    if (!productos.isEmpty()) imagenPrimera = (String) productos.get(0).get("imagen");
+                    grupo.put("productos",      productos);
+                    grupo.put("totalProductos", totalUnidades);
+                    grupo.put("imagenPrimera",  imagenPrimera);
+                    grupo.put("tieneDevolucion", new DevolucionDAO().existeParaPedido(idPedido));
+
+                    grupos.put(claveGrupo, grupo);
+
+                } else {
+                    // El lote ya existe: se acumula el total del proveedor adicional y su ID.
+                    Map<String, Object> grupo = grupos.get(claveGrupo);
+                    grupo.put("totalPago", (double) grupo.get("totalPago") + totalProv);
+                    @SuppressWarnings("unchecked")
+                    List<Integer> ids = (List<Integer>) grupo.get("idsPedidos");
+                    ids.add(idPedido);
+                    if (!(boolean) grupo.get("tieneDevolucion")) {
+                        grupo.put("tieneDevolucion", new DevolucionDAO().existeParaPedido(idPedido));
+                    }
+                }
+            }
+            rsPed.close(); psPed.close();
+
+        } catch (SQLException e) {
+            System.err.println("Error en obtenerPedidosEntregadosAgrupados: " + e.getMessage());
+        } finally {
+            try { if (conLocal != null) conLocal.close(); } catch (Exception ignored) {}
+        }
+
+        return new ArrayList<>(grupos.values());
+    }
+
+    // =========================================================================
     // OBTENER PEDIDOS "EN PROCESO" (estados 4, 5, 6, 7) PARA EL CLIENTE
     // El cliente ve todos estos estados agrupados como "En proceso".
     // Se incluye estadoPedido y nombreEstado para que el JS los muestre.
@@ -758,6 +911,11 @@ public class PedidoDAO {
         // Se convierte el estado numérico a etiqueta legible para que el JS no tenga que mapear números.
         pedido.put("nombreEstado",   etiquetaEstado(estadoPed));
         pedido.put("productos",      listaProds);
+        // Se consulta si ya existe una solicitud de devolucion para este pedido,
+        // solo cuando el estado es 8 (Entregado), unico donde el boton aparece.
+        if (estadoPed == 8) {
+            pedido.put("tieneDevolucion", new DevolucionDAO().existeParaPedido(idPedido));
+        }
         return pedido;
     }
 
@@ -1336,9 +1494,9 @@ public class PedidoDAO {
                 // Se inicializa la lista que contendrá un mapa por cada proveedor de este pedido en particular.
                 List<Map<String, Object>> proveedores = new ArrayList<>();
 
-                // Se asume optimistamente que todos los proveedores ya están en bodega (estado >= 5);
-                // esta bandera se baja a false en cuanto se encuentre un proveedor por debajo de ese estado.
-                boolean todosEnBodega = true;
+                // Se calcula el estado minimo entre todos los proveedores del pedido.
+                // El admin solo puede avanzar al estado N si todos los proveedores estan en >= N.
+                int minEstadoProveedor = Integer.MAX_VALUE;
 
                 // Se prepara y ejecuta la subconsulta de proveedores, fijando el ID del pedido actual como parámetro.
                 PreparedStatement psProv = conLocal.prepareStatement(sqlProveedores);
@@ -1352,9 +1510,8 @@ public class PedidoDAO {
                     // Se extrae el ID del proveedor actual, necesario para la subconsulta de sus productos.
                     int idProveedor = rsProv.getInt("ID_Proveedor");
 
-                    // Se actualiza el flag global del pedido a false si este proveedor aún no llegó
-                    // al estado 5 (En bodega); basta con que uno solo esté atrasado para bajar la bandera.
-                    if (est < 5) todosEnBodega = false;
+                    // Se actualiza el estado minimo si el estado de este proveedor es menor al actual.
+                    if (est < minEstadoProveedor) minEstadoProveedor = est;
 
                     // Se construye el mapa con los datos visibles del proveedor para el frontend del admin.
                     // Se usa LinkedHashMap para que el JSON resultante mantenga el orden de inserción de las claves.
@@ -1435,9 +1592,10 @@ public class PedidoDAO {
                                             ? rsPed.getString("metodoPago") : "No registrado");
                 // Se anida la lista completa de proveedores (con sus productos ya dentro) en el mapa del pedido.
                 pedido.put("proveedores",   proveedores);
-                // Se expone el flag todosEnBodega al frontend para que el admin sepa, sin calcular nada más,
-                // si ya puede avanzar el estado global del pedido (botón habilitado/deshabilitado en la vista).
-                pedido.put("todosEnBodega", todosEnBodega);
+                // Se expone el estado minimo de los proveedores para que el JS pueda evaluar
+                // cualquier transicion: el admin solo puede avanzar al estado N si minEstadoProveedor >= N.
+                // Si no hay proveedores (Integer.MAX_VALUE), se envia 0 como neutro.
+                pedido.put("minEstadoProveedor", minEstadoProveedor == Integer.MAX_VALUE ? 0 : minEstadoProveedor);
 
                 // A continuación se construye una segunda lista de productos, esta vez "plana" (sin agrupar
                 // por proveedor), pensada para la vista de detalle simple del pedido en el panel del admin.
@@ -1657,9 +1815,9 @@ public class PedidoDAO {
 
             // Se inserta el registro de la solicitud de cancelación con el motivo del cliente.
             PreparedStatement psIns = conLocal.prepareStatement(
-                "INSERT INTO Solicitudes_Cancelacion (ID_Pedido, ID_Cliente, Motivo) VALUES (?, ?, ?)");
-            psIns.setInt(1, idPedido); psIns.setInt(2, idCliente);
-            psIns.setString(3, motivo);
+                "INSERT INTO Solicitudes_Cancelacion (ID_Pedido, Motivo) VALUES (?, ?)"); 
+            psIns.setInt(1, idPedido);
+            psIns.setString(2, motivo);
             psIns.executeUpdate(); psIns.close();
 
             conLocal.commit();
@@ -1700,7 +1858,7 @@ public class PedidoDAO {
             "u.Nombres, u.Apellidos, u.Correo_Usu, u.Telefono " +
             "FROM Solicitudes_Cancelacion sc " +
             "JOIN Pedidos_Cliente p ON p.ID_Pedido = sc.ID_Pedido " +
-            "JOIN Usuario u ON u.UsuarioID = sc.ID_Cliente " +
+            "JOIN Usuario u ON u.UsuarioID = p.ID_Cliente " +
             "WHERE 1=1 " + condicion +
             " ORDER BY sc.Fecha_Solicitud DESC";
 
