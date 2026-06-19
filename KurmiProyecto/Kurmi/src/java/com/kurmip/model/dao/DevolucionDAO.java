@@ -129,18 +129,22 @@ public class DevolucionDAO {
     // =========================================================================
 
     /**
-     * Se verifica si ya existe una solicitud de devolución asociada al pedido recibido.
-     * Se usa como regla de validación en la capa de negocio para evitar que un cliente
-     * genere dos solicitudes sobre el mismo pedido, lo que violaría las reglas de negocio.
+     * Se verifica si ya existe una solicitud de devolución activa (Pendiente o Aprobada) asociada
+     * al pedido recibido. Se usa como regla de validación en la capa de negocio para evitar que un
+     * cliente genere dos solicitudes simultáneas sobre el mismo pedido, lo que violaría las reglas
+     * de negocio. Se excluyen del conteo las solicitudes en estado "Rechazada": si el admin rechazó
+     * una devolución anterior, el cliente debe poder volver a solicitarla (mientras siga dentro del
+     * tiempo estipulado por la política de devoluciones), en lugar de quedar bloqueado para siempre.
      *
      * @param idPedido  Se recibe el ID del pedido a verificar.
-     * @return          Se retorna true si ya existe al menos una solicitud para ese pedido.
+     * @return          Se retorna true si ya existe una solicitud Pendiente o Aprobada para ese pedido.
      */
     public boolean existeParaPedido(int idPedido) {
 
         // Se usa COUNT(*) para verificar existencia sin traer datos innecesarios de la fila.
-        // Se filtra por el ID del pedido recibido para una búsqueda precisa.
-        String sql = "SELECT COUNT(*) FROM Solicitudes_Devolucion WHERE ID_Pedido = ?";
+        // Se filtra por el ID del pedido recibido y se excluyen las solicitudes Rechazadas,
+        // que no deben impedir una nueva solicitud sobre el mismo pedido.
+        String sql = "SELECT COUNT(*) FROM Solicitudes_Devolucion WHERE ID_Pedido = ? AND Estado != 'Rechazada'";
         try {
             con = cn.getConexion();
             ps  = con.prepareStatement(sql);

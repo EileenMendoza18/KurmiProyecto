@@ -186,6 +186,18 @@ html, body {
     width: 25px;
     
 }
+
+.btn-avanzar-estado{
+    padding: 6px 16px;
+    background: #c9bbed;
+    color: #fff;
+    border: none;
+    border-radius: 20px;
+    font-size: .82rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
 /* ============================================================
    RESPONSIVE — Tablets y móvil
    ============================================================ */
