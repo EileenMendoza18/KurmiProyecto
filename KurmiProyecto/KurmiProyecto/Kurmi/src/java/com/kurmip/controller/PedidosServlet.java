@@ -118,6 +118,19 @@ public class PedidosServlet extends HttpServlet {
             // (estados 4 al 7). La consulta estándar obtenerPedidosPorUsuario no incluye
             // ese desglose, por lo que se delega en obtenerPedidosEnProcesoConProveedores.
             pedidos = pedidoDAO.obtenerPedidosEnProcesoConProveedores(idUsuario);
+        } else if ("8".equals(estadoParam)) {
+            // Se agrupa por ID_Carrito para que una compra con varios proveedores aparezca
+            // como una sola tarjeta unificada con todos los productos y el total sumado.
+            pedidos = pedidoDAO.obtenerPedidosEntregadosAgrupados(idUsuario);
+        } else if ("9".equals(estadoParam)) {
+            // Se incluyen tanto el estado 9 (Devolución aprobada) como el estado 10
+            // (Devolución Solicitada) en la pestaña "Devolución", porque ambos representan
+            // pedidos que ya salieron del flujo normal y el cliente debe verlos aquí.
+            List<Map<String, Object>> estado9  = pedidoDAO.obtenerPedidosPorUsuario(idUsuario, 9);
+            List<Map<String, Object>> estado10 = pedidoDAO.obtenerPedidosPorUsuario(idUsuario, 10);
+            estado9.addAll(estado10);
+            estado9.sort((a, b) -> String.valueOf(b.get("fechaPedido")).compareTo(String.valueOf(a.get("fechaPedido"))));
+            pedidos = estado9;
         } else {
             // Se usa estado 1 (Pendiente) como valor por defecto cuando el parámetro está
             // ausente, vacío o contiene un valor no numérico, para no lanzar una excepción

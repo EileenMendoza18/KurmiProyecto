@@ -56,8 +56,8 @@ public class DevolucionDAO {
         // Se construye el INSERT para registrar la nueva solicitud de devolución con sus campos obligatorios.
         // Los campos Fecha_Solicitud y Estado se autocompletan por la BD con sus valores predeterminados.
         String sqlInsert = "INSERT INTO Solicitudes_Devolucion " +
-                           "(ID_Pedido, ID_Cliente, Motivo, Imagen_Prueba) " +
-                           "VALUES (?, ?, ?, ?)";
+                           "(ID_Pedido, Motivo, Imagen_Prueba) " +
+                           "VALUES (?, ?, ?)";
 
         // Se construye el UPDATE que cambia el estado del pedido a 10 (Devolución Solicitada)
         // de forma simultánea al INSERT, garantizando que el pedido refleje inmediatamente la solicitud.
@@ -77,15 +77,12 @@ public class DevolucionDAO {
             // Se asigna el ID del pedido al primer parámetro del INSERT.
             ps.setInt(1, idPedido);
 
-            // Se asigna el ID del cliente al segundo parámetro del INSERT.
-            ps.setInt(2, idCliente);
-
             // Se asigna el texto del motivo al tercer parámetro del INSERT.
-            ps.setString(3, motivo);
+            ps.setString(2, motivo);
 
             // Se asigna la imagen de prueba al cuarto parámetro, o null si no se adjuntó ninguna.
             // Se convierte un String vacío en null para respetar la semántica de la columna en BD.
-            ps.setString(4, (imagenPrueba == null || imagenPrueba.isBlank()) ? null : imagenPrueba);
+            ps.setString(3, (imagenPrueba == null || imagenPrueba.isBlank()) ? null : imagenPrueba);
 
             // Se ejecuta el INSERT en la tabla Solicitudes_Devolucion.
             ps.executeUpdate();
@@ -184,18 +181,29 @@ public class DevolucionDAO {
         // del pedido para extraer su imagen y usarla como miniatura representativa del pedido.
         // Se descarta el estado 2 (eliminado lógicamente) para no tomar ítems borrados del carrito.
         // Se ordenan las solicitudes mostrando primero las más recientes.
+        // Se filtra la subconsulta de imagen por ID_Carrito y Fecha_Venta para garantizar que la imagen
+        // corresponda a los productos comprados en ese pedido y no a ítems de otros pedidos del carrito.
+        // Se suma el Total_Pago de todos los pedidos del mismo carrito y misma fecha porque cada compra
+        // multi-proveedor genera un pedido separado por proveedor, y el total visible al cliente
+        // debe reflejar la suma global, no solo el subtotal del primer proveedor guardado en la solicitud.
         String sql =
             "SELECT d.ID_Devolucion, d.ID_Pedido, d.Motivo, d.Imagen_Prueba, " +
             "       d.Estado, d.Motivo_Respuesta, d.Fecha_Solicitud, d.Fecha_Respuesta, " +
-            "       p.Fecha_Pedido, p.Total_Pago, " +
+            "       p.Fecha_Pedido, " +
+            "       (SELECT SUM(p2.Total_Pago) " +
+            "        FROM Pedidos_Cliente p2 " +
+            "        WHERE p2.ID_Carrito = p.ID_Carrito " +
+            "          AND p2.Fecha_Pedido = p.Fecha_Pedido) AS Total_Pago, " +
             "       (SELECT pr.Imagen_Producto " +
             "        FROM Carrito_Detalle cd " +
             "        JOIN Productos pr ON cd.ID_Producto = pr.ID_Producto " +
-            "        WHERE cd.ID_Carrito = p.ID_Carrito AND cd.Estado_Carrito != 2 " +
+            "        WHERE cd.ID_Carrito = p.ID_Carrito " +
+            "          AND cd.Estado_Carrito IN (3, 6) " +
+            "          AND cd.Fecha_Venta = p.Fecha_Pedido " +
             "        ORDER BY cd.ID_DetalleCarrito ASC LIMIT 1) AS ImagenPrimera " +
             "FROM Solicitudes_Devolucion d " +
             "JOIN Pedidos_Cliente p ON d.ID_Pedido = p.ID_Pedido " +
-            "WHERE d.ID_Cliente = ? " +
+            "WHERE p.ID_Cliente = ? " +
             "ORDER BY d.Fecha_Solicitud DESC";
         try {
             con = cn.getConexion();
@@ -236,20 +244,29 @@ public class DevolucionDAO {
 
         // Se construye la base del SQL uniendo solicitudes (d), pedidos (p) y usuarios (u).
         // Se usa CONCAT() para armar el nombre completo del comprador como una sola cadena.
-        // Se reutiliza la subconsulta de imagen miniatura para la vista de admin.
+        // Se suma el Total_Pago de todos los pedidos del mismo carrito y misma fecha porque cada compra
+        // multi-proveedor genera un pedido separado por proveedor; el total debe ser la suma global.
+        // Se simplifica la subconsulta de imagen eliminando los JOINs de proveedor que eran innecesarios
+        // y podian filtrar demasiado agresivamente en pedidos de un solo proveedor.
         StringBuilder sql = new StringBuilder(
             "SELECT d.ID_Devolucion, d.ID_Pedido, d.Motivo, d.Imagen_Prueba, " +
             "       d.Estado, d.Motivo_Respuesta, d.Fecha_Solicitud, d.Fecha_Respuesta, " +
-            "       p.Fecha_Pedido, p.Total_Pago, " +
+            "       p.Fecha_Pedido, " +
+            "       (SELECT SUM(p2.Total_Pago) " +
+            "        FROM Pedidos_Cliente p2 " +
+            "        WHERE p2.ID_Carrito = p.ID_Carrito " +
+            "          AND p2.Fecha_Pedido = p.Fecha_Pedido) AS Total_Pago, " +
             "       CONCAT(u.Nombres, ' ', u.Apellidos) AS NombreCliente, " +
             "       (SELECT pr.Imagen_Producto " +
             "        FROM Carrito_Detalle cd " +
             "        JOIN Productos pr ON cd.ID_Producto = pr.ID_Producto " +
-            "        WHERE cd.ID_Carrito = p.ID_Carrito AND cd.Estado_Carrito != 2 " +
+            "        WHERE cd.ID_Carrito = p.ID_Carrito " +
+            "          AND cd.Estado_Carrito IN (3, 6) " +
+            "          AND cd.Fecha_Venta = p.Fecha_Pedido " +
             "        ORDER BY cd.ID_DetalleCarrito ASC LIMIT 1) AS ImagenPrimera " +
             "FROM Solicitudes_Devolucion d " +
             "JOIN Pedidos_Cliente p ON d.ID_Pedido = p.ID_Pedido " +
-            "JOIN Usuario u ON d.ID_Cliente = u.UsuarioID "
+            "JOIN Usuario u ON p.ID_Cliente = u.UsuarioID "
         );
 
         // Se agrega la cláusula WHERE de forma condicional: solo si el admin seleccionó un filtro de estado.

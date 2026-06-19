@@ -970,8 +970,9 @@ async function renderPedidosAdmin(pedidos) {
 
             const avisoEspera = card.querySelector('.ped-aviso-espera');
             const avisoOk     = card.querySelector('.ped-aviso-ok');
-            if (p.todosEnBodega) { avisoEspera.remove(); avisoOk.hidden = false; }
-            else                 { avisoOk.remove(); avisoEspera.hidden = false; }
+            // Se muestra el aviso de espera mientras el minimo de proveedores no llegue a 5 (En bodega)
+            if ((p.minEstadoProveedor || 0) >= 5) { avisoEspera.remove(); avisoOk.hidden = false; }
+            else                                  { avisoOk.remove(); avisoEspera.hidden = false; }
         }
 
         // Total
@@ -988,9 +989,11 @@ async function renderPedidosAdmin(pedidos) {
                 btnTpl.dataset.id   = p.idPedido;
                 btnTpl.dataset.estado = e.v;
                 btnTpl.textContent  = e.l;
-                if (!p.todosEnBodega && e.v > 5) {
+                // El admin solo puede avanzar al estado e.v si todos los proveedores
+                // ya alcanzaron ese mismo estado (minEstadoProveedor >= e.v)
+                if ((p.minEstadoProveedor || 0) < e.v) {
                     btnTpl.disabled = true;
-                    btnTpl.title    = 'Espera que todos los proveedores estén en bodega';
+                    btnTpl.title    = 'Espera que todos los proveedores avancen primero';
                 }
                 btnTpl.addEventListener('click', () =>
                     cambiarEstadoPedidoAdmin(Number(btnTpl.dataset.id), Number(btnTpl.dataset.estado), btnTpl));
@@ -2073,7 +2076,8 @@ async function filtrarPagos() {
         const coincideTexto = !texto || (
             f.proveedor.toLowerCase().includes(texto) ||
             String(f.idPedido).includes(texto) ||
-            f.cliente.toLowerCase().includes(texto)
+            f.cliente.toLowerCase().includes(texto) ||
+            (f.productos || []).some(p => (p.nombre || '').toLowerCase().includes(texto))
         );
         const coincideEstado = !estado || f.nombreEstadoPago.toLowerCase().includes(estado);
         return coincideTexto && coincideEstado;
@@ -2394,45 +2398,101 @@ async function _enviarFormCS(tipo) {
 // Editar / Toggle Categorías y Sabores
 // ─────────────────────────────────────────────────────────────────────────────
 function _abrirModalEditarCat(cat) {
+    // Se obtiene el set de IDs de sabor ya relacionados con esta categoría, a partir de los pares
+    // idCategoria/idSabor cargados desde listarCatSaborAdmin, para marcarlos como ya relacionados.
+    const relaciones = _catSaborDataAdmin?.relaciones ?? [];
+    const saboresYaRelacionados = new Set(
+        relaciones.filter(r => r.idCategoria === cat.idCategoria).map(r => r.idSabor)
+    );
+
+    const opcionesSabor = (_catSaborData.sabores ?? []).map(s => {
+        const yaRelacionado = saboresYaRelacionados.has(s.idSabor);
+        return {
+            value: s.idSabor,
+            label: yaRelacionado ? `${s.nombreSabor} (ya relacionado)` : s.nombreSabor,
+            disabled: yaRelacionado
+        };
+    });
+
     _renderModalEditar({
         titulo: 'Editar Categoría',
         campos: [
             { id: 'edit-nombre',      label: 'Nombre *',     tipo: 'text', valor: cat.nombreCategoria },
             { id: 'edit-descripcion', label: 'Descripción',  tipo: 'text', valor: cat.descripcion ?? '' },
             { id: 'edit-imagen',      label: 'Nueva imagen', tipo: 'file', valor: '' },
+            { id: 'edit-sabor-nuevo', label: 'Relacionar con otro sabor (opcional)', tipo: 'select',
+              opciones: opcionesSabor, placeholder: '— No relacionar con ningún sabor adicional —' },
         ],
         onGuardar: async () => {
-            const nombre = document.getElementById('edit-nombre').value.trim();
-            const desc   = document.getElementById('edit-descripcion').value.trim();
-            const img    = document.getElementById('edit-imagen').files[0];
+            const nombre     = document.getElementById('edit-nombre').value.trim();
+            const desc       = document.getElementById('edit-descripcion').value.trim();
+            const img        = document.getElementById('edit-imagen').files[0];
+            const idSaborNvo = document.getElementById('edit-sabor-nuevo').value;
             if (!nombre) { _modalError('El nombre es obligatorio.'); return; }
+
+            // Se valida de nuevo aquí (además de deshabilitar la opción en el select) por si la lista
+            // quedó desactualizada en el navegador; evita enviar al servidor una combinación duplicada.
+            if (idSaborNvo && saboresYaRelacionados.has(Number(idSaborNvo))) {
+                _modalError('Esta categoría ya está relacionada con ese sabor.');
+                return;
+            }
+
             const fd = new FormData();
             fd.append('accion',      'editarCategoria');
             fd.append('idCategoria', cat.idCategoria);
             fd.append('nombre',      nombre);
             fd.append('descripcion', desc);
             if (img) fd.append('imagenCat', img);
+            if (idSaborNvo) fd.append('idSaborNuevo', idSaborNvo);
             await _enviarCatSaborPost(fd);
         }
     });
 }
 
 function _abrirModalEditarSabor(sabor) {
+    // Se obtiene el set de IDs de categoría ya relacionados con este sabor, a partir de los pares
+    // idCategoria/idSabor cargados desde listarCatSaborAdmin, para marcarlos como ya relacionados.
+    const relaciones = _catSaborDataAdmin?.relaciones ?? [];
+    const categoriasYaRelacionadas = new Set(
+        relaciones.filter(r => r.idSabor === sabor.idSabor).map(r => r.idCategoria)
+    );
+
+    const opcionesCat = (_catSaborData.categorias ?? []).map(c => {
+        const yaRelacionada = categoriasYaRelacionadas.has(c.idCategoria);
+        return {
+            value: c.idCategoria,
+            label: yaRelacionada ? `${c.nombreCategoria} (ya relacionado)` : c.nombreCategoria,
+            disabled: yaRelacionada
+        };
+    });
+
     _renderModalEditar({
         titulo: 'Editar Sabor',
         campos: [
             { id: 'edit-nombre',      label: 'Nombre *',    tipo: 'text', valor: sabor.nombreSabor },
             { id: 'edit-descripcion', label: 'Descripción', tipo: 'text', valor: sabor.descripcion ?? '' },
+            { id: 'edit-cat-nueva',   label: 'Relacionar con otra categoría (opcional)', tipo: 'select',
+              opciones: opcionesCat, placeholder: '— No relacionar con ninguna categoría adicional —' },
         ],
         onGuardar: async () => {
-            const nombre = document.getElementById('edit-nombre').value.trim();
-            const desc   = document.getElementById('edit-descripcion').value.trim();
+            const nombre   = document.getElementById('edit-nombre').value.trim();
+            const desc     = document.getElementById('edit-descripcion').value.trim();
+            const idCatNva = document.getElementById('edit-cat-nueva').value;
             if (!nombre) { _modalError('El nombre es obligatorio.'); return; }
+
+            // Se valida de nuevo aquí (además de deshabilitar la opción en el select) por si la lista
+            // quedó desactualizada en el navegador; evita enviar al servidor una combinación duplicada.
+            if (idCatNva && categoriasYaRelacionadas.has(Number(idCatNva))) {
+                _modalError('Este sabor ya está relacionado con esa categoría.');
+                return;
+            }
+
             const fd = new FormData();
             fd.append('accion',      'editarSabor');
             fd.append('idSabor',     sabor.idSabor);
             fd.append('nombre',      nombre);
             fd.append('descripcion', desc);
+            if (idCatNva) fd.append('idCatNuevo', idCatNva);
             await _enviarCatSaborPost(fd);
         }
     });
@@ -2493,14 +2553,30 @@ function _renderModalEditar({ titulo, campos, onGuardar }) {
     card.className = 'cs-modal-card';
     card.innerHTML = `
         <h3 class="cs-modal-titulo">${titulo}</h3>
-        ${campos.map(c => `
+        ${campos.map(c => {
+            if (c.tipo === 'select') {
+                const opciones = (c.opciones ?? []).map(o =>
+                    `<option value="${o.value}" ${o.disabled ? 'disabled' : ''}>${o.label}</option>`
+                ).join('');
+                return `
+                    <div class="cs-grupo">
+                        <label class="cs-label">${c.label}</label>
+                        <select id="${c.id}" class="cs-select">
+                            <option value="">${c.placeholder ?? '— Selecciona —'}</option>
+                            ${opciones}
+                        </select>
+                    </div>
+                `;
+            }
+            return `
             <div class="cs-grupo">
                 <label class="cs-label">${c.label}</label>
                 <input id="${c.id}" class="cs-input" type="${c.tipo}"
                        value="${c.tipo !== 'file' ? (c.valor ?? '').replace(/"/g, '&quot;') : ''}"
                        ${c.tipo === 'file' ? 'accept="image/*"' : ''} />
             </div>
-        `).join('')}
+        `;
+        }).join('')}
         <span class="cs-error" id="cs-modal-err" style="display:none"></span>
         <div class="cs-form-footer">
             <button class="btn-secundario" id="cs-modal-cancelar">Cancelar</button>

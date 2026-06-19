@@ -557,6 +557,45 @@ public class CategoriaDAO {
         return lista;
     }
 
+    /**
+     * Se consultan TODOS los pares ID_Categoria/ID_Sabor existentes en RelaCatSabor, sin filtrar
+     * por estado activo y sin hacer JOIN con los nombres. Se usa en el panel de administración
+     * para que el frontend sepa de antemano qué combinaciones ya existen y pueda evitar que el
+     * admin seleccione (o avisarle si selecciona) una relación duplicada al editar una categoría o sabor.
+     *
+     * @return  Se retorna una lista de mapas con las claves "idCategoria" e "idSabor" de cada par existente.
+     */
+    public List<Map<String, Object>> obtenerParesIdsRelacion() {
+
+        // Se inicializa la lista vacía que acumulará un par de IDs por cada relación existente.
+        List<Map<String, Object>> lista = new ArrayList<>();
+
+        // Se seleccionan directamente los IDs de la tabla intermedia, sin JOIN ni filtro de Activo,
+        // ya que aquí solo interesa saber qué combinaciones de IDs ya están registradas.
+        String sql = "SELECT ID_Categoria, ID_Sabor FROM RelaCatSabor";
+        try {
+            con = cn.getConexion();
+            ps  = con.prepareStatement(sql);
+            rs  = ps.executeQuery();
+            while (rs.next()) {
+                Map<String, Object> row = new HashMap<>();
+
+                // Se agrega el ID de la categoría de este par para que el frontend pueda compararlo.
+                row.put("idCategoria", rs.getInt("ID_Categoria"));
+
+                // Se agrega el ID del sabor de este par para completar la combinación.
+                row.put("idSabor",     rs.getInt("ID_Sabor"));
+
+                lista.add(row);
+            }
+        } catch (Exception e) {
+            System.err.println("Error en obtenerParesIdsRelacion: " + e.getMessage());
+        } finally {
+            cerrar();
+        }
+        return lista;
+    }
+
     // =========================================================================
     // UTILIDADES PRIVADAS
     // =========================================================================

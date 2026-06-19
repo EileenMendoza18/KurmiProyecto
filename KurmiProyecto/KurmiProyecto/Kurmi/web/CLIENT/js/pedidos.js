@@ -137,9 +137,17 @@ function crearTarjetaPedido(pedido, filtroActivo) {
     detalle.className = 'pedido__detalle';
     detalle.textContent = 'Total productos: ' + (pedido.totalProductos || 0);
 
+    // Se calcula el total sumando los precioTotal de todos los productos del pedido.
+    // pedido.totalPago puede ser solo el subtotal de un proveedor en compras multi-proveedor.
+    const todosProds = (pedido.productos && pedido.productos.length > 0)
+        ? pedido.productos
+        : (pedido.subpedidos || []).flatMap(s => s.productos || []);
+    const totalReal = todosProds.length > 0
+        ? todosProds.reduce((acc, p) => acc + Number(p.precioTotal || 0), 0)
+        : Number(pedido.totalPago);
     const total = document.createElement('p');
     total.className = 'pedido__total';
-    total.textContent = 'Total: $' + Number(pedido.totalPago).toLocaleString('es-CO');
+    total.textContent = 'Total: $' + totalReal.toLocaleString('es-CO');
 
     info.appendChild(fecha);
     info.appendChild(badge);
@@ -173,13 +181,17 @@ function crearTarjetaPedido(pedido, filtroActivo) {
         const ahora        = new Date();
         const diffHoras    = (ahora - fechaEntrega) / (1000 * 60 * 60);
 
-        if (diffHoras <= 24) {
+        if (diffHoras <= 24 && !pedido.tieneDevolucion) {
             const btnDevolver = document.createElement('button');
             btnDevolver.className = 'btn__pedido-devolver';
             btnDevolver.textContent = 'Solicitar devolución';
             btnDevolver.addEventListener('click', e => {
                 e.stopPropagation();
-                abrirFormDevolucion(pedido.idPedido, pedido.fechaPedido);
+                // Se usa el primer ID de la lista cuando el pedido es un grupo de varios proveedores.
+                const idParaDevolucion = (pedido.idsPedidos && pedido.idsPedidos.length > 0)
+                    ? pedido.idsPedidos[0]
+                    : pedido.idPedido;
+                abrirFormDevolucion(idParaDevolucion, pedido.fechaPedido);
             });
             card.appendChild(btnDevolver);
         }
@@ -221,7 +233,9 @@ async function generarFacturaPDF(pedido) {
     // Rellenar contenido dinámico una vez la ventana terminó de cargar
     const doc = ventana.document;
 
-    doc.getElementById('facturaNumero').textContent = `Factura #${pedido.idPedido}`;
+    doc.getElementById('facturaNumero').textContent = pedido.idsPedidos && pedido.idsPedidos.length > 1
+        ? `Pedidos #${pedido.idsPedidos.join(', #')}`
+        : `Factura #${pedido.idPedido}`;
     doc.getElementById('facturaFechaHeader').textContent = `Fecha: ${fecha}`;
 
     const badge = doc.getElementById('facturaEstadoBadge');
@@ -686,9 +700,13 @@ function abrirModal(pedido, filtroActivo) {
         productos.appendChild(card);
     });
 
+    // Se calcula sumando los precioTotal de los productos reales mostrados en el modal.
+    // Usar pedido.totalPago puede ser solo el subtotal de un proveedor cuando la compra
+    // tiene varios proveedores pero la BD guarda un pedido por proveedor.
+    const totalCalculado = todosLosProductos.reduce((acc, p) => acc + Number(p.precioTotal || 0), 0);
     const spanTotal = document.createElement('p');
     spanTotal.className = 'modal__total-texto';
-    spanTotal.textContent = 'Total: $' + Number(pedido.totalPago).toLocaleString('es-CO');
+    spanTotal.textContent = 'Total: $' + totalCalculado.toLocaleString('es-CO');
     footer.appendChild(spanTotal);
 
     // Botón recomprar — solo en Cancelado (3)

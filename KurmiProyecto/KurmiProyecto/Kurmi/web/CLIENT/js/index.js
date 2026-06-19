@@ -672,9 +672,35 @@ async function cargarCarrito() {
             accionesContador.classList.add("acciones__contador");
 
             // ── cantidadValor DEBE declararse ANTES de los onclick que la usan ──
-            const cantidadValor = document.createElement("span");
+            const cantidadValor = document.createElement("input");
+            cantidadValor.type = "number";
             cantidadValor.classList.add("cantidad-valor");
-            cantidadValor.textContent = item.cantidad;
+            cantidadValor.value = item.cantidad;
+            cantidadValor.min = 1;
+
+            // Confirmar cantidad al presionar Enter o al perder el foco
+            const confirmarCantidadManual = async () => {
+                let nueva = parseInt(cantidadValor.value);
+                if (isNaN(nueva) || nueva < 1) { cantidadValor.value = parseInt(cantidadValor.dataset.prev || 1); return; }
+                cantidadValor.dataset.prev = nueva;
+                try {
+                    const res = await fetch(`/KurmiProyect/CarritoServlet`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: `accion=actualizarCantidad&idDetalle=${item.idDetalleCarrito}&cantidad=${nueva}&idProducto=${item.idProducto}`
+                    });
+                    const msg = (await res.text()).trim();
+                    if (msg === 'STOCK_SUPERADO') {
+                        alert('⚠️ Has alcanzado el límite de stock disponible para este producto.');
+                        cantidadValor.value = cantidadValor.dataset.prev || 1;
+                    }
+                } catch (e) { console.error("Error actualizando cantidad:", e); }
+                actualizarTotal();
+                actualizarResumenCarrito();
+            };
+            cantidadValor.dataset.prev = item.cantidad;
+            cantidadValor.addEventListener('keydown', e => { if (e.key === 'Enter') { e.target.blur(); } });
+            cantidadValor.addEventListener('blur', confirmarCantidadManual);
 
             const btnMenos = document.createElement("button");
             btnMenos.className = "btn-cantidad btn-menos";
@@ -682,10 +708,11 @@ async function cargarCarrito() {
             btnMenos.textContent = "-";
 
             btnMenos.onclick = async () => {
-                let actual = parseInt(cantidadValor.textContent);
+                let actual = parseInt(cantidadValor.value);
                 if (actual > 1) {
                     actual--;
-                    cantidadValor.textContent = actual;
+                    cantidadValor.value = actual;
+                    cantidadValor.dataset.prev = actual;
                     try {
                         const res = await fetch(`/KurmiProyect/CarritoServlet`, {
                             method: 'POST',
@@ -694,7 +721,8 @@ async function cargarCarrito() {
                         });
                         const msg = (await res.text()).trim();
                         if (msg === 'STOCK_SUPERADO') {
-                            cantidadValor.textContent = actual + 1;
+                            cantidadValor.value = actual + 1;
+                            cantidadValor.dataset.prev = actual + 1;
                         }
                     } catch (e) { console.error("Error actualizando cantidad:", e); }
                     actualizarTotal();
@@ -708,9 +736,10 @@ async function cargarCarrito() {
             btnMas.textContent = "+";
 
             btnMas.onclick = async () => {
-                let actual = parseInt(cantidadValor.textContent);
+                let actual = parseInt(cantidadValor.value);
                 actual++;
-                cantidadValor.textContent = actual;
+                cantidadValor.value = actual;
+                cantidadValor.dataset.prev = actual;
                 try {
                     const res = await fetch(`/KurmiProyect/CarritoServlet`, {
                         method: 'POST',
@@ -719,8 +748,9 @@ async function cargarCarrito() {
                     });
                     const msg = (await res.text()).trim();
                     if (msg === 'STOCK_SUPERADO') {
-                        alert('⚠️ Has alcanzado el límite de stock disponible para este producto.');
-                        cantidadValor.textContent = actual - 1;
+                        alert(`Este producto solo tiene ${actual-1} unidades disponibles`);
+                        cantidadValor.value = actual - 1;
+                        cantidadValor.dataset.prev = actual - 1;
                     }
                 } catch (e) { console.error("Error actualizando cantidad:", e); }
                 actualizarTotal();
@@ -823,7 +853,7 @@ function actualizarTotal() {
         const checkbox = tarjeta.querySelector(".chk-comprar");
         if (checkbox && checkbox.checked) {
             const precio = parseFloat(checkbox.getAttribute("data-precio"));
-            const cantidad = parseInt(tarjeta.querySelector(".cantidad-valor").textContent);
+            const cantidad = parseInt(tarjeta.querySelector(".cantidad-valor").value);
             totalAcumulado += precio * cantidad;
         }
     });
@@ -851,7 +881,7 @@ if (btnComprar) {
                 const idCarrito = tarjeta.getAttribute("data-id-carrito"); // Se extrae el ID del atributo
                 const nombre = tarjeta.querySelector(".card__nombre").textContent;
                 const precio = parseFloat(checkbox.getAttribute("data-precio"));
-                const cantidad = parseInt(tarjeta.querySelector(".cantidad-valor").textContent);
+                const cantidad = parseInt(tarjeta.querySelector(".cantidad-valor").value);
 
                 productosAComprar.push({
                     idProducto: id,
@@ -884,7 +914,7 @@ function actualizarResumenCarrito() {
     document.querySelectorAll(".producto__card").forEach(tarjeta => {
         const checkbox = tarjeta.querySelector(".chk-comprar");
         if (checkbox && checkbox.checked) {
-            const cantidad = parseInt(tarjeta.querySelector(".cantidad-valor")?.textContent || "0");
+            const cantidad = parseInt(tarjeta.querySelector(".cantidad-valor")?.value || "0");
             const precio   = parseFloat(checkbox.getAttribute("data-precio") || "0");
             totalSeleccionados += 1;
             totalAcumulado     += precio * cantidad;
