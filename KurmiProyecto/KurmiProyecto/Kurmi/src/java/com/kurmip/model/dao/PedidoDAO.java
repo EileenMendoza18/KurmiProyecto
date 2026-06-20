@@ -607,9 +607,11 @@ public class PedidoDAO {
     public List<Map<String, Object>> obtenerPedidosEntregadosAgrupados(int idUsuario) {
 
         // Se consultan todos los pedidos entregados del cliente ordenados de más reciente a más antiguo.
-        // Se excluyen los pedidos cuyo carrito y fecha ya tienen algún sub-pedido en estado 9 (Devolución)
-        // o 10 (Devolución Solicitada), porque el lote completo debe migrar fuera de la pestaña Entregado
-        // en cuanto cualquier parte de él inicia o completa el proceso de devolución.
+        // Se filtra por sub-pedido (Estado_Pedido = 8) y no por el carrito completo: si un mismo carrito
+        // tiene varios proveedores y solo alguno de ellos entra en devolución (estado 9 o 10), los demás
+        // proveedores que siguen entregados deben seguir apareciendo aquí con sus propios productos.
+        // sqlProductos ya filtra por separado los productos de cada sub-pedido en estado 8, así que no
+        // hace falta (ni conviene) excluir el grupo completo cuando solo una parte está en devolución.
         String sqlPedidos =
             "SELECT p.ID_Pedido, p.ID_Carrito, p.Fecha_Pedido, p.Total_Pago, " +
             "p.Nombre_Receptor, p.Direccion_Envio, p.Telefono_Envio, " +
@@ -618,22 +620,23 @@ public class PedidoDAO {
             "LEFT JOIN Pago_Pedido pp ON pp.ID_Pedido = p.ID_Pedido " +
             "LEFT JOIN Metodo_Pago mp ON mp.ID_Metodo = pp.ID_Metodo " +
             "WHERE p.ID_Cliente = ? AND p.Estado_Pedido = 8 " +
-            "AND NOT EXISTS ( " +
-            "    SELECT 1 FROM Pedidos_Cliente p2 " +
-            "    WHERE p2.ID_Carrito = p.ID_Carrito " +
-            "      AND p2.Fecha_Pedido = p.Fecha_Pedido " +
-            "      AND p2.Estado_Pedido IN (9, 10) " +
-            ") " +
             "ORDER BY p.Fecha_Pedido DESC, p.ID_Carrito";
 
-        // Se traen todos los productos de un carrito vendidos en una fecha concreta,
-        // sin filtrar por proveedor para incluir los de todos los sub-pedidos a la vez.
+        // Se traen solo los productos de los proveedores cuyo sub-pedido tiene estado 8
+        // (Entregado) en este lote. Usando RelaProductoVendedor y Pedido_Proveedor_Estado
+        // se excluyen los productos de sub-pedidos cancelados (estado 11) o en cualquier
+        // otro estado distinto a 8 que compartan el mismo carrito y fecha.
         String sqlProductos =
-            "SELECT pr.ID_Producto, pr.Nombre_Producto, pr.Imagen_Producto, " +
+            "SELECT DISTINCT pr.ID_Producto, pr.Nombre_Producto, pr.Imagen_Producto, " +
             "cd.Cantidad_producto, cd.Precio_Unitario_Momento, cd.SubTotal " +
             "FROM Carrito_Detalle cd " +
             "JOIN Productos pr ON cd.ID_Producto = pr.ID_Producto " +
-            "WHERE cd.ID_Carrito = ? AND cd.Estado_Carrito IN (3, 6) AND cd.Fecha_Venta = ?";
+            "JOIN RelaProductoVendedor rpv ON rpv.ID_Productos = cd.ID_Producto " +
+            "JOIN Pedido_Proveedor_Estado ppe ON ppe.ID_Proveedor = rpv.ID_Usuario " +
+            "JOIN Pedidos_Cliente pc ON pc.ID_Pedido = ppe.ID_Pedido " +
+            "WHERE cd.ID_Carrito = ? AND cd.Estado_Carrito IN (3, 6) AND cd.Fecha_Venta = ? " +
+            "AND pc.ID_Carrito = cd.ID_Carrito AND pc.Fecha_Pedido = cd.Fecha_Venta " +
+            "AND pc.Estado_Pedido = 8";
 
         // La clave de agrupación es "idCarrito_yyyy-MM-dd":
         // el mismo carrito puede reutilizarse en compras distintas (recompras),
@@ -1442,9 +1445,12 @@ public class PedidoDAO {
 
         // Se inicializa vacía la condición SQL adicional; se rellenará según el filtro recibido.
         String condicion = "";
-        // Se excluyen cancelados(3), entregados(8), devueltos(9) y con cancelación solicitada(11)
-        // porque "activos" debe mostrar solo pedidos que aún están en curso normal.
-        if (filtroEstado == 0)      condicion = "AND p.Estado_Pedido NOT IN (3, 8, 9, 11)";
+        // Se excluyen cancelados(3), entregados(8), devueltos(9), con devolución solicitada(10)
+        // y con cancelación solicitada(11) porque "activos" debe mostrar solo pedidos que aún
+        // están en curso normal. El estado 10 se excluye porque una devolución solicitada no es
+        // un nuevo pedido en proceso: el pedido ya fue entregado y solo debe reaparecer aquí si
+        // el admin rechaza la devolución (lo que lo regresa al estado 8).
+        if (filtroEstado == 0)      condicion = "AND p.Estado_Pedido NOT IN (3, 8, 9, 10, 11)";
         // Se filtra exclusivamente por el estado 8 (Entregado) cuando el admin pide ver el histórico de entregas.
         else if (filtroEstado == 8) condicion = "AND p.Estado_Pedido = 8";
         // Se filtra exclusivamente por el estado 3 (Cancelado) cuando el admin pide ver las cancelaciones.
@@ -1765,6 +1771,7 @@ public class PedidoDAO {
             case 7  -> "Transportando";
             case 8  -> "Entregado";
             case 9  -> "Devolución";
+            case 10 -> "Devolución Solicitada";
             case 11 -> "Cancelación Solicitada";
             // Se retorna "Desconocido" como valor centinela para estados no mapeados en el sistema.
             default -> "Desconocido";

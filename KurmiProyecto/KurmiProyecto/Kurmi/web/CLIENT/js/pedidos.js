@@ -159,7 +159,7 @@ function crearTarjetaPedido(pedido, filtroActivo) {
     card.appendChild(img);
     card.appendChild(info);
 
-    // Botón cancelar — SOLO en Pendiente (1)
+    // Botón cancelar — solo en Pendiente (1)
     if (filtroActivo === '1' && pedido.estadoPedido === 1) {
         const btnCancelar = document.createElement('button');
         btnCancelar.className = 'btn__pedido-cancelar';
@@ -347,7 +347,7 @@ async function confirmarCancelacion(idPedido) {
     btnConf.addEventListener('click', async () => {
         const motivo = textarea.value.trim();
         if (!motivo) {
-            errorEl.textContent = '⚠ Por favor escribe el motivo antes de continuar.';
+            errorEl.textContent = 'Por favor escribe el motivo antes de continuar.';
             errorEl.classList.remove('hidden');
             return;
         }
@@ -562,7 +562,7 @@ let plantillaTarjetaDevolucion = null;
 
 async function crearTarjetaDevolucion(dev) {
     const cfgEstado = {
-        'Pendiente': { bg: '#e67e22', color: '#fff', icon: '⏳' },
+        'Pendiente': { bg: '#e67e22', color: '#fff', icon: '...' },
         'Aprobada':  { bg: '#2ecc71', color: '#fff', icon: ':)' },
         'Rechazada': { bg: '#e74c3c', color: '#fff', icon: ':(' }
     };
