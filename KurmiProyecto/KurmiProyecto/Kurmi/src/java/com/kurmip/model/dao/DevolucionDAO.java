@@ -346,6 +346,10 @@ public class DevolucionDAO {
                           "FROM Carrito_Detalle " +
                           "WHERE ID_Carrito = ? AND Estado_Carrito = 3";
 
+        // SQL 5: Se marca el pago del pedido como cancelado (Estado_Pago = 3) cuando la devolución
+        // es aprobada, reflejando que el dinero del pedido ya no debe contarse como cobrado.
+        String sqlPago = "UPDATE Pago_Pedido SET Estado_Pago = 3 WHERE ID_Pedido = ?";
+
         try {
             // Se solicita conexión y se abre la transacción para garantizar atomicidad de todas las operaciones.
             con = cn.getConexion();
@@ -425,6 +429,16 @@ public class DevolucionDAO {
                             }
                         }
                     }
+                }
+            }
+
+            // --- PASO 5: CANCELAR EL PAGO DEL PEDIDO (SOLO SI SE APROBÓ) ---
+            // Si la devolución fue aprobada, el pago original ya no representa dinero
+            // efectivamente cobrado, así que se marca como cancelado en Pago_Pedido.
+            if ("Aprobada".equals(nuevoEstado)) {
+                try (PreparedStatement psPago = con.prepareStatement(sqlPago)) {
+                    psPago.setInt(1, idPedido);
+                    psPago.executeUpdate();
                 }
             }
 

@@ -628,7 +628,7 @@ public class PedidoDAO {
         // otro estado distinto a 8 que compartan el mismo carrito y fecha.
         String sqlProductos =
             "SELECT DISTINCT pr.ID_Producto, pr.Nombre_Producto, pr.Imagen_Producto, " +
-            "cd.Cantidad_producto, cd.Precio_Unitario_Momento, cd.SubTotal " +
+            "cd.Cantidad_producto, cd.Precio_Unitario_Momento, cd.SubTotal, pc.ID_Pedido AS ID_Pedido_Sub " +
             "FROM Carrito_Detalle cd " +
             "JOIN Productos pr ON cd.ID_Producto = pr.ID_Producto " +
             "JOIN RelaProductoVendedor rpv ON rpv.ID_Productos = cd.ID_Producto " +
@@ -696,10 +696,15 @@ public class PedidoDAO {
                     psProd.setInt(1, idCarrito);
                     psProd.setString(2, fechaRaw);
                     ResultSet rsProd = psProd.executeQuery();
+                    DevolucionDAO devolucionDAO = new DevolucionDAO();
                     while (rsProd.next()) {
                         int cantidad = rsProd.getInt("Cantidad_producto");
                         totalUnidades += cantidad;
                         String img = rsProd.getString("Imagen_Producto");
+                        // Se identifica el sub-pedido (proveedor) específico al que pertenece este
+                        // producto, para que el botón de devolución en el frontend apunte exactamente
+                        // a ese sub-pedido y no a uno arbitrario del grupo cuando hay varios proveedores.
+                        int idPedidoProducto = rsProd.getInt("ID_Pedido_Sub");
                         Map<String, Object> prod = new java.util.LinkedHashMap<>();
                         prod.put("idProducto",  rsProd.getInt("ID_Producto"));
                         prod.put("nombre",      rsProd.getString("Nombre_Producto"));
@@ -707,6 +712,8 @@ public class PedidoDAO {
                         prod.put("precio",      rsProd.getDouble("Precio_Unitario_Momento"));
                         prod.put("precioTotal", rsProd.getDouble("SubTotal"));
                         prod.put("imagen",      (img != null && !img.isBlank()) ? img : "inicioHelado.png");
+                        prod.put("idPedido",        idPedidoProducto);
+                        prod.put("tieneDevolucion", devolucionDAO.existeParaPedido(idPedidoProducto));
                         productos.add(prod);
                     }
                     rsProd.close(); psProd.close();
