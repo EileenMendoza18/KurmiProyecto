@@ -194,15 +194,12 @@ public class DevolucionDAO {
             "SELECT d.ID_Devolucion, d.ID_Pedido, d.Motivo, d.Imagen_Prueba, " +
             "       d.Estado, d.Motivo_Respuesta, d.Fecha_Solicitud, d.Fecha_Respuesta, " +
             "       p.Fecha_Pedido, " +
-            "       (SELECT SUM(p2.Total_Pago) " +
-            "        FROM Pedidos_Cliente p2 " +
-            "        WHERE p2.ID_Carrito = p.ID_Carrito " +
-            "          AND p2.Fecha_Pedido = p.Fecha_Pedido) AS Total_Pago, " +
+            "       p.Total_Pago, " +                          
             "       (SELECT pr.Imagen_Producto " +
             "        FROM Carrito_Detalle cd " +
             "        JOIN Productos pr ON cd.ID_Producto = pr.ID_Producto " +
             "        WHERE cd.ID_Carrito = p.ID_Carrito " +
-            "          AND cd.Estado_Carrito IN (3, 6) " +
+            "          AND cd.Estado_Carrito = 3 " +
             "          AND cd.Fecha_Venta = p.Fecha_Pedido " +
             "        ORDER BY cd.ID_DetalleCarrito ASC LIMIT 1) AS ImagenPrimera " +
             "FROM Solicitudes_Devolucion d " +
@@ -253,24 +250,21 @@ public class DevolucionDAO {
         // Se simplifica la subconsulta de imagen eliminando los JOINs de proveedor que eran innecesarios
         // y podian filtrar demasiado agresivamente en pedidos de un solo proveedor.
         StringBuilder sql = new StringBuilder(
-            "SELECT d.ID_Devolucion, d.ID_Pedido, d.Motivo, d.Imagen_Prueba, " +
-            "       d.Estado, d.Motivo_Respuesta, d.Fecha_Solicitud, d.Fecha_Respuesta, " +
-            "       p.Fecha_Pedido, " +
-            "       (SELECT SUM(p2.Total_Pago) " +
-            "        FROM Pedidos_Cliente p2 " +
-            "        WHERE p2.ID_Carrito = p.ID_Carrito " +
-            "          AND p2.Fecha_Pedido = p.Fecha_Pedido) AS Total_Pago, " +
-            "       CONCAT(u.Nombres, ' ', u.Apellidos) AS NombreCliente, " +
-            "       (SELECT pr.Imagen_Producto " +
-            "        FROM Carrito_Detalle cd " +
-            "        JOIN Productos pr ON cd.ID_Producto = pr.ID_Producto " +
-            "        WHERE cd.ID_Carrito = p.ID_Carrito " +
-            "          AND cd.Estado_Carrito IN (3, 6) " +
-            "          AND cd.Fecha_Venta = p.Fecha_Pedido " +
-            "        ORDER BY cd.ID_DetalleCarrito ASC LIMIT 1) AS ImagenPrimera " +
-            "FROM Solicitudes_Devolucion d " +
-            "JOIN Pedidos_Cliente p ON d.ID_Pedido = p.ID_Pedido " +
-            "JOIN Usuario u ON p.ID_Cliente = u.UsuarioID "
+                    "SELECT d.ID_Devolucion, d.ID_Pedido, d.Motivo, d.Imagen_Prueba, " +
+                    "       d.Estado, d.Motivo_Respuesta, d.Fecha_Solicitud, d.Fecha_Respuesta, " +
+                    "       p.Fecha_Pedido, " +
+                    "       p.Total_Pago, " + 
+                    "       CONCAT(u.Nombres, ' ', u.Apellidos) AS NombreCliente, " +
+                    "       (SELECT pr.Imagen_Producto " +
+                    "        FROM Carrito_Detalle cd " +
+                    "        JOIN Productos pr ON cd.ID_Producto = pr.ID_Producto " +
+                    "        WHERE cd.ID_Carrito = p.ID_Carrito " +
+                    "          AND cd.Estado_Carrito IN (3) " +
+                    "          AND cd.Fecha_Venta = p.Fecha_Pedido " +
+                    "        ORDER BY cd.ID_DetalleCarrito ASC LIMIT 1) AS ImagenPrimera " +
+                    "FROM Solicitudes_Devolucion d " +
+                    "JOIN Pedidos_Cliente p ON d.ID_Pedido = p.ID_Pedido " +
+                    "JOIN Usuario u ON p.ID_Cliente = u.UsuarioID "
         );
 
         // Se agrega la cláusula WHERE de forma condicional: solo si el admin seleccionó un filtro de estado.
@@ -345,6 +339,10 @@ public class DevolucionDAO {
         String sqlProds = "SELECT ID_Producto, Cantidad_Producto " +
                           "FROM Carrito_Detalle " +
                           "WHERE ID_Carrito = ? AND Estado_Carrito = 3";
+
+        // SQL 5: Se marca el pago del pedido como cancelado (Estado_Pago = 3) cuando la devolución
+        // es aprobada, reflejando que el dinero del pedido ya no debe contarse como cobrado.
+        String sqlPago = "UPDATE Pago_Pedido SET Estado_Pago = 3 WHERE ID_Pedido = ?";
 
         try {
             // Se solicita conexión y se abre la transacción para garantizar atomicidad de todas las operaciones.
@@ -425,6 +423,16 @@ public class DevolucionDAO {
                             }
                         }
                     }
+                }
+            }
+
+            // --- PASO 5: CANCELAR EL PAGO DEL PEDIDO (SOLO SI SE APROBÓ) ---
+            // Si la devolución fue aprobada, el pago original ya no representa dinero
+            // efectivamente cobrado, así que se marca como cancelado en Pago_Pedido.
+            if ("Aprobada".equals(nuevoEstado)) {
+                try (PreparedStatement psPago = con.prepareStatement(sqlPago)) {
+                    psPago.setInt(1, idPedido);
+                    psPago.executeUpdate();
                 }
             }
 

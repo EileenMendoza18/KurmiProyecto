@@ -1,29 +1,41 @@
 import { components } from '../../helpers/index.js';
 
 async function cargarModulos() {
+    // Paso 1: Carga los componentes visuales repetitivos de la página
     await Promise.all([
         components('header', '../../components/header.html'),
         components('footer', '../../components/footer.html')
     ]);
-
+    // Paso 2: Invoca al guardián de seguridad del Frontend
     const tieneSesion = await verificarSesion();
+    // Paso 3: ¡El freno de mano! Si verificarSesion devolvió 'false', detiene todo.
     if (!tieneSesion) return;
-
+    // Paso 4: Si todo está en orden, inicializa la página normalmente
     inicializarFiltros();
-    cargarPedidos('1'); // Inicia en Pendiente
+    cargarPedidos('1'); // Inicia cargando la pestaña de "Pendientes"
 }
 cargarModulos();
 
 // ── Verificar sesión ──────────────────────────────────────────────────────────
 async function verificarSesion() {
     try {
+        // 1. Toca la puerta del servidor en el PerfilServlet
         const res = await fetch('/KurmiProyect/PerfilServlet');
+        // 2. El AuthHelper de Java respondió con un 401 Unauthorized
         if (res.status === 401) { window.location.replace('/KurmiProyect/inicioSesion.html'); return false; }
+        if (res.status === 403) {
+            // Sí está logueado, pero es un intruso en este módulo
+            alert('No tienes permisos de Administrador/Proveedor para ver esta sección.');
+            return false;
+        }
+        // 3. Si no fue 401, significa que sí hay sesión. Extrae los datos del UsuarioDTO
         const usuario = await res.json();
+        // 4. Busca el elemento HTML y le pinta el nombre real del usuario logueado (ej: Eileen)
         const span = document.getElementById('nombreUsuario');
         if (span) span.textContent = usuario.nombres || '';
-        return true;
+        return true;// Le da luz verde a cargarModulos()
     } catch (e) {
+        // Si el servidor está caído o hay un error de red catastrófico, también lo bota al login
         window.location.replace('/KurmiProyect/inicioSesion.html');
         return false;
     }
@@ -70,7 +82,7 @@ async function cargarPedidos(estado) {
         if (res.status === 401) { window.location.replace('/KurmiProyect/inicioSesion.html'); return; }
 
         let pedidos = await res.json();
-        console.log('📦 Pedidos recibidos del servidor:', JSON.stringify(pedidos, null, 2));
+        console.log('Pedidos recibidos del servidor:', JSON.stringify(pedidos, null, 2));
         grid.innerHTML = '';
 
         // Filtrar por pestaña activa
@@ -171,8 +183,13 @@ function crearTarjetaPedido(pedido, filtroActivo) {
         card.appendChild(btnCancelar);
     }
 
-    // Botón devolver — SOLO en Entregado (8) y si no pasó más de 24 horas
-    if (filtroActivo === '8' && pedido.estadoPedido === 8) {
+    // Botón devolver — SOLO en Entregado (8) y si no pasó más de 24 horas.
+    // Se muestra aquí solo cuando el pedido tiene un único proveedor (un solo sub-pedido),
+    // porque en ese caso no hay ambigüedad sobre a cuál sub-pedido aplica la devolución.
+    // Cuando hay varios proveedores, el cliente abre el modal y usa el botón
+    // de devolución de cada producto individual (cada uno apunta a su propio sub-pedido).
+    const esUnSoloProveedor = !pedido.idsPedidos || pedido.idsPedidos.length <= 1;
+    if (filtroActivo === '8' && pedido.estadoPedido === 8 && esUnSoloProveedor) {
         // Se usa fechaPedidoCompleta (con hora exacta) para que el cálculo de 24 h sea preciso.
         // Usar solo la fecha recortada (yyyy-MM-dd) forzaría el inicio a medianoche
         // y haría expirar la ventana horas antes de lo que corresponde.
@@ -187,7 +204,6 @@ function crearTarjetaPedido(pedido, filtroActivo) {
             btnDevolver.textContent = 'Solicitar devolución';
             btnDevolver.addEventListener('click', e => {
                 e.stopPropagation();
-                // Se usa el primer ID de la lista cuando el pedido es un grupo de varios proveedores.
                 const idParaDevolucion = (pedido.idsPedidos && pedido.idsPedidos.length > 0)
                     ? pedido.idsPedidos[0]
                     : pedido.idPedido;
@@ -347,7 +363,7 @@ async function confirmarCancelacion(idPedido) {
     btnConf.addEventListener('click', async () => {
         const motivo = textarea.value.trim();
         if (!motivo) {
-            errorEl.textContent = 'Por favor escribe el motivo antes de continuar.';
+            errorEl.textContent = '⚠ Por favor escribe el motivo antes de continuar.';
             errorEl.classList.remove('hidden');
             return;
         }
@@ -497,6 +513,13 @@ async function enviarDevolucion(idPedido, overlay) {
         if (data.ok) {
             overlay.remove();
             mostrarToast('Solicitud de devolución enviada correctamente');
+            // Se cierra también el modal de detalle del pedido (si estaba abierto detrás del
+            // formulario de devolución), porque sigue mostrando los productos con los datos
+            // viejos (botón activo, sin tieneDevolucion). Forzar su cierre evita que el cliente
+            // vea el producto todavía "disponible para devolver" justo después de solicitarla;
+            // al volver a abrir el pedido, el modal se reconstruye con datos frescos del server.
+            const modalDetalle = document.getElementById('modalOverlay');
+            if (modalDetalle) modalDetalle.classList.add('hidden');
             // Recargar la pestaña de entregados para reflejar el cambio de estado
             cargarPedidos('8');
         } else {
@@ -537,7 +560,7 @@ async function cargarMisDevoluciones() {
 
     try {
         const res  = await fetch('/KurmiProyect/DevolucionServlet?accion=misDevoluciones');
-        if (res.status === 401) { window.location.replace('/KurmiProyect/inicioSesion.html'); return; }
+        if (res.status === 401|| res.status === 403) { window.location.replace('/KurmiProyect/inicioSesion.html'); return; }
         const data = await res.json();
 
         grid.innerHTML = '';
@@ -618,15 +641,26 @@ async function crearTarjetaDevolucion(dev) {
     // Bug fix 2: click abre el modal con los productos del pedido original
     card.addEventListener('click', async () => {
         try {
-            const res = await fetch('/KurmiProyect/PedidosServlet?estado=9');
+            // Mapeamos el nombre del estado al ID en la base de datos
+            let idEstadoNum = '9'; // Por defecto estado Devolucion
+            if (dev.estado === 'Devolucion Solicitada') {
+                idEstadoNum = '10'; // ID del script SQL para solicitada
+            }
+
+            // Enviamos el ID dinámico al Servlet
+            const res = await fetch(`/KurmiProyect/PedidosServlet?estado=${idEstadoNum}`);
             if (!res.ok) return;
+
             const pedidos = await res.json();
             const pedido  = pedidos.find(p => p.idPedido === dev.idPedido);
-            if (pedido) abrirModal(pedido, '9');
+
+            // Abrimos el modal pasándole el estado correcto
+            if (pedido) abrirModal(pedido, idEstadoNum);
         } catch (e) {
             console.error('Error al abrir detalle de devolución:', e);
         }
     });
+    
 
     return card;
 }
@@ -697,6 +731,28 @@ function abrirModal(pedido, filtroActivo) {
         info.appendChild(det);
         card.appendChild(img);
         card.appendChild(info);
+
+        // Botón de devolución por producto — solo en pedidos Entregados (8), dentro de las
+        // primeras 24 horas desde la compra, sobre el sub-pedido (proveedor) específico de
+        // ESTE producto, y solo si ese sub-pedido todavía no tiene una devolución en curso.
+        if (filtroActivo === '8' && prod.idPedido) {
+            const fechaRaw     = pedido.fechaPedidoCompleta || pedido.fechaPedido;
+            const fechaEntrega = new Date(fechaRaw.replace(' ', 'T'));
+            const ahora        = new Date();
+            const diffHoras    = (ahora - fechaEntrega) / (1000 * 60 * 60);
+
+            if (diffHoras <= 24 && !prod.tieneDevolucion) {
+                const btnDevolverProd = document.createElement('button');
+                btnDevolverProd.className = 'btn__pedido-devolver btn__modal-prod-devolver';
+                btnDevolverProd.textContent = 'Solicitar devolución';
+                btnDevolverProd.addEventListener('click', e => {
+                    e.stopPropagation();
+                    abrirFormDevolucion(prod.idPedido, pedido.fechaPedido);
+                });
+                info.appendChild(btnDevolverProd);
+            }
+        }
+
         productos.appendChild(card);
     });
 
