@@ -22,12 +22,7 @@ async function verificarSesion() {
         // 1. Toca la puerta del servidor en el PerfilServlet
         const res = await fetch('/KurmiProyect/PerfilServlet');
         // 2. El AuthHelper de Java respondió con un 401 Unauthorized
-        if (res.status === 401) { window.location.replace('/KurmiProyect/inicioSesion.html'); return false; }
-        if (res.status === 403) {
-            // Sí está logueado, pero es un intruso en este módulo
-            alert('No tienes permisos de Administrador/Proveedor para ver esta sección.');
-            return false;
-        }
+        if (res.status === 401 ||res.status === 403 ) { window.location.replace('/KurmiProyect/inicioSesion.html'); return false; }
         // 3. Si no fue 401, significa que sí hay sesión. Extrae los datos del UsuarioDTO
         const usuario = await res.json();
         // 4. Busca el elemento HTML y le pinta el nombre real del usuario logueado (ej: Eileen)
