@@ -8,19 +8,27 @@
  *   POST /CerrarSesionServlet                → cierre de sesión (reutilizado)
  */
 
+// Esta es la dirección base de nuestro servidor web para las llamadas a la base de datos
 const BASE_URL = '/KurmiProyect';
 
 // ── Helper: renderizar mensaje de estado (evita innerHTML con strings HTML) ──
+// Muestra un mensaje de aviso en un contenedor de la pantalla
 function _setMsg(container, className, text) {
+    // Crea una etiqueta de párrafo de texto en memoria
     const p = document.createElement('p');
+    // Le asigna el estilo de clase recibido (por ejemplo, para pintar el texto de rojo)
     p.className = className;
+    // Le mete el texto explicativo que verá el usuario
     p.textContent = text;
+    // Vacia el contenedor por completo eliminando cualquier contenido antiguo
     container.innerHTML = '';
+    // Inserta el nuevo párrafo con el mensaje dentro de la caja de la página
     container.appendChild(p);
 }
 
 
 // ── Caché de templates HTML ───────────────────────────────────────────────────
+// Caja en memoria para almacenar las plantillas visuales ya descargadas
 const _tplCache = {};
 
 /**
@@ -29,35 +37,53 @@ const _tplCache = {};
  * @param {string} selector - selector CSS del elemento raíz dentro del parcial
  */
 async function loadTemplate(path, selector) {
+    // Si la plantilla de la ruta dada no ha sido descargada anteriormente
     if (!_tplCache[path]) {
+        // Hacemos una petición fetch de red para descargar el archivo HTML
         const res  = await fetch(path);
+        // Convertimos la respuesta descargada en texto plano (código HTML)
         const html = await res.text();
 
         // <template> nativo parsea cualquier contenido (tr, td, div...)
         // sin descartarlos, a diferencia de DOMParser con 'text/html'.
+        // Creamos una plantilla HTML nativa invisible en la memoria
         const tpl = document.createElement('template');
+        // Le inyectamos el HTML de texto para que el navegador lo parsee
         tpl.innerHTML = html;
+        // Guardamos el contenido parseado de la plantilla en nuestra caché local
         _tplCache[path] = tpl.content;
     }
 
+    // Buscamos el elemento visual solicitado mediante su selector CSS
     const el = _tplCache[path].querySelector(selector);
+    // Si el elemento no existe en la plantilla (error de nombre o etiqueta)
     if (!el) {
+        // Mostramos el mensaje de error en la consola de depuración del navegador
         console.error(`[loadTemplate] Selector "${selector}" no encontrado en "${path}"`);
+        // Devolvemos un elemento de respaldo vacío para evitar que la aplicación se caiga
         return document.createElement(selector.replace(/[^a-z]/gi, '') || 'div');
     }
+    // Devolvemos un duplicado exacto del elemento listo para llenarlo con datos reales
     return el.cloneNode(true);
 }
 
 // ── Carga un parcial HTML en el elemento con el id dado ──────────────────────
 async function loadSection(containerId, path) {
+    // Buscamos el contenedor en pantalla (si el ID es 'main', busca 'contenidoPrincipal')
     const el = document.getElementById(containerId === 'main' ? 'contenidoPrincipal' : containerId);
+    // Si no encontramos la caja contenedora, salimos
     if (!el) return;
     try {
+        // Descargamos el diseño HTML del archivo de la sección
         const res  = await fetch(path);
+        // Si hay error en la descarga, lanzamos una excepción
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        // Incrustamos el código HTML descargado en la caja de la página
         el.innerHTML = await res.text();
     } catch (e) {
+        // Mostramos el fallo en la consola
         console.error('loadSection error:', path, e);
+        // Creamos un párrafo para mostrar un mensaje visual de error en pantalla
         const _errEl1 = document.createElement('p'); _errEl1.className = 'error-txt'; _errEl1.textContent = 'No se pudo cargar la sección.'; el.innerHTML = ''; el.appendChild(_errEl1);
     }
 }
@@ -67,36 +93,55 @@ async function loadSection(containerId, path) {
  * A diferencia de loadSection, recibe el elemento directamente (no un ID).
  */
 async function loadSectionFromTemplate(el, path) {
+    // Si la caja no existe en pantalla, salimos
     if (!el) return;
     try {
+        // Descargamos el diseño HTML del parcial
         const res = await fetch(path);
+        // Si falla la descarga, lanzamos error
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        // Incrustamos el HTML descargado directamente en la caja
         el.innerHTML = await res.text();
     } catch (e) {
+        // Mostramos el error en la consola
         console.error('loadSectionFromTemplate error:', path, e);
+        // Creamos un aviso de error visual
         const _errEl2 = document.createElement('p'); _errEl2.className = 'error-txt'; _errEl2.textContent = 'No se pudo cargar.'; el.innerHTML = ''; el.appendChild(_errEl2);
     }
 }
 
+// Carpeta de imágenes en el servidor
 const BASE_IMG = `${BASE_URL}/RESOURCES/img/`;
+// Imagen de helado genérica por defecto
 const IMG_DEF  = `${BASE_URL}/RESOURCES/img/inicioHelado.png`;
 
+// Arreglo en memoria para guardar temporalmente todos los productos
 let todosLosProductos = [];
 
 // ── Arranque ──────────────────────────────────────────────────────────────────
+// Esperamos a que la página termine de cargar el HTML inicial antes de ejecutar el script
 document.addEventListener('DOMContentLoaded', () => {
+    // Descarga y muestra el nombre del administrador autenticado
     cargarNombreAdmin();
+    // Renderiza la pantalla visual de catálogo de productos
     renderSeccionProductos();
+    // Activa la escucha de clics en el menú lateral de navegación
     configurarNavegacion();
 });
 
 // ── Navegación lateral ────────────────────────────────────────────────────────
 function configurarNavegacion() {
+    // Buscamos todos los botones que pertenezcan al menú lateral (.nav__btn)
     document.querySelectorAll('.nav__btn').forEach(btn => {
+        // Escuchamos el clic en cada botón del menú lateral
         btn.addEventListener('click', () => {
+            // Desmarcamos visualmente todos los botones quitándoles la clase de activo
             document.querySelectorAll('.nav__btn').forEach(b => b.classList.remove('nav__btn--activo'));
+            // Marcamos visualmente el botón al que se le hizo clic
             btn.classList.add('nav__btn--activo');
+            // Leemos a qué sección apunta el botón presionado
             const seccion = btn.dataset.seccion;
+            // Cargamos la pantalla correspondiente según el botón presionado:
             if      (seccion === 'productos') renderSeccionProductos();
             else if (seccion === 'gestionCatSabor') renderSeccionGestionCatSabor();
             else if (seccion === 'clientes')  renderSeccionClientes();
@@ -111,12 +156,18 @@ function configurarNavegacion() {
     });
 }
 
+// Carga el nombre del Administrador desde la base de datos
 async function cargarNombreAdmin() {
     try {
+        // Pedimos los datos del perfil activo al servidor web
         const res  = await fetch(`${BASE_URL}/PerfilServlet`);
+        // Si hay error en la sesión, salimos
         if (!res.ok) return;
+        // Parseamos los datos a formato JSON legible
         const data = await res.json();
+        // Buscamos la etiqueta de nombre del admin en la barra superior
         const el   = document.getElementById('nombreAdmin');
+        // Escribimos el nombre si la etiqueta existe y el JSON trae datos correctos
         if (el && data.nombres) el.textContent = data.nombres;
     } catch (_) {}
 }
@@ -125,70 +176,97 @@ async function cargarNombreAdmin() {
 // SECCIÓN VER PRODUCTOS
 // ─────────────────────────────────────────────────────────────────────────────
 async function renderSeccionProductos() {
+    // Localizamos la zona de visualización principal en el HTML
     const main = document.getElementById('contenidoPrincipal');
+    // Descargamos e inyectamos el diseño HTML de catálogo de productos
     await loadSection('main', '../partials/seccion-productos.html');
 
+    // Escuchamos la escritura en el input de filtrado por nombre
     document.getElementById('filtroNombre').addEventListener('input',  aplicarFiltros);
+    // Escuchamos el cambio en la lista desplegable de filtrado por estado
     document.getElementById('filtroEstado').addEventListener('change', aplicarFiltros);
+    // Escuchamos el cambio en la lista desplegable de filtrado por proveedor
     document.getElementById('filtroProveedor').addEventListener('change', aplicarFiltros);
+    // Escuchamos el clic en el botón de limpiar filtros
     document.getElementById('btnLimpiarFiltros').addEventListener('click', limpiarFiltros);
+    // Escuchamos el clic en la X superior para cerrar la ventana modal de cambio de disponibilidad
     document.getElementById('cerrarModalEstado').addEventListener('click',  cerrarModalEstado);
+    // Escuchamos el clic en el botón Cancelar de la ventana modal de cambio de disponibilidad
     document.getElementById('cancelarModalEstado').addEventListener('click', cerrarModalEstado);
 
-    // Cargar stats y productos en paralelo
+    // Lanzamos de forma simultánea la carga de dinero de ventas y la lista de todos los productos
     Promise.all([cargarVentasTotales(), cargarTodosLosProductos()]);
 }
 
 // ── Ventas totales (VentasTotalesAdminServlet) ────────────────────────────────
 async function cargarVentasTotales() {
     try {
+        // Pedimos la información financiera agregada al servlet de administración
         const res  = await fetch(`${BASE_URL}/AdminServlet?accion=ventasTotales`);
+        // Si falla la petición de red, salimos
         if (!res.ok) return;
+        // Parseamos la respuesta a JSON
         const data = await res.json();
 
+        // Localizamos las etiquetas informativas de estadísticas en pantalla
         const elVentas    = document.getElementById('statTotalVentas');
         const elEntregados = document.getElementById('statEntregados');
         const elPedidos   = document.getElementById('statTotalPedidos');
         const elPedSub    = document.getElementById('statPedidosSub');
 
+        // Formateamos y pintamos los totales numéricos de forma elegante en pesos colombianos si las cajas existen
         if (elVentas)    elVentas.textContent     = `$${Number(data.totalVentas ?? 0).toLocaleString('es-CO', { minimumFractionDigits: 0 })}`;
         if (elEntregados) elEntregados.textContent = `${data.pedidosEntregados ?? 0} pedidos entregados`;
         if (elPedidos)   elPedidos.textContent     = data.totalPedidos ?? 0;
         if (elPedSub)    elPedSub.textContent      = `${data.pedidosPendientes ?? 0} pendientes`;
     } catch (e) {
+        // Registramos errores en consola
         console.error('Error cargando ventas:', e);
     }
 }
 
 // ── Todos los productos (ObtenerTodosProductosServlet) ────────────────────────
 async function cargarTodosLosProductos() {
+    // Buscamos el contenedor de la cuadrícula de productos en pantalla
     const contenedor = document.getElementById('listaProductos');
     try {
+        // Solicitamos los productos al servlet de catálogo
         const res = await fetch(`${BASE_URL}/ProductoServlet?accion=todos`);
+        // Leemos el tipo de contenido retornado
         const contentType = res.headers.get('content-type') || '';
 
+        // Si la respuesta no es de tipo JSON (el servidor cayó o devolvió página de error):
         if (!contentType.includes('application/json')) {
+            // Mostramos aviso de error en la pantalla y salimos
             _setMsg(contenedor, 'error-txt', `Error del servidor (${res.status}).`);
             return;
         }
 
+        // Convertimos la respuesta en lista de productos
         const data = await res.json();
 
+        // Si la respuesta trae un error explícito de base de datos
         if (data.error) {
+            // Mostramos el mensaje en pantalla
             _setMsg(contenedor, 'error-txt', data.error);
             return;
         }
 
+        // Conservamos los productos en la lista local para búsquedas locales
         todosLosProductos = data;
+        // Calculamos los contadores totales de productos activos y agotados
         actualizarStatsProductos(data);
+        // Pintamos el listado de tarjetas de producto
         await renderProductosAdmin(data);
 
-        // Poblar el select de proveedores con los únicos disponibles
+        // Llenamos el select de proveedores dinámicamente con los nombres únicos de la lista
         const selectProv = document.getElementById('filtroProveedor');
         if (selectProv) {
+            // Extraemos los nombres únicos de proveedores válidos y los ordenamos alfabéticamente
             const proveedoresUnicos = [...new Set(
                 data.map(p => p.proveedor).filter(p => p && p !== '--' && p !== '—')
             )].sort();
+            // Creamos una opción seleccionable para cada proveedor único obtenido
             proveedoresUnicos.forEach(nombre => {
                 const opt = document.createElement('option');
                 opt.value = nombre;
@@ -198,18 +276,24 @@ async function cargarTodosLosProductos() {
         }
 
     } catch (e) {
+        // En caso de caída de internet o red, notificamos
         _setMsg(contenedor, 'error-txt', `No se pudo conectar: ${e.message}`);
     }
 }
 
 // ── Stats de productos ────────────────────────────────────────────────────────
 function actualizarStatsProductos(productos) {
+    // Contamos cuántos productos de la lista tienen estado Disponible
     const disponibles    = productos.filter(p => p.estadoNombre === 'Disponible').length;
+    // Contamos cuántos tienen estado Agotado
     const agotados       = productos.filter(p => p.estadoNombre === 'Agotado').length;
+    // Contamos cuántos tienen estado Descontinuado
     const descontinuados = productos.filter(p => p.estadoNombre === 'Descontinuado').length;
 
+    // Buscamos las cajas de texto informativas en la parte superior
     const elTotalP = document.getElementById('statTotalProductos');
     const elDisp   = document.getElementById('statDisponibles');
+    // Escribimos los números calculados
     if (elTotalP) elTotalP.textContent = productos.length;
     if (elDisp)   elDisp.textContent   = `${disponibles} disp · ${agotados} agot · ${descontinuados} desc`;
 }
@@ -219,31 +303,42 @@ async function renderProductosAdmin(lista) {
     const contenedor = document.getElementById('listaProductos');
     const contador   = document.getElementById('contadorResultados');
 
+    // Si la lista de productos está vacía:
     if (!lista.length) {
         contador.textContent = '';
+        // Mostramos aviso visual de sin resultados en pantalla
         _setMsg(contenedor, 'vacio', 'No se encontraron productos con ese filtro.');
         return;
     }
 
+    // Mostramos cantidad de productos encontrados (ej: "12 productos encontrados")
     contador.textContent = `${lista.length} producto${lista.length !== 1 ? 's' : ''} encontrado${lista.length !== 1 ? 's' : ''}`;
+    // Limpiamos el contenedor
     contenedor.innerHTML = '';
+    // Cargamos la estructura visual de cada tarjeta de forma paralela
     const tarjetas = await Promise.all(lista.map(p => tarjetaProductoAdmin(p)));
+    // Insertamos todas las tarjetas en la cuadrícula de pantalla
     tarjetas.forEach(t => contenedor.appendChild(t));
 
+    // A cada botón de cambio de disponibilidad le configuramos la escucha de clic:
     contenedor.querySelectorAll('.btn-estado').forEach(btn => {
         btn.addEventListener('click', (e) => {
+            // Evitamos abrir la ventana detallada del producto al pinchar en el botón
             e.stopPropagation();
+            // Abrimos el modal para cambiar disponibilidad
             abrirModalEstado(Number(btn.dataset.id));
         });
     });
 
-    // Click en la tarjeta (fuera del botón) abre el modal de detalle
+    // A cada tarjeta le configuramos el clic en cualquier área para abrir la ventana de detalles
     contenedor.querySelectorAll('.tarjeta-prov').forEach(card => {
         card.style.cursor = 'pointer';
         card.addEventListener('click', (e) => {
             if (e.target.closest('.btn-estado')) return;
             const id = Number(card.dataset.id);
+            // Buscamos los datos completos del producto en la lista local en memoria
             const prod = todosLosProductos.find(p => p.idProducto === id);
+            // Si el producto existe, abrimos su modal detallado
             if (prod) abrirModalDetalleAdmin(prod);
         });
     });
@@ -251,33 +346,42 @@ async function renderProductosAdmin(lista) {
 
 // ── Tarjeta de producto ───────────────────────────────────────────────────────
 async function tarjetaProductoAdmin(p) {
+    // Si tiene imagen asignada cargamos RESOURCES, de lo contrario cargamos la por defecto
     const urlImg = (p.imagen && !['default.png', 'inicioHelado.png'].includes(p.imagen))
         ? BASE_IMG + p.imagen : IMG_DEF;
 
+    // Seleccionamos clase CSS de color según estado
     const badgeClass = {
         'Disponible':    'badge--verde',
         'Agotado':       'badge--rojo',
         'Descontinuado': 'badge--gris'
     }[p.estadoNombre] ?? 'badge--gris';
 
+    // Cargamos y clonamos la plantilla HTML de la tarjeta de producto
     const tpl = await loadTemplate('../partials/tarjeta-producto-admin.html', '.tarjeta-prov');
 
+    // Guardamos el ID del producto en el HTML de la tarjeta
     tpl.dataset.id = p.idProducto;
 
+    // Localizamos y asignamos la URL de imagen
     const img = tpl.querySelector('.tarjeta-prov__img');
     img.src   = urlImg;
     img.alt   = p.nombre ?? '';
+    // Si la imagen falla en descargar, cargamos la de helado por defecto para no romper el diseño
     img.onerror = function() { this.src = IMG_DEF; };
 
+    // Asignamos el estado con su estilo de color
     const badge = tpl.querySelector('.badge-estado');
     badge.textContent = p.estadoNombre ?? 'Sin estado';
     badge.classList.add(badgeClass);
 
+    // Escribimos los datos de nombre, categoría, precio y cantidad disponible en stock
     tpl.querySelector('.tarjeta-prov__nombre').textContent = p.nombre ?? '';
     tpl.querySelector('.tarjeta-prov__cat').textContent    = `${p.categoria ?? ''} · ${p.nombreSabor ?? ''}`;
     tpl.querySelector('.tarjeta-prov__precio').textContent = `$${Number(p.precio).toLocaleString('es-CO')}`;
     tpl.querySelector('.stock-valor').textContent          = p.stock;
 
+    // Si tiene descripción la mostramos, de lo contrario removemos ese párrafo del diseño
     const descEl = tpl.querySelector('.tarjeta-prov__desc');
     if (p.descripcion) {
         descEl.textContent = p.descripcion;
@@ -285,6 +389,7 @@ async function tarjetaProductoAdmin(p) {
         descEl.remove();
     }
 
+    // Vinculamos el ID del producto al botón
     const btn = tpl.querySelector('.btn-estado');
     btn.dataset.id = p.idProducto;
 
@@ -293,18 +398,24 @@ async function tarjetaProductoAdmin(p) {
 
 // ── Filtros ───────────────────────────────────────────────────────────────────
 async function aplicarFiltros() {
+    // Leemos el texto de búsqueda de nombre limpiándolo de espacios
     const termino    = document.getElementById('filtroNombre').value.trim().toLowerCase();
+    // Leemos la opción del filtro de estado
     const estado     = document.getElementById('filtroEstado').value;
+    // Leemos la opción del filtro de proveedor
     const proveedor  = document.getElementById('filtroProveedor').value;
+    // Filtramos localmente en memoria
     const filtrados = todosLosProductos.filter(p => {
         const coincideNombre    = !termino    || p.nombre.toLowerCase().includes(termino);
         const coincideEstado    = !estado     || (p.estadoNombre ?? '') === estado;
         const coincideProveedor = !proveedor  || (p.proveedor ?? '') === proveedor;
         return coincideNombre && coincideEstado && coincideProveedor;
     });
+    // Pintamos los resultados
     await renderProductosAdmin(filtrados);
 }
 
+// Limpia todas las cajas e inputs de filtrado y vuelve a mostrar todos los helados
 async function limpiarFiltros() {
     document.getElementById('filtroNombre').value    = '';
     document.getElementById('filtroEstado').value    = '';
@@ -313,26 +424,31 @@ async function limpiarFiltros() {
 }
 
 // ── Modal cambio de estado ────────────────────────────────────────────────────
+// Variable global para recordar el ID del producto seleccionado para modificar
 let productoSeleccionadoId = null;
 
+// Abre la ventana modal para cambiar el estado de disponibilidad del helado
 function abrirModalEstado(idProducto) {
     const producto = todosLosProductos.find(p => p.idProducto === idProducto);
     if (!producto) return;
     productoSeleccionadoId = idProducto;
 
+    // Escribimos nombre y estado actual en las etiquetas del modal
     document.getElementById('modalEstadoNombre').textContent = producto.nombre;
     document.getElementById('modalEstadoActual').textContent = producto.estadoNombre ?? 'Desconocido';
     document.getElementById('selectNuevoEstado').value       = producto.idEstado ?? '1';
     document.getElementById('feedbackEstado').innerHTML      = '';
+    // Hacemos visible el modal dándole estilo flex
     document.getElementById('modalEstado').style.display     = 'flex';
 
-    // Reemplazar botón para evitar listeners duplicados
+    // Reemplazar botón para evitar listeners duplicados al abrir y cerrar
     const btnConfirmar = document.getElementById('confirmarCambioEstado');
     const clon = btnConfirmar.cloneNode(true);
     btnConfirmar.parentNode.replaceChild(clon, btnConfirmar);
     clon.addEventListener('click', guardarCambioEstado);
 }
 
+// Cierra el modal de estado ocultándolo
 function cerrarModalEstado() {
     document.getElementById('modalEstado').style.display = 'none';
     productoSeleccionadoId = null;
@@ -340,10 +456,11 @@ function cerrarModalEstado() {
 
 // ── Modal de detalle de producto (vista similar al cliente + datos de admin) ──
 async function abrirModalDetalleAdmin(prod) {
+    // Si había un modal de detalles previo, lo eliminamos de la pantalla
     document.getElementById('mda-root')?.remove();
 
     const BASE_IMG_MODAL = '/KurmiProyect/RESOURCES/img/';
-    const imgSrc = (prod.imagen && !['default.png','inicioHelado.png'].includes(prod.imagen))
+    const imgSrc = (prod.imagen && !['default.png', 'inicioHelado.png'].includes(prod.imagen))
         ? BASE_IMG_MODAL + prod.imagen
         : BASE_IMG_MODAL + 'inicioHelado.png';
     const fechaFormateada = prod.fechaVencimiento
@@ -354,14 +471,17 @@ async function abrirModalDetalleAdmin(prod) {
         'Descontinuado': '#9ca3af'
     }[prod.estadoNombre] ?? '#9ca3af';
 
+    // Descargamos y clonamos plantilla de detalles
     const overlay = await loadTemplate('../partials/modal-detalle-producto.html', '.mda-overlay');
     overlay.id = 'mda-root';
 
     const img = overlay.querySelector('.mda-img');
     img.src = imgSrc;
     img.alt = prod.nombre;
+    // Si la imagen falla en descargar, cargamos la de helado genérica
     img.onerror = () => { img.src = BASE_IMG_MODAL + 'inicioHelado.png'; };
 
+    // Rellenamos las celdas de información del helado
     overlay.querySelector('.mda-nombre').textContent        = prod.nombre;
     overlay.querySelector('.mda-precio').textContent        = `$${Number(prod.precio).toLocaleString('es-CO')}`;
     overlay.querySelector('.mda-desc').textContent          = prod.descripcion || 'Sin descripción.';
@@ -372,23 +492,29 @@ async function abrirModalDetalleAdmin(prod) {
     overlay.querySelector('.mda-val-stock').textContent     = prod.stock ?? '—';
     overlay.querySelector('.mda-val-estado').textContent    = prod.estadoNombre ?? '—';
     overlay.querySelector('.mda-val-proveedor').textContent = prod.proveedor    || '—';
+    // Colocamos el color de fondo del circulito de estado
     overlay.querySelector('.mda-estado-dot').style.background = badgeColor;
 
+    // Insertamos el modal detallado en la página
     document.body.appendChild(overlay);
 
+    // Clic en la zona oscura exterior cierra el modal
     overlay.addEventListener('click', (e) => {
         if (e.target === overlay || e.target.id === 'mdaCerrar') overlay.remove();
     });
+    // Clic en el botón Cambiar estado del detalle
     document.getElementById('mdaBtnEstado').addEventListener('click', () => {
         overlay.remove();
         abrirModalEstado(prod.idProducto);
     });
+    // Escucha de teclado para cerrar al pulsar la tecla Escape
     const onKey = (e) => {
         if (e.key === 'Escape') { overlay.remove(); document.removeEventListener('keydown', onKey); }
     };
     document.addEventListener('keydown', onKey);
 }
 
+// Guarda la disponibilidad del helado en el servidor vía POST
 async function guardarCambioEstado() {
     if (!productoSeleccionadoId) return;
 
@@ -401,6 +527,7 @@ async function guardarCambioEstado() {
     btn.disabled = true;
 
     try {
+        // Enviamos la petición fetch POST al servlet de administración
         const res = await fetch(`${BASE_URL}/AdminServlet?accion=cambiarEstadoProducto`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -416,15 +543,17 @@ async function guardarCambioEstado() {
             feedback.className   = 'feedback feedback--ok';
             feedback.textContent = 'Estado actualizado correctamente.';
 
-            // Actualizar estado local
+            // Actualizamos la información del helado local en memoria
             const prod = todosLosProductos.find(p => p.idProducto === productoSeleccionadoId);
             if (prod) {
                 prod.idEstado     = Number(nuevoEstado);
                 prod.estadoNombre = { '1': 'Disponible', '2': 'Agotado', '3': 'Descontinuado' }[nuevoEstado] ?? prod.estadoNombre;
             }
 
+            // Recalculamos estadísticas superiores
             actualizarStatsProductos(todosLosProductos);
 
+            // Cerramos modal y filtramos tras 900 milisegundos
             setTimeout(() => {
                 cerrarModalEstado();
                 aplicarFiltros(); // Respeta los filtros activos en lugar de mostrar todos
@@ -442,14 +571,17 @@ async function guardarCambioEstado() {
     }
 }
 // ─────────────────────────────────────────────────────────────────────────────
-// SECCIÓN VER CLIENTES
+// SECCIÓN VER CLIENTES (Usuarios del sistema)
 // ─────────────────────────────────────────────────────────────────────────────
 let todosLosUsuarios = [];
 
+// Abre la sección visual de gestión de usuarios/clientes
 async function renderSeccionClientes() {
     const main = document.getElementById('contenidoPrincipal');
+    // Descargamos e inyectamos el HTML de usuarios
     await loadSection('main', '../partials/seccion-clientes.html');
 
+    // Vinculamos inputs y clics para filtrado e interacción en el modal de usuarios
     document.getElementById('filtroNombreUsuario').addEventListener('input',  aplicarFiltrosUsuarios);
     document.getElementById('filtroRolUsuario').addEventListener('change',    aplicarFiltrosUsuarios);
     document.getElementById('filtroEstadoUsuario').addEventListener('change', aplicarFiltrosUsuarios);
@@ -457,12 +589,15 @@ async function renderSeccionClientes() {
     document.getElementById('cerrarModalUsuario').addEventListener('click',   cerrarModalUsuario);
     document.getElementById('cancelarModalUsuario').addEventListener('click', cerrarModalUsuario);
 
+    // Mandamos a traer todos los usuarios
     cargarTodosLosUsuarios();
 }
 
+// Descarga los usuarios desde la base de datos
 async function cargarTodosLosUsuarios() {
     const contenedor = document.getElementById('listaUsuarios');
     try {
+        // Petición fetch GET al servlet solicitando la lista de usuarios
         const res = await fetch(`${BASE_URL}/AdminServlet?accion=clientes`);
         const contentType = res.headers.get('content-type') || '';
         if (!contentType.includes('application/json')) {
@@ -474,13 +609,16 @@ async function cargarTodosLosUsuarios() {
             _setMsg(contenedor, 'error-txt', data.error);
             return;
         }
+        // Guardamos en memoria local
         todosLosUsuarios = data;
+        // Pintamos los registros en la tabla
         await renderTablaUsuarios(data);
     } catch (e) {
         _setMsg(contenedor, 'error-txt', `No se pudo conectar: ${e.message}`);
     }
 }
 
+// Dibuja la tabla de usuarios en pantalla
 async function renderTablaUsuarios(lista) {
     const contenedor = document.getElementById('listaUsuarios');
     const contador   = document.getElementById('contadorUsuarios');
@@ -491,57 +629,70 @@ async function renderTablaUsuarios(lista) {
         return;
     }
 
+    // Colocamos contador de resultados
     contador.textContent = `${lista.length} usuario${lista.length !== 1 ? 's' : ''} encontrado${lista.length !== 1 ? 's' : ''}`;
 
+    // Creamos la tabla dinámicamente
     const tabla = document.createElement('table');
     tabla.className = 'tabla-usuarios';
+    // Descargamos encabezados de columna de la tabla
     const theadU = await loadTemplate('../partials/thead-usuarios.html', 'thead');
     const tbodyU = document.createElement('tbody');
     tabla.appendChild(theadU);
     tabla.appendChild(tbodyU);
+    // Creamos las filas de usuarios de forma paralela
     const filas = await Promise.all(lista.map(u => filaUsuario(u)));
     filas.forEach(f => tbodyU.appendChild(f));
 
+    // Insertamos la tabla en pantalla
     contenedor.innerHTML = '';
     contenedor.appendChild(tabla);
 
+    // Clic en el botón cambiar estado de cada fila de la tabla
     contenedor.querySelectorAll('.btn-estado-usuario').forEach(btn => {
         btn.addEventListener('click', () => abrirModalUsuario(Number(btn.dataset.id)));
     });
 }
 
+// Rellena la fila visual (tr) con los datos del usuario correspondiente
 async function filaUsuario(u) {
+    // Colores visuales de badge según estado de cuenta
     const badgeClass = {
         'Activo':    'badge--verde',
         'Inactivo':  'badge--rojo',
         'Pendiente': 'badge--amarillo'
     }[u.estadoNombre] ?? 'badge--gris';
 
+    // Color según rol (Proveedor o Cliente)
     const rolClass = u.rolNombre === 'Proveedor' ? 'badge--morado' : 'badge--azul';
 
+    // Descargamos y clonamos la plantilla
     const tpl = await loadTemplate('../partials/fila-usuario-admin.html', 'tr');
 
+    // Escribimos los datos del usuario en cada columna
     tpl.querySelector('.td-id-val').textContent  = u.id;
     tpl.querySelector('.td-nombre').textContent  = `${u.nombres ?? ''} ${u.apellidos ?? ''}`;
     tpl.querySelector('.td-correo').textContent  = u.correo ?? '—';
     tpl.querySelector('.td-telefono').textContent = u.telefono ?? '—';
 
+    // Pintamos rol
     const badgeRol = tpl.querySelector('.badge-rol');
     badgeRol.textContent = u.rolNombre ?? '—';
     badgeRol.classList.add(rolClass);
 
+    // Pintamos estado
     const badgeEst = tpl.querySelector('.badge-estado');
     badgeEst.textContent = u.estadoNombre ?? '—';
     badgeEst.classList.add(badgeClass);
 
+    // Vinculamos ID
     const btn = tpl.querySelector('.btn-estado-usuario');
     btn.dataset.id = u.id;
 
     return tpl;
-
 }
 
-// ── Filtros usuarios ──────────────────────────────────────────────────────────
+// Filtra la tabla de usuarios en pantalla al escribir en los buscadores superiores
 async function aplicarFiltrosUsuarios() {
     const termino = document.getElementById('filtroNombreUsuario').value.trim().toLowerCase();
     const rol     = document.getElementById('filtroRolUsuario').value;
@@ -556,6 +707,7 @@ async function aplicarFiltrosUsuarios() {
     await renderTablaUsuarios(filtrados);
 }
 
+// Limpia los inputs de filtrado y vuelve a mostrar todos los usuarios en la tabla
 async function limpiarFiltrosUsuarios() {
     document.getElementById('filtroNombreUsuario').value = '';
     document.getElementById('filtroRolUsuario').value    = '';
@@ -564,35 +716,42 @@ async function limpiarFiltrosUsuarios() {
 }
 
 // ── Modal estado usuario ──────────────────────────────────────────────────────
+// Variable temporal para recordar el ID del usuario editado en el modal
 let usuarioSeleccionadoId = null;
 
+// Abre el modal para cambiar el estado de cuenta (Activo/Inactivo) de un usuario
 function abrirModalUsuario(idUsuario) {
     const usuario = todosLosUsuarios.find(u => u.id === idUsuario);
     if (!usuario) return;
     usuarioSeleccionadoId = idUsuario;
 
+    // Ponemos nombre y rol del usuario en la cabecera del modal
     document.getElementById('modalUsuarioNombre').textContent      = `${usuario.nombres} ${usuario.apellidos}`;
     document.getElementById('modalUsuarioRol').textContent         = usuario.rolNombre ?? '—';
     document.getElementById('modalUsuarioEstadoActual').textContent = usuario.estadoNombre ?? '—';
     document.getElementById('feedbackEstadoUsuario').innerHTML      = '';
 
-    // Preseleccionar el estado actual
+    // Seteamos la lista desplegable en su valor actual
     const estadoMap = { 'Activo': '1', 'Inactivo': '2', 'Pendiente': '3' };
     document.getElementById('selectNuevoEstadoUsuario').value = estadoMap[usuario.estadoNombre] ?? '1';
 
+    // Hacemos visible el modal removiendo la clase hidden
     document.getElementById('modalEstadoUsuario').classList.remove('hidden');
 
+    // Clonamos para limpiar escuchadores viejos
     const btnConfirmar = document.getElementById('confirmarCambioEstadoUsuario');
     const clon = btnConfirmar.cloneNode(true);
     btnConfirmar.parentNode.replaceChild(clon, btnConfirmar);
     clon.addEventListener('click', guardarCambioEstadoUsuario);
 }
 
+// Cierra el modal de usuario volviendo a poner la clase hidden
 function cerrarModalUsuario() {
     document.getElementById('modalEstadoUsuario').classList.add('hidden');
     usuarioSeleccionadoId = null;
 }
 
+// Envía al servidor la orden para cambiar el estado del usuario vía POST
 async function guardarCambioEstadoUsuario() {
     if (!usuarioSeleccionadoId) return;
 
@@ -605,6 +764,7 @@ async function guardarCambioEstadoUsuario() {
     btn.disabled = true;
 
     try {
+        // Petición fetch POST al Servlet de administración con la acción cambiarEstadoUsuario
         const res = await fetch(`${BASE_URL}/AdminServlet?accion=cambiarEstadoUsuario`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -620,12 +780,13 @@ async function guardarCambioEstadoUsuario() {
             feedback.className   = 'feedback feedback--ok';
             feedback.textContent = 'Estado actualizado correctamente.';
 
-            // Actualizar estado local sin recargar
+            // Modificamos el estado localmente para reflejar el cambio sin consultar la base de datos de nuevo
             const u = todosLosUsuarios.find(u => u.id === usuarioSeleccionadoId);
             if (u) {
                 u.estadoNombre = { '1': 'Activo', '2': 'Inactivo', '3': 'Pendiente' }[nuevoEstado] ?? u.estadoNombre;
             }
 
+            // Ocultamos el modal tras un breve retardo y actualizamos la tabla
             setTimeout(async () => {
                 cerrarModalUsuario();
                 await renderTablaUsuarios(todosLosUsuarios);
@@ -645,20 +806,21 @@ async function guardarCambioEstadoUsuario() {
 // ─────────────────────────────────────────────────────────────────────────────
 // SECCIÓN MI PERFIL
 // ─────────────────────────────────────────────────────────────────────────────
-// ─────────────────────────────────────────────────────────────────────────────
-// SECCIÓN MI PERFIL
-// ─────────────────────────────────────────────────────────────────────────────
 async function renderSeccionPerfil() {
     const main = document.getElementById('contenidoPrincipal');
     _setMsg(main, 'cargando', 'Cargando perfil…');
 
     try {
+        // Pedimos los datos del perfil actual logueado
         const res = await fetch(`${BASE_URL}/PerfilServlet`);
+        // Si el estado es 401 Unauthorized, redirigimos a la pantalla de Login
         if (res.status === 401) { window.location.replace(`${BASE_URL}/inicioSesion.html`); return; }
         const u = await res.json();
 
+        // Cargamos la sección visual de perfil
         await loadSection('main', '../partials/seccion-perfil.html');
 
+        // Poblamos los campos de texto con los valores del administrador
         document.getElementById('adm-nombres').value   = u.nombres         || '';
         document.getElementById('adm-apellidos').value = u.apellidos        || '';
         document.getElementById('adm-telefono').value  = u.telefono         || '';
@@ -666,6 +828,7 @@ async function renderSeccionPerfil() {
         document.getElementById('adm-fecha').value     = u.fechaNacimiento  || '';
         document.getElementById('adm-direccion').value = u.direccion        || '';
 
+        // Configuramos validaciones de perfil
         configurarPerfilAdmin();
 
     } catch (e) {
@@ -673,6 +836,7 @@ async function renderSeccionPerfil() {
     }
 }
 
+// Reglas de validaciones para modificar la información del perfil del administrador
 const REGLAS_PERFIL_ADMIN = {
     'adm-nombres': {
         required: true, requiredMessage: 'El nombre es obligatorio',
@@ -712,8 +876,6 @@ const REGLAS_PERFIL_ADMIN = {
             if (ingresada < minima)   return 'mayor90';
             return true;
         },
-
-
         message: (resultado) => resultado === 'menor18'
             ? 'Debes ser mayor de 18 años'
             : 'La fecha no puede ser mayor a 90 años atrás',
@@ -727,12 +889,13 @@ const REGLAS_PERFIL_ADMIN = {
     }
 };
 
+// Vincula las reglas de validación en tiempo real y la llamada al servidor de perfil
 function configurarPerfilAdmin() {
     const IDS = Object.keys(REGLAS_PERFIL_ADMIN);
     let modoEdicion = false;
     const btn = document.getElementById('btnActualizarPerfilAdmin');
 
-    // Agregar spans de error bajo cada input
+    // Inyectamos spans de error debajo de cada entrada del formulario
     IDS.forEach(id => {
         const el = document.getElementById(id);
         if (!el) return;
@@ -742,6 +905,7 @@ function configurarPerfilAdmin() {
         el.parentNode.appendChild(span);
     });
 
+    // Remueve las marcas de error de la pantalla a medida que el usuario escribe para corregir
     function limpiarErrorEnVivo() {
         IDS.forEach(id => {
             const el = document.getElementById(id);
@@ -759,16 +923,20 @@ function configurarPerfilAdmin() {
         });
     }
 
+    // Configura el clic en el botón de actualización de datos
     btn.addEventListener('click', async () => {
         if (!modoEdicion) {
+            // Removemos el atributo readonly de todos los inputs para permitir la escritura
             IDS.forEach(id => document.getElementById(id)?.removeAttribute('readonly'));
+            // Inicializamos la limpieza de errores en vivo
             limpiarErrorEnVivo();
+            // Cambiamos el texto del botón a Guardar
             btn.textContent = 'Guardar cambios';
+            // Activamos la bandera de modo edición
             modoEdicion = true;
             return;
         }
 
-        // Validar
         // Validar
         let valido = true;
         IDS.forEach(id => {
@@ -798,8 +966,11 @@ function configurarPerfilAdmin() {
                 el.classList.remove('input-error');
             }
         });
+
+        // Si algún campo no cumple con las reglas, detenemos el flujo
         if (!valido) return;
 
+        // Estructuramos los datos para enviarlos por red
         const datos = {
             nombres:         document.getElementById('adm-nombres').value.trim(),
             apellidos:       document.getElementById('adm-apellidos').value.trim(),
@@ -810,6 +981,7 @@ function configurarPerfilAdmin() {
         };
 
         try {
+            // Mandamos los datos al PerfilServlet vía POST
             const res = await fetch(`${BASE_URL}/PerfilServlet`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -818,6 +990,7 @@ function configurarPerfilAdmin() {
             const msg = await res.text();
 
             if (msg === 'OK') {
+                // Volvemos a colocar todos los campos en modo de solo lectura (readonly)
                 IDS.forEach(id => {
                     document.getElementById(id)?.setAttribute('readonly', true);
                     document.getElementById(REGLAS_PERFIL_ADMIN[id].errorId).textContent = '';
@@ -825,6 +998,7 @@ function configurarPerfilAdmin() {
                 });
                 btn.textContent = 'Actualizar datos';
                 modoEdicion = false;
+                // Seteamos el nombre modificado en la cabecera visual del panel
                 const elNombre = document.getElementById('nombreAdmin');
                 if (elNombre) elNombre.textContent = datos.nombres;
                 alert('Datos actualizados correctamente.');
@@ -836,45 +1010,58 @@ function configurarPerfilAdmin() {
         }
     });
 
+    // Configura el clic en el botón de cerrar sesión
     document.getElementById('btnCerrarSesionAdmin')?.addEventListener('click', async () => {
         try { await fetch(`${BASE_URL}/CerrarSesionServlet`, { method: 'POST' }); } catch (_) {}
         window.location.replace(`${BASE_URL}/inicioSesion.html`);
     });
 }
-    // ─────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
 // SECCIÓN GESTIÓN DE PEDIDOS (Admin)
 // ─────────────────────────────────────────────────────────────────────────────
+// Variable global para filtrar los pedidos mostrados (activos por defecto)
 let pedidosFiltro = 'activos';
 
+// Carga la sección de gestión de pedidos en pantalla
 async function renderSeccionPedidos() {
     const main = document.getElementById('contenidoPrincipal');
+    // Descargamos e incrustamos el HTML de pedidos
     await loadSection('main', '../partials/seccion-pedidos.html');
 
+    // Escuchamos clics en las pestañas superiores de filtrado de pedidos
     document.querySelectorAll('.ventas-tab').forEach(tab => {
         tab.addEventListener('click', () => {
+            // Desmarcamos todas las pestañas de la vista
             document.querySelectorAll('.ventas-tab').forEach(t => t.classList.remove('ventas-tab--activo'));
+            // Marcamos de color la pestaña presionada
             tab.classList.add('ventas-tab--activo');
             pedidosFiltro = tab.dataset.filtro;
+            // Descargamos los pedidos correspondientes
             cargarPedidosAdmin(pedidosFiltro);
         });
     });
 
+    // Carga inicial de pedidos activos
     cargarPedidosAdmin('activos');
 }
 
+// Trae los pedidos del servidor web de acuerdo al filtro indicado
 async function cargarPedidosAdmin(filtro) {
     const contenedor = document.getElementById('listaPedidosAdmin');
     _setMsg(contenedor, 'cargando', 'Cargando…');
     try {
+        // Hacemos fetch al servlet de pedidos del admin enviando el filtro
         const res = await fetch(`${BASE_URL}/PedidosAdminServlet?filtro=${filtro}`);
         if (!res.ok) throw new Error(`Error ${res.status}`);
         const pedidos = await res.json();
+        // Dibujamos las tarjetas de pedidos
         await renderPedidosAdmin(pedidos);
     } catch (e) {
         _setMsg(contenedor, 'error-txt', `No se pudo cargar: ${e.message}`);
     }
 }
 
+// Genera y pinta en pantalla las tarjetas visuales de pedidos
 async function renderPedidosAdmin(pedidos) {
     const contenedor = document.getElementById('listaPedidosAdmin');
 
@@ -883,10 +1070,12 @@ async function renderPedidosAdmin(pedidos) {
         return;
     }
 
+    // Mapa de colores hexadecimales para cada estado del pedido
     const coloresEstado = {
         1: '#e67e22', 4: '#e67e22', 5: '#3498db',
         6: '#9b59b6', 7: '#1abc9c', 8: '#2ecc71', 9: '#e74c3c', 11: '#f39c12'
     };
+    // Lista a qué estado puede avanzar el pedido según su estado actual
     const estadosSiguientes = {
         1: [{ v: 4, l: 'Pasar a Preparando' }],
         4: [{ v: 5, l: 'Pasar a En bodega' }],
@@ -901,15 +1090,18 @@ async function renderPedidosAdmin(pedidos) {
 
     contenedor.innerHTML = '';
 
+    // Iteramos por cada pedido
     for (const p of pedidos) {
         const colorEstado  = coloresEstado[p.estadoPedido] ?? '#aaa';
         const esCancelado  = p.estadoPedido === 3 || p.estadoPedido === 11;
         const puedeAvanzar = p.estadoPedido < 8 && p.estadoPedido !== 3 && p.estadoPedido !== 11;
 
+        // Clonamos la plantilla del pedido
         const card = await loadTemplate(tplPath, '.pedido-card');
         card.id = `pedido-admin-${p.idPedido}`;
 
         // Header
+        // Rellenamos el número de pedido, fecha e indicador de estado de la cabecera de la tarjeta
         card.querySelector('.pedido-card__fecha').textContent   = `#${p.idPedido} · ${p.fechaPedido}`;
         const badgeEstado = card.querySelector('.pedido-estado-badge');
         badgeEstado.textContent       = p.nombreEstado;
@@ -917,6 +1109,7 @@ async function renderPedidosAdmin(pedidos) {
         card.querySelector('.pedido-card__metodo').textContent  = p.metodoPago;
 
         // Receptor
+        // Colocamos los datos informativos del cliente y del receptor del envío
         const receptor = card.querySelector('.pedido-card__receptor');
         const fCliente  = document.createElement('strong'); fCliente.textContent  = 'Cliente:';
         const fReceptor = document.createElement('strong'); fReceptor.textContent = 'Receptor:';
@@ -924,6 +1117,7 @@ async function renderPedidosAdmin(pedidos) {
                         fReceptor, ` ${p.receptor} — ${p.direccion} — ${p.telefono}`);
 
         // Bloque proveedores
+        // Rellenamos el listado de proveedores y sus respectivos estados dentro del pedido
         const provWrap = card.querySelector('.ped-proveedores-wrap');
         if (esCancelado) {
             provWrap.remove();
@@ -968,6 +1162,7 @@ async function renderPedidosAdmin(pedidos) {
                 listaProvEl.appendChild(vacio);
             }
 
+            // Mostramos los letreros de aviso según si todos los proveedores han llevado sus productos a bodega
             const avisoEspera = card.querySelector('.ped-aviso-espera');
             const avisoOk     = card.querySelector('.ped-aviso-ok');
             // Se muestra el aviso de espera mientras el minimo de proveedores no llegue a 5 (En bodega)
@@ -976,10 +1171,12 @@ async function renderPedidosAdmin(pedidos) {
         }
 
         // Total
+        // Mostramos el total de pago del pedido completo
         card.querySelector('.ped-total').textContent =
             `$${Number(p.totalPago).toLocaleString('es-CO')}`;
 
         // Botones avance
+        // Generamos e inyectamos los botones de avance de estado de pedido
         const btnsAvance = card.querySelector('.ped-btns-avance');
         if (puedeAvanzar && estadosSiguientes[p.estadoPedido]) {
             for (const e of estadosSiguientes[p.estadoPedido]) {
@@ -1002,6 +1199,7 @@ async function renderPedidosAdmin(pedidos) {
         }
 
         // Botón factura
+        // Botón para la generación de la factura digital
         const btnFactura = card.querySelector('.btn-factura-admin');
         btnFactura.dataset.id = p.idPedido;
         btnFactura.addEventListener('click', () => generarFacturaAdmin(p));
@@ -1013,23 +1211,29 @@ async function renderPedidosAdmin(pedidos) {
 
 
 // ── Factura admin ─────────────────────────────────────────────────────────────
+// Abre la pantalla de factura de pedido en una pestaña nueva del navegador
 function generarFacturaAdmin(p) {
+    // Guardamos la información del pedido de forma temporal en la sesión del navegador
     sessionStorage.setItem('kurmi_factura', JSON.stringify(p));
+    // Abrimos la página de factura en una ventana flotante de tamaño específico
     window.open('../html/factura-pedido.html', '_blank', 'width=800,height=700');
 }
 
-
+// Envía la orden al servidor para cambiar el estado del pedido completo
 async function cambiarEstadoPedidoAdmin(idPedido, nuevoEstado, btn) {
     const labels = {
         4: 'Preparando',5: 'En bodega', 6: 'Empacando', 7: 'Transportando', 8: 'Entregado', 9: 'Devolución'
     };
+    // Pedimos una confirmación al administrador antes de procesar
     if (!confirm(`¿Cambiar el pedido #${idPedido} a "${labels[nuevoEstado]}"?`)) return;
 
+    // Desactivamos el botón de avance
     btn.disabled = true;
     const textoOriginal = btn.textContent;
     btn.textContent = 'Guardando…';
 
     try {
+        // Petición POST al Servlet de pedidos de administración
         const res = await fetch(`${BASE_URL}/PedidosAdminServlet`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -1056,29 +1260,37 @@ async function cambiarEstadoPedidoAdmin(idPedido, nuevoEstado, btn) {
 let todasLasSolicitudes = [];
  
 // ─────────────────────────────────────────────────────────────────────────────
-// RENDER PRINCIPAL
+// RENDER PRINCIPAL (Solicitudes)
 // ─────────────────────────────────────────────────────────────────────────────
 async function renderSeccionSolicitudesAdmin() {
     const main = document.getElementById('contenidoPrincipal');
+    // Descargamos la vista de solicitudes de proveedores
     await loadSection('main', '../partials/seccion-solicitudes.html');
  
     // Tabs
+    // Configuramos clics en las pestañas del filtro de solicitudes (Aprobados, Pendientes, etc.)
     document.querySelectorAll('[data-estado]').forEach(tab => {
         tab.addEventListener('click', () => {
+            // Removemos estilo activo de todas las pestañas
             document.querySelectorAll('[data-estado]').forEach(t => t.classList.remove('ventas-tab--activo'));
+            // Marcamos de color la seleccionada
             tab.classList.add('ventas-tab--activo');
+            // Cargamos solicitudes con el filtro de estado correspondiente
             cargarSolicitudesAdmin(tab.dataset.estado);
         });
     });
  
     // Modal
+    // Configuramos el cierre del modal
     document.getElementById('cerrarModalResponder').addEventListener('click', cerrarModalResponder);
     document.getElementById('cancelarModalResponder').addEventListener('click', cerrarModalResponder);
  
+    // Carga inicial sin filtro de estado (mostrar todas)
     cargarSolicitudesAdmin('');
 }
  
 // ── Cargar todas las solicitudes ──────────────────────────────────────────────
+// Descarga la lista de solicitudes enviadas por proveedores desde la base de datos
 async function cargarSolicitudesAdmin(estadoFiltro) {
     const contenedor = document.getElementById('listaSolicitudesAdmin');
     _setMsg(contenedor, 'cargando', 'Cargando…');
@@ -1095,7 +1307,9 @@ async function cargarSolicitudesAdmin(estadoFiltro) {
             return;
         }
  
+        // Conservamos los datos en memoria
         todasLasSolicitudes = data.solicitudes ?? [];
+        // Pintamos el listado
         await renderListaSolicitudesAdmin(todasLasSolicitudes);
  
     } catch (e) {
@@ -1104,6 +1318,7 @@ async function cargarSolicitudesAdmin(estadoFiltro) {
 }
  
 // ── Renderizar lista ──────────────────────────────────────────────────────────
+// Pinta en la pantalla el listado de solicitudes
 async function renderListaSolicitudesAdmin(lista) {
     const contenedor = document.getElementById('listaSolicitudesAdmin');
     const contador   = document.getElementById('contadorSolicitudesAdmin');
@@ -1111,12 +1326,15 @@ async function renderListaSolicitudesAdmin(lista) {
     if (!lista.length) {
         contador.textContent = '';
         contenedor.innerHTML = '';
+        // Insertamos diseño de listado vacío
         contenedor.appendChild(await loadTemplate('../partials/sol-vacio.html', '.sol-vacio'));
         return;
     }
  
+    // Escribimos cantidad de solicitudes encontradas
     contador.textContent = `${lista.length} solicitud${lista.length !== 1 ? 'es' : ''}`;
     contenedor.innerHTML = '';
+    // Iteramos e insertamos la tarjeta visual de cada solicitud
     for (const s of lista) {
         contenedor.appendChild(await tarjetaSolicitudAdmin(s));
     }
@@ -1124,36 +1342,44 @@ async function renderListaSolicitudesAdmin(lista) {
 }
  
 // ── Tarjeta de solicitud (vista admin) ────────────────────────────────────────
+// Crea la tarjeta visual de una solicitud de proveedor rellenando la plantilla parcial
 async function tarjetaSolicitudAdmin(s) {
+    // Definimos estilo según el estado de la solicitud
     const badgeClass = {
         'Pendiente': 'badge--amarillo',
         'Aprobado':  'badge--verde',
         'Rechazado': 'badge--rojo'
     }[s.estado] ?? 'badge--gris';
  
+    // Definimos el ícono del badge
     const badgeIcon = {
         'Pendiente': '...',
         'Aprobado':  ':)',
         'Rechazado': ':('
     }[s.estado] ?? '';
-
+ 
+    // Cargamos y clonamos la plantilla
     const tpl = await loadTemplate('../partials/tarjeta-solicitud-admin.html', '.sol-card');
     tpl.classList.add(`sol-card--${s.estado.toLowerCase()}`);
-
+ 
     // Tipo + icono
+    // Colocamos el tipo de solicitud (Categoría o Sabor)
     const tipoTexto = tpl.querySelector('.sol-tipo-texto');
     tipoTexto.textContent = ` ${s.tipo}`;
     // el icono img ya está en el template
-
+ 
     // Badge estado
+    // Escribimos el estado con su color
     const badge = tpl.querySelector('.badge-estado');
     badge.textContent = `${badgeIcon} ${s.estado}`;
     badge.classList.add(badgeClass);
-
+ 
+    // Rellenamos el nombre del proveedor y la fecha de envío
     tpl.querySelector('.sol-card__proveedor').textContent = s.nombreProveedor ?? '—';
     tpl.querySelector('.sol-card__fecha').textContent     = `Enviada: ${s.fechaSolicitud ?? '—'}`;
-
+ 
     // Filas opcionales
+    // Mostramos los bloques de filas según la información que contenga la solicitud
     const mostrar = (selector, valor) => {
         const el = tpl.querySelector(selector);
         if (valor) { el.querySelector('[class*="sol-val"]').textContent = valor; el.hidden = false; }
@@ -1163,19 +1389,22 @@ async function tarjetaSolicitudAdmin(s) {
     mostrar('.sol-fila-relcat',   s.nombreCatExistente);
     mostrar('.sol-fila-relsabor', s.nombreSaborExistente);
     mostrar('.sol-fila-desc',     s.descripcion);
-
+ 
+    // Si fue rechazada, mostramos el motivo del rechazo en la tarjeta
     if (s.estado === 'Rechazado' && s.motivoRechazo) {
         const rechazoEl = tpl.querySelector('.sol-fila-rechazo');
         rechazoEl.querySelector('.sol-val-rechazo').textContent = s.motivoRechazo;
         rechazoEl.hidden = false;
     }
+    // Si fue respondida, colocamos la fecha de respuesta
     if (s.fechaRespuesta) {
         const respEl = tpl.querySelector('.sol-fila-respuesta');
         respEl.textContent = `Respondida: ${s.fechaRespuesta}`;
         respEl.hidden = false;
     }
-
+ 
     // Botón / ya respondida
+    // Si la solicitud está pendiente, mostramos el botón para responder. Si no, letrero de finalizada
     const btnR  = tpl.querySelector('.sol-btn-responder');
     const yaRes = tpl.querySelector('.sol-ya-respondida');
     if (s.estado === 'Pendiente') {
@@ -1185,14 +1414,16 @@ async function tarjetaSolicitudAdmin(s) {
     } else {
         yaRes.hidden = false;
     }
-
+ 
     return tpl;
 }
  
 // ── Modal responder ───────────────────────────────────────────────────────────
+// Variables de control de la solicitud a responder
 let solicitudSeleccionadaId = null;
 let decisionSeleccionada    = null; // 'Aprobado' | 'Rechazado'
  
+// Abre la ventana modal para aprobar/rechazar la solicitud del proveedor
 async function abrirModalResponder(idSolicitud) {
     const sol = todasLasSolicitudes.find(s => s.idSolicitud === idSolicitud);
     if (!sol) return;
@@ -1201,7 +1432,7 @@ async function abrirModalResponder(idSolicitud) {
     decisionSeleccionada    = null;
  
     // Actualizar título y detalle
-
+    // Escribimos la información de la solicitud en la tabla del modal
     const tipoIcono = { 'Categoria': '<img src="../../RESOURCES/img/postreAside.png" >', 'Sabor': '<img src="../../RESOURCES/img/postreAside.png" >', 'Ambos': '<img src="../../RESOURCES/img/postreAside.png" >' }[sol.tipo] ?? ':)';
     const detalleEl = await loadTemplate('../partials/modal-detalle-solicitud.html', '.sol-modal__fila--proveedor');
     const contenedorDetalle = detalleEl.parentElement || document.createDocumentFragment();
@@ -1210,7 +1441,7 @@ async function abrirModalResponder(idSolicitud) {
     // Usamos el parcial completo via loadSection en el contenedor
     const solDetalle = document.getElementById('solModalDetalle');
     await loadSectionFromTemplate(solDetalle, '../partials/modal-detalle-solicitud.html');
-
+ 
     solDetalle.querySelector('.sol-val-proveedor').textContent = sol.nombreProveedor ?? '—';
     solDetalle.querySelector('.sol-val-tipo').textContent      = sol.tipo;
     if (sol.nombreCat)            { solDetalle.querySelector('.sol-fila-cat').hidden           = false; solDetalle.querySelector('.sol-val-cat').textContent              = sol.nombreCat; }
@@ -1268,11 +1499,12 @@ async function abrirModalResponder(idSolicitud) {
     document.getElementById('modalResponderSolicitud').classList.remove('hidden');
 }
  
+// Oculta el modal de solicitudes
 function cerrarModalResponder() {
     document.getElementById('modalResponderSolicitud').classList.add('hidden');
     solicitudSeleccionadaId = null;
     decisionSeleccionada    = null;
-
+ 
     // Resetear el modal al estado inicial para que la próxima apertura esté limpia
     document.querySelector('.sol-decision-btns').style.display = '';
     document.querySelectorAll('.modal__body .sol-label').forEach(lbl => lbl.style.display = '');
@@ -1288,26 +1520,27 @@ function cerrarModalResponder() {
 }
  
 // ── Guardar respuesta ─────────────────────────────────────────────────────────
+// Guarda la respuesta del administrador sobre la solicitud (Aprobado/Rechazado)
 async function guardarRespuestaSolicitud() {
     if (!solicitudSeleccionadaId || !decisionSeleccionada) return;
-
+ 
     const motivoRechazo = document.getElementById('sol-motivoRechazo').value.trim();
     const feedback      = document.getElementById('feedbackResponder');
     const btn           = document.getElementById('confirmarResponder');
     const errorMotivo   = document.getElementById('error-sol-motivo');
-
+ 
     errorMotivo.textContent = '';
-
+ 
     if (decisionSeleccionada === 'Rechazado' && !motivoRechazo) {
         errorMotivo.textContent = 'Debes indicar el motivo del rechazo.';
         return;
     }
-
+ 
     btn.disabled = true;
     feedback.className   = 'feedback feedback--cargando';
     feedback.textContent = 'Guardando respuesta…';
     feedback.hidden      = false;
-
+ 
     try {
         const res = await fetch(`${BASE_URL}/SolicitudesServlet`, {
             method: 'POST',
@@ -1319,9 +1552,9 @@ async function guardarRespuestaSolicitud() {
                 motivoRechazo: motivoRechazo
             }).toString()
         });
-
+ 
         const data = await res.json();
-
+ 
         if (data.ok) {
             if (decisionSeleccionada === 'Rechazado') {
                 // Rechazo: cerrar y refrescar
@@ -1346,7 +1579,7 @@ async function guardarRespuestaSolicitud() {
             feedback.hidden      = false;
             btn.disabled = false;
         }
-
+ 
     } catch (e) {
         feedback.className   = 'feedback feedback--error';
         feedback.textContent = `Error de conexión: ${e.message}`;
@@ -1354,21 +1587,22 @@ async function guardarRespuestaSolicitud() {
         btn.disabled = false;
     }
 }
-
+ 
 // ── Paso 2: formulario para crear la categoría/sabor ─────────────────────────
+// Pinta en pantalla el formulario del paso 2 (datos del nuevo helado o sabor aprobado)
 async function mostrarPaso2Creacion() {
     const sol = todasLasSolicitudes.find(s => s.idSolicitud === solicitudSeleccionadaId);
     if (!sol) return;
-
+ 
     const conCamposCat = sol.tipo === 'Categoria' || sol.tipo === 'Ambos';
     const conSabor     = sol.tipo === 'Sabor'     || sol.tipo === 'Ambos';
-
+ 
     const solDetalle = document.getElementById('solModalDetalle');
     await loadSectionFromTemplate(solDetalle, '../partials/modal-paso2-solicitud.html');
-
+ 
     solDetalle.querySelector('.p2-msg-aprobado').textContent =
         `Solicitud aprobada. Ahora crea la ${sol.tipo.toLowerCase()} en el catálogo:`;
-
+ 
     if (sol.tipo === 'Categoria' && sol.nombreSaborExistente) {
         const el = solDetalle.querySelector('.p2-relacion-sabor');
         el.hidden = false;
@@ -1379,10 +1613,10 @@ async function mostrarPaso2Creacion() {
         el.hidden = false;
         el.querySelector('.p2-val-cat-existente').textContent = sol.nombreCatExistente;
     }
-
+ 
     solDetalle.querySelectorAll('.p2-grupo-cat').forEach(el => el.hidden = !conCamposCat);
     solDetalle.querySelectorAll('.p2-grupo-sabor').forEach(el => el.hidden = !conSabor);
-
+ 
     if (conCamposCat) {
         const inputNomCat = document.getElementById('paso2-nombreCat');
         if (inputNomCat) inputNomCat.value = sol.nombreCat ?? '';
@@ -1391,7 +1625,7 @@ async function mostrarPaso2Creacion() {
         const inputNomSab = document.getElementById('paso2-nombreSabor');
         if (inputNomSab) inputNomSab.value = sol.nombreSabor ?? '';
     }
-
+ 
     document.querySelectorAll('.modal__body .sol-label').forEach(lbl => {
         if (lbl.textContent.includes('Decisión')) lbl.style.display = 'none';
     });
@@ -1400,7 +1634,7 @@ async function mostrarPaso2Creacion() {
     const _fb2 = document.getElementById('feedbackResponder');
     _fb2.innerHTML = ''; _fb2.className = ''; _fb2.hidden = true;
     document.getElementById('modalSolTitulo').textContent       = '➕ Crear en catálogo';
-
+ 
     if (conCamposCat) {
         const inputImg   = document.getElementById('paso2-imagenCat');
         const uploadArea = document.getElementById('p2-upload-area');
@@ -1420,7 +1654,7 @@ async function mostrarPaso2Creacion() {
             });
         }
     }
-
+ 
     const btnConfirmar = document.getElementById('confirmarResponder');
     const clonBtn = btnConfirmar.cloneNode(true);
     clonBtn.disabled    = false;
@@ -1428,19 +1662,20 @@ async function mostrarPaso2Creacion() {
     btnConfirmar.parentNode.replaceChild(clonBtn, btnConfirmar);
     clonBtn.addEventListener('click', () => crearDesdeAprobacion(sol));
 }
-
-
+ 
+ 
 // ── Llamada al backend para insertar categoría/sabor ─────────────────────────
+// Envía el formulario de creación del helado aprobado al servidor
 async function crearDesdeAprobacion(sol) {
     const nombreCat   = document.getElementById('paso2-nombreCat')?.value.trim()   ?? '';
     const descCat     = document.getElementById('paso2-descCat')?.value.trim()     ?? '';
     const nombreSabor = document.getElementById('paso2-nombreSabor')?.value.trim() ?? '';
     const descSabor   = document.getElementById('paso2-descSabor')?.value.trim()   ?? '';
     const errorEl     = document.getElementById('error-paso2');
-
+ 
     errorEl.textContent = '';
     errorEl.hidden = true;
-
+ 
     if ((sol.tipo === 'Categoria' || sol.tipo === 'Ambos') && !nombreCat) {
         errorEl.textContent = 'El nombre de la categoría es obligatorio.';
         errorEl.hidden = false; return;
@@ -1449,10 +1684,10 @@ async function crearDesdeAprobacion(sol) {
         errorEl.textContent = 'El nombre del sabor es obligatorio.';
         errorEl.hidden = false; return;
     }
-
+ 
     const btn = document.getElementById('confirmarResponder');
     btn.disabled = true;
-
+ 
     // Usar FormData para poder enviar la imagen
     const fd = new FormData();
     fd.append('accion',           'crearDesdeAprobacion');
@@ -1464,21 +1699,21 @@ async function crearDesdeAprobacion(sol) {
     fd.append('descSabor',        descSabor);
     fd.append('idCatExistente',   sol.idCatExistente   ?? '');
     fd.append('idSaborExistente', sol.idSaborExistente ?? '');
-
+ 
     // Adjuntar imagen si existe
     const imgInput = document.getElementById('paso2-imagenCat');
     if (imgInput && imgInput.files[0]) {
         fd.append('imagenCat', imgInput.files[0]);
     }
-
+ 
     try {
         const res = await fetch(`${BASE_URL}/SolicitudesServlet`, {
             method: 'POST',
             body: fd   // sin Content-Type: el browser lo agrega automáticamente con boundary
         });
-
+ 
         const data = await res.json();
-
+ 
         if (data.ok) {
             const fbOk = document.createElement('div');
             fbOk.className   = 'feedback feedback--ok feedback--modal-bottom';
@@ -1499,7 +1734,7 @@ async function crearDesdeAprobacion(sol) {
             errorEl.textContent = `${data.error ?? 'Error al crear.'}`;
             btn.disabled = false;
         }
-
+ 
     } catch (e) {
         errorEl.textContent = `Error de conexión: ${e.message}`;
         btn.disabled = false;
@@ -1511,14 +1746,14 @@ async function crearDesdeAprobacion(sol) {
 // Añadir al final de admin.js  +  registrar en configurarNavegacion():
 //   else if (seccion === 'devoluciones') renderSeccionDevolucionesAdmin();
 // ═════════════════════════════════════════════════════════════════════════════
-
+ 
 // ─────────────────────────────────────────────────────────────────────────────
-// RENDER PRINCIPAL
+// RENDER PRINCIPAL (Devoluciones)
 // ─────────────────────────────────────────────────────────────────────────────
 async function renderSeccionDevolucionesAdmin() {
     const contenido = document.getElementById('contenidoPrincipal');
     await loadSection('main', '../partials/seccion-devoluciones.html');
-
+ 
     // Pestañas
     document.querySelectorAll('[data-filtro-dev]').forEach(tab => {
         tab.addEventListener('click', () => {
@@ -1527,11 +1762,11 @@ async function renderSeccionDevolucionesAdmin() {
             cargarDevolucionesAdmin(tab.dataset.filtroDev);
         });
     });
-
+ 
     // Modal: cerrar
     document.getElementById('cerrarModalDev').addEventListener('click',   cerrarModalDev);
     document.getElementById('devModalCancelar').addEventListener('click', cerrarModalDev);
-
+ 
     // Modal: mostrar/ocultar motivo según decisión
     document.querySelectorAll('input[name="devDecision"]').forEach(radio => {
         radio.addEventListener('change', () => {
@@ -1542,11 +1777,11 @@ async function renderSeccionDevolucionesAdmin() {
             }
         });
     });
-
+ 
     // Carga inicial
     cargarDevolucionesAdmin('');
 }
-
+ 
 // ─────────────────────────────────────────────────────────────────────────────
 // CARGAR DEVOLUCIONES DEL SERVIDOR
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1554,19 +1789,19 @@ async function cargarDevolucionesAdmin(filtro) {
     const contenedor = document.getElementById('listaDevAdmin');
     if (!contenedor) return;
     _setMsg(contenedor, 'cargando', 'Cargando…');
-
+ 
     try {
         const url = `${BASE_URL}/DevolucionServlet?accion=todasDevoluciones` +
                     (filtro ? `&estado=${encodeURIComponent(filtro)}` : '');
         const res  = await fetch(url);
         if (res.status === 401) { window.location.href = `${BASE_URL}/inicioSesion.html`; return; }
         const data = await res.json();
-
+ 
         if (!data.ok) {
             _setMsg(contenedor, 'sol-vacia', 'Error al cargar solicitudes.');
             return;
         }
-
+ 
         const lista = data.devoluciones || [];
         const contadorEl = document.getElementById('contadorDevAdmin');
         if (contadorEl) {
@@ -1574,23 +1809,23 @@ async function cargarDevolucionesAdmin(filtro) {
                 ? 'Sin solicitudes'
                 : `${lista.length} solicitud${lista.length !== 1 ? 'es' : ''}`;
         }
-
+ 
         if (lista.length === 0) {
             _setMsg(contenedor, 'sol-vacia', ':) No hay solicitudes de devolución.');
             return;
         }
-
+ 
         contenedor.innerHTML = '';
         for (const dev of lista) {
             contenedor.appendChild(await crearTarjetaDevAdmin(dev));
         }
-
+ 
     } catch (e) {
         console.error('cargarDevolucionesAdmin:', e);
         if (contenedor) _setMsg(contenedor, 'sol-vacia', 'Error de red.');
     }
 }
-
+ 
 // ─────────────────────────────────────────────────────────────────────────────
 // CREAR TARJETA DE DEVOLUCIÓN (panel admin)
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1601,30 +1836,30 @@ async function crearTarjetaDevAdmin(dev) {
         'Rechazada': { bg: '#e74c3c', color: '#fff' }
     };
     const cfg = cfgEstado[dev.estado] || { bg: '#aaa', color: '#fff' };
-
+ 
     const imgSrc = dev.imagenPrueba
         ? `${BASE_URL}/RESOURCES/img/devoluciones/${dev.imagenPrueba}`
         : null;
-
+ 
     const tarjeta = await loadTemplate('../partials/tarjeta-devolucion-admin.html', '.sol-card');
-
+ 
     // Header
     const idEl = tarjeta.querySelector('.dev-id-pedido');
     idEl.textContent = `Pedido #${dev.idPedido} — Cliente: `;
     tarjeta.querySelector('.dev-nombre-cliente').textContent = dev.nombreCliente || '—';
-
+ 
     const badgeEl = tarjeta.querySelector('.sol-badge');
     badgeEl.textContent        = dev.estado;
     badgeEl.style.background   = cfg.bg;
     badgeEl.style.color        = cfg.color;
-
+ 
     // Body
     tarjeta.querySelector('.dev-total').textContent         = `$${Number(dev.totalPago).toLocaleString('es-CO')}`;
     tarjeta.querySelector('.dev-fecha-pedido').textContent  = dev.fechaPedido ? dev.fechaPedido.substring(0, 10) : '—';
     tarjeta.querySelector('.dev-fecha-solicitud').textContent = dev.fechaSolicitud
         ? dev.fechaSolicitud.substring(0, 16).replace('T', ' ') : '—';
     tarjeta.querySelector('.dev-motivo-texto').textContent  = dev.motivo;
-
+ 
     if (imgSrc) {
         const imgWrap = tarjeta.querySelector('.dev-img-wrap');
         imgWrap.querySelector('.dev-img-prueba').src = imgSrc;
@@ -1640,7 +1875,7 @@ async function crearTarjetaDevAdmin(dev) {
         fechaRespEl.textContent = `Respondida: ${dev.fechaRespuesta.substring(0, 16).replace('T', ' ')}`;
         fechaRespEl.hidden = false;
     }
-
+ 
     // Footer con botón responder
     if (dev.estado === 'Pendiente') {
         const footer = tarjeta.querySelector('.sol-card__footer--dev');
@@ -1657,18 +1892,18 @@ async function crearTarjetaDevAdmin(dev) {
             );
         });
     }
-
+ 
     return tarjeta;
 }
-
+ 
 // ─────────────────────────────────────────────────────────────────────────────
-// MODAL RESPONDER
+// MODAL RESPONDER (Devoluciones)
 // ─────────────────────────────────────────────────────────────────────────────
 let _idDevolucionActiva = null;
-
+ 
 async function abrirModalResponderDevolucion(idDevolucion, idPedido, nombreCliente) {
     _idDevolucionActiva = idDevolucion;
-
+ 
     // Limpiar estado previo
     document.querySelectorAll('input[name="devDecision"]').forEach(r => r.checked = false);
     document.getElementById('dev-motivo-wrap').classList.add('hidden');
@@ -1676,37 +1911,37 @@ async function abrirModalResponderDevolucion(idDevolucion, idPedido, nombreClien
     const errorEl = document.getElementById('devModalError');
     errorEl.classList.add('hidden');
     errorEl.textContent = '';
-
+ 
     // Llenar detalle
     const devDetalle = document.getElementById('devModalDetalle');
     await loadSectionFromTemplate(devDetalle, '../partials/modal-detalle-devolucion.html');
     devDetalle.querySelector('.dev-val-solicitud').textContent = `Solicitud #${idDevolucion} — Pedido #${idPedido}`;
     devDetalle.querySelector('.dev-val-cliente').textContent   = nombreCliente;
-
+ 
     // Botón confirmar
     const btnConfirmar = document.getElementById('devModalConfirmar');
     // Clonar para limpiar listeners anteriores
     const btnNuevo = btnConfirmar.cloneNode(true);
     btnConfirmar.parentNode.replaceChild(btnNuevo, btnConfirmar);
     btnNuevo.addEventListener('click', () => enviarRespuestaDevolucion(idDevolucion));
-
+ 
     document.getElementById('modalResponderDevolucion').classList.remove('hidden');
 }
-
+ 
 function cerrarModalDev() {
     const modal = document.getElementById('modalResponderDevolucion');
     if (modal) modal.classList.add('hidden');
     _idDevolucionActiva = null;
 }
-
+ 
 async function enviarRespuestaDevolucion(idDevolucion) {
     const decisionEl = document.querySelector('input[name="devDecision"]:checked');
     const errorEl    = document.getElementById('devModalError');
     const motivo     = document.getElementById('dev-motivoRespuesta').value.trim();
-
+ 
     errorEl.classList.add('hidden');
     errorEl.textContent = '';
-
+ 
     if (!decisionEl) {
         errorEl.textContent = 'Debes seleccionar una decisión.';
         errorEl.classList.remove('hidden');
@@ -1718,23 +1953,23 @@ async function enviarRespuestaDevolucion(idDevolucion) {
         errorEl.classList.remove('hidden');
         return;
     }
-
+ 
     const btnC = document.getElementById('devModalConfirmar');
     if (btnC) { btnC.disabled = true; btnC.textContent = 'Procesando…'; }
-
+ 
     const formData = new FormData();
     formData.append('accion',           'responderDevolucion');
     formData.append('idDevolucion',     idDevolucion);
     formData.append('estado',           decision);
     formData.append('motivoRespuesta',  motivo);
-
+ 
     try {
         const res  = await fetch(`${BASE_URL}/DevolucionServlet`, {
             method: 'POST',
             body: formData
         });
         const data = await res.json();
-
+ 
         if (data.ok) {
             cerrarModalDev();
             // Recargar pestaña activa
@@ -1755,11 +1990,11 @@ async function enviarRespuestaDevolucion(idDevolucion) {
 // ═════════════════════════════════════════════════════════════════════════════
 // SECCIÓN CANCELACIONES — Administrador
 // ═════════════════════════════════════════════════════════════════════════════
-
+ 
 async function renderSeccionCancelacionesAdmin() {
     const main = document.getElementById('contenidoPrincipal');
     await loadSection('main', '../partials/seccion-cancelaciones.html');
-
+ 
     document.querySelectorAll('[data-filtro-can]').forEach(tab => {
         tab.addEventListener('click', () => {
             document.querySelectorAll('[data-filtro-can]').forEach(t => t.classList.remove('ventas-tab--activo'));
@@ -1767,10 +2002,10 @@ async function renderSeccionCancelacionesAdmin() {
             cargarCancelacionesAdmin(tab.dataset.filtroCan);
         });
     });
-
+ 
     document.getElementById('cerrarModalCan').addEventListener('click',  cerrarModalCan);
     document.getElementById('canModalCancelar').addEventListener('click', cerrarModalCan);
-
+ 
     document.querySelectorAll('input[name="canDecision"]').forEach(radio => {
         radio.addEventListener('change', () => {
             if (radio.value === 'Rechazada') { document.getElementById('can-motivo-wrap').classList.remove('hidden'); } else { document.getElementById('can-motivo-wrap').classList.add('hidden'); }
@@ -1778,51 +2013,51 @@ async function renderSeccionCancelacionesAdmin() {
                 document.getElementById('can-motivoRespuesta').value = '';
         });
     });
-
+ 
     cargarCancelacionesAdmin('Pendiente');
     // Activar tab Pendientes por defecto
     document.querySelectorAll('[data-filtro-can]').forEach(t => t.classList.remove('ventas-tab--activo'));
     document.querySelector('[data-filtro-can="Pendiente"]').classList.add('ventas-tab--activo');
 }
-
+ 
 async function cargarCancelacionesAdmin(filtro) {
     const contenedor = document.getElementById('listaCancelAdmin');
     if (!contenedor) return;
     _setMsg(contenedor, 'cargando', 'Cargando…');
-
+ 
     try {
         const url = `${BASE_URL}/CancelacionesAdminServlet` +
                     (filtro ? `?filtro=${encodeURIComponent(filtro)}` : '');
         const res  = await fetch(url);
         if (!res.ok) throw new Error(`Error ${res.status}`);
         const lista = await res.json();
-
+ 
         if (!lista.length) {
             _setMsg(contenedor, 'solicitudes-vacia', 'No hay solicitudes en esta categoría.');
             return;
         }
-
+ 
         contenedor.innerHTML = '';
         for (const c of lista) {
             const tarjeta = await loadTemplate('../partials/tarjeta-cancelacion-admin.html', '.sol-card');
             tarjeta.id = `cancel-card-${c.idCancelacion}`;
-
+ 
             tarjeta.querySelector('.sol-card__id').textContent    = `Pedido #${c.idPedido}`;
             const badgeCan = tarjeta.querySelector('.sol-card__badge');
             badgeCan.textContent = c.estado;
             badgeCan.classList.add(`sol-card__badge--${c.estado.toLowerCase()}`);
             tarjeta.querySelector('.sol-card__fecha').textContent = c.fechaSolicitud;
-
+ 
             tarjeta.querySelector('.can-cliente').textContent = `${c.cliente} — ${c.correo} · ${c.telefono}`;
             tarjeta.querySelector('.can-total').textContent   = `$${Number(c.totalPago).toLocaleString('es-CO')}`;
             tarjeta.querySelector('.can-motivo').textContent  = c.motivo;
-
+ 
             if (c.motivoRespuesta) {
                 const respEl = tarjeta.querySelector('.can-fila-respuesta');
                 respEl.querySelector('.can-respuesta').textContent = c.motivoRespuesta;
                 respEl.hidden = false;
             }
-
+ 
             if (c.estado === 'Pendiente') {
                 const footer = tarjeta.querySelector('.sol-card__footer--can');
                 const btn    = footer.querySelector('.sol-btn-responder');
@@ -1832,17 +2067,17 @@ async function cargarCancelacionesAdmin(filtro) {
                 btn.addEventListener('click', () =>
                     abrirModalCancelacion(Number(btn.dataset.id), Number(btn.dataset.pedido)));
             }
-
+ 
             contenedor.appendChild(tarjeta);
         }
-
+ 
     } catch (e) {
         _setMsg(contenedor, 'sol-error', `Error al cargar: ${e.message}`);
     }
 }
-
+ 
 let _idCancelacionActual = null;
-
+ 
 async function abrirModalCancelacion(idCancelacion, idPedido) {
     _idCancelacionActual = idCancelacion;
     document.getElementById('modalCanTitulo').textContent = `Responder cancelación — Pedido #${idPedido}`;
@@ -1854,25 +2089,25 @@ async function abrirModalCancelacion(idCancelacion, idPedido) {
     document.getElementById('canModalConfirmar').disabled = false;
     document.getElementById('canModalConfirmar').textContent = 'Confirmar';
     document.getElementById('modalResponderCancelacion').classList.remove('hidden');
-
+ 
     // Asignar listener al botón confirmar (clonar para evitar duplicados)
     const btnC = document.getElementById('canModalConfirmar');
     const nuevoBtn = btnC.cloneNode(true);
     btnC.parentNode.replaceChild(nuevoBtn, btnC);
     nuevoBtn.addEventListener('click', enviarRespuestaCancelacion);
 }
-
+ 
 function cerrarModalCan() {
     document.getElementById('modalResponderCancelacion').classList.add('hidden');
     _idCancelacionActual = null;
 }
-
+ 
 async function enviarRespuestaCancelacion() {
     const errorEl  = document.getElementById('canModalError');
     const btnC     = document.getElementById('canModalConfirmar');
     const decision = document.querySelector('input[name="canDecision"]:checked')?.value;
     const motivo   = document.getElementById('can-motivoRespuesta').value.trim();
-
+ 
     if (!decision) {
         errorEl.textContent = '⚠ Selecciona una decisión.';
         errorEl.classList.remove('hidden');
@@ -1883,11 +2118,11 @@ async function enviarRespuestaCancelacion() {
         errorEl.classList.remove('hidden');
         return;
     }
-
+ 
     btnC.disabled = true;
     btnC.textContent = 'Guardando…';
     errorEl.classList.add('hidden');
-
+ 
     try {
         const res = await fetch(`${BASE_URL}/CancelacionesAdminServlet`, {
             method: 'POST',
@@ -1917,11 +2152,11 @@ async function enviarRespuestaCancelacion() {
 // ─────────────────────────────────────────────────────────────────────────────
 // SECCIÓN PAGOS A PROVEEDORES
 // ─────────────────────────────────────────────────────────────────────────────
-
+ 
 async function renderSeccionPagosProveedores() {
     const main = document.getElementById('contenidoPrincipal');
     await loadSection('main', '../partials/seccion-pagos.html');
-
+ 
     document.getElementById('filtroPagoProv').addEventListener('input', filtrarPagos);
     document.getElementById('filtroEstadoPago').addEventListener('change', filtrarPagos);
     document.getElementById('btnLimpiarPagosFiltros').addEventListener('click', () => {
@@ -1929,13 +2164,13 @@ async function renderSeccionPagosProveedores() {
         document.getElementById('filtroEstadoPago').value = '';
         filtrarPagos();
     });
-
+ 
     await cargarPagosProveedores();
 }
-
+ 
 // Datos cacheados para el filtrado
 let _filasPagos = [];
-
+ 
 async function cargarPagosProveedores() {
     const contenedor = document.getElementById('tablaPagosProveedores');
     try {
@@ -1943,17 +2178,17 @@ async function cargarPagosProveedores() {
         const res = await fetch(`${BASE_URL}/PedidosAdminServlet?filtro=todos`);
         if (!res.ok) throw new Error('Error al obtener pedidos');
         const pedidos = await res.json();
-
+ 
         // Construimos una fila por cada proveedor dentro de cada pedido
         const filas = [];
         for (const pedido of pedidos) {
             if (!pedido.proveedores || pedido.proveedores.length === 0) continue;
-
+ 
             for (const prov of pedido.proveedores) {
                 // Calcular subtotal que corresponde a este proveedor
                 const subtotalProv = (prov.productos || [])
                     .reduce((acc, p) => acc + (p.subtotal || 0), 0);
-
+ 
                 // Derivar estado del pago a partir del estado del pedido (igual que el backend)
                 // 1 = Pendiente, 2 = Completado (entregado=8), 3 = Cancelado (3, 9 o 11)
                 // El estado 9 (Devolución aprobada) también cancela el pago: el admin aprobó
@@ -1966,7 +2201,7 @@ async function cargarPagosProveedores() {
                 } else {
                     estadoPago = 1; nombreEstadoPago = 'Pendiente';
                 }
-
+ 
                 filas.push({
                     idPedido:           pedido.idPedido,
                     fechaPedido:        pedido.fechaPedido,
@@ -1982,69 +2217,69 @@ async function cargarPagosProveedores() {
                 });
             }
         }
-
+ 
         _filasPagos = filas;
         await renderTablaPagos(filas);
         actualizarStatsPagos(filas);
-
+ 
     } catch (e) {
         console.error('Error cargando pagos a proveedores:', e);
         if (contenedor) _setMsg(contenedor, 'error-txt', 'No se pudieron cargar los pagos. Intenta de nuevo.');
     }
 }
-
+ 
 function actualizarStatsPagos(filas) {
     const totalPagado = filas
         .filter(f => f.estadoPago === 2)
         .reduce((acc, f) => acc + f.subtotal, 0);
-
+ 
     const provUnicos = new Set(filas.map(f => f.proveedor)).size;
-
+ 
     const elTotal = document.getElementById('statTotalPagado');
     const elSub   = document.getElementById('statTotalPedidosProv');
     const elProv  = document.getElementById('statProveedoresUnicos');
-
+ 
     if (elTotal) elTotal.textContent = `$${totalPagado.toLocaleString('es-CO')}`;
     if (elSub)   elSub.textContent   = `${filas.length} registros en total`;
     if (elProv)  elProv.textContent  = provUnicos;
 }
-
+ 
 async function renderTablaPagos(filas) {
     const contenedor = document.getElementById('tablaPagosProveedores');
     const contador   = document.getElementById('contadorPagos');
     if (!contenedor) return;
-
+ 
     if (contador) contador.textContent = `${filas.length} registro${filas.length !== 1 ? 's' : ''}`;
-
+ 
     if (filas.length === 0) {
         _setMsg(contenedor, 'pagos-vacio', 'No hay pagos que coincidan con los filtros.');
         return;
     }
-
+ 
     const clsMap = { 1: 'pendiente', 2: 'completado', 3: 'cancelado' };
     const tplPath = '../partials/fila-pago-admin.html';
     await loadTemplate(tplPath, 'tr'); // calienta caché
-
+ 
     const tabla = document.createElement('table');
     const theadP = await loadTemplate('../partials/thead-pagos.html', 'thead');
     const tbody  = document.createElement('tbody');
     tabla.appendChild(theadP);
     tabla.appendChild(tbody);
-
+ 
     for (const f of filas) {
         const fila = await loadTemplate(tplPath, 'tr');
-
+ 
         fila.querySelector('.pago-id-pedido').textContent = `#${f.idPedido}`;
         fila.querySelector('.pago-fecha').textContent     = f.fechaPedido;
         fila.querySelector('.pago-cliente').textContent   = f.cliente;
         fila.querySelector('.pago-proveedor').textContent = f.proveedor;
         fila.querySelector('.pago-subtotal').textContent  = `$${f.subtotal.toLocaleString('es-CO')}`;
         fila.querySelector('.pago-metodo').textContent    = f.metodoPago;
-
+ 
         const badge = fila.querySelector('.pago-estado-badge');
         badge.textContent = f.nombreEstadoPago;
         badge.classList.add(`pago-estado-badge--${clsMap[f.estadoPago] || 'pendiente'}`);
-
+ 
         const prodsWrap = fila.querySelector('.pago-prods-wrap');
         if (f.productos && f.productos.length) {
             for (const p of f.productos) {
@@ -2061,19 +2296,19 @@ async function renderTablaPagos(filas) {
             em.textContent = 'Sin productos';
             prodsWrap.appendChild(em);
         }
-
+ 
         tbody.appendChild(fila);
     }
-
+ 
     contenedor.innerHTML = '';
     contenedor.appendChild(tabla);
 }
-
-
+ 
+ 
 async function filtrarPagos() {
     const texto   = (document.getElementById('filtroPagoProv')?.value   || '').toLowerCase().trim();
     const estado  = (document.getElementById('filtroEstadoPago')?.value || '').toLowerCase().trim();
-
+ 
     const filtradas = _filasPagos.filter(f => {
         const coincideTexto = !texto || (
             f.proveedor.toLowerCase().includes(texto) ||
@@ -2084,46 +2319,46 @@ async function filtrarPagos() {
         const coincideEstado = !estado || f.nombreEstadoPago.toLowerCase().includes(estado);
         return coincideTexto && coincideEstado;
     });
-
+ 
     await renderTablaPagos(filtradas);
 }
-
-// ═════════════════════════════════════════════════════════════════════════════
+ 
+// ─────────────────────────────────────────────────────────────────────────────
 // SECCIÓN GESTIÓN DE CATEGORÍAS Y SABORES — Admin directo
-// ═════════════════════════════════════════════════════════════════════════════
-
+// ─────────────────────────────────────────────────────────────────────────────
+ 
 let _catSaborData      = { categorias: [], sabores: [] };
 let _catSaborDataAdmin = { categorias: [], sabores: [] };
-
+ 
 async function renderSeccionGestionCatSabor() {
     const main = document.getElementById('contenidoPrincipal');
     await loadSection('main', '../partials/seccion-cat-sabor.html');
-
+ 
     // Cargar datos de categorías y sabores
     await _cargarListasCatSabor();
     _renderizarListasExistentes();
-
+ 
     document.getElementById('btnElegirCategoria').addEventListener('click', async () => await _mostrarFormCS('Categoria'));
     document.getElementById('btnElegirSabor').addEventListener('click',     async () => await _mostrarFormCS('Sabor'));
     document.getElementById('btnElegirAmbos').addEventListener('click',     async () => await _mostrarFormCS('Ambos'));
 }
-
+ 
 async function _renderizarListasExistentes() {
     const cats    = _catSaborDataAdmin?.categorias ?? _catSaborData.categorias ?? [];
     const sabores = _catSaborDataAdmin?.sabores    ?? _catSaborData.sabores    ?? [];
-
+ 
     const elCats       = document.getElementById('cs-lista-categorias');
     const elSabores    = document.getElementById('cs-lista-sabores');
     const badgeCats    = document.getElementById('cs-badge-cats');
     const badgeSabores = document.getElementById('cs-badge-sabores');
-
+ 
     if (!elCats || !elSabores) return;
-
+ 
     badgeCats.textContent    = cats.filter(c => c.activo !== false).length;
     badgeSabores.textContent = sabores.filter(s => s.activo !== false).length;
-
+ 
     const tplPath = '../partials/item-lista-cs.html';
-
+ 
     // Categorías
     elCats.innerHTML = '';
     if (cats.length === 0) {
@@ -2151,7 +2386,7 @@ async function _renderizarListasExistentes() {
             elCats.appendChild(item);
         }
     }
-
+ 
     // Sabores
     elSabores.innerHTML = '';
     if (sabores.length === 0) {
@@ -2185,39 +2420,39 @@ async function _cargarListasCatSabor() {
         const res  = await fetch(`${BASE_URL}/SolicitudesServlet?accion=listar`);
         if (!res.ok) return;
         _catSaborData = await res.json();
-
+ 
         const resAdmin = await fetch(`${BASE_URL}/AdminServlet?accion=listarCatSaborAdmin`);
         if (resAdmin.ok) _catSaborDataAdmin = await resAdmin.json();
     } catch (e) {
         console.error('Error cargando categorías/sabores:', e);
     }
 }
-
+ 
 async function _mostrarFormCS(tipo) {
     // Marcar el botón activo
     document.querySelectorAll('.cs-btn-accion').forEach(c => c.classList.remove('cs-btn-accion--activo'));
     const mapId = { Categoria: 'btnElegirCategoria', Sabor: 'btnElegirSabor', Ambos: 'btnElegirAmbos' };
     document.getElementById(mapId[tipo])?.classList.add('cs-btn-accion--activo');
-
+ 
     const contenedor = document.getElementById('cs-formulario');
     const feedback   = document.getElementById('cs-feedback');
     feedback.style.display = 'none';
     feedback.innerHTML = '';
-
+ 
     // Cargar el parcial del formulario
     await loadSectionFromTemplate(contenedor, '../partials/form-cat-sabor.html');
-
+ 
     // Título según tipo
     const titulos = { Categoria: 'Nueva Categoría', Sabor: 'Nuevo Sabor', Ambos: 'Nueva Categoría y Sabor' };
     contenedor.querySelector('.cs-form-titulo-val').textContent = titulos[tipo];
-
+ 
     // Mostrar/ocultar grupos según tipo
     const mostrarCat   = tipo === 'Categoria' || tipo === 'Ambos';
     const mostrarSabor = tipo === 'Sabor'     || tipo === 'Ambos';
-
+ 
     contenedor.querySelectorAll('.cs-grupo-cat').forEach(el => el.hidden = !mostrarCat);
     contenedor.querySelectorAll('.cs-grupo-sabor').forEach(el => el.hidden = !mostrarSabor);
-
+ 
     // Select sabor existente (solo para tipo Categoria)
     const grupoSelSabor = contenedor.querySelector('.cs-grupo-sel-sabor');
     if (tipo === 'Categoria') {
@@ -2238,7 +2473,7 @@ async function _mostrarFormCS(tipo) {
     } else {
         grupoSelSabor.hidden = true;
     }
-
+ 
     // Select categoría existente (solo para tipo Sabor)
     const grupoSelCat = contenedor.querySelector('.cs-grupo-sel-cat');
     if (tipo === 'Sabor') {
@@ -2259,9 +2494,9 @@ async function _mostrarFormCS(tipo) {
     } else {
         grupoSelCat.hidden = true;
     }
-
+ 
     contenedor.style.display = 'block';
-
+ 
     // Preview de imagen
     const inputImg   = document.getElementById('cs-imagenCat');
     const uploadArea = document.getElementById('cs-upload-area');
@@ -2280,29 +2515,29 @@ async function _mostrarFormCS(tipo) {
             reader.readAsDataURL(file);
         });
     }
-
+ 
     document.getElementById('cs-btn-cancelar').addEventListener('click', () => {
         contenedor.style.display = 'none';
         document.querySelectorAll('.cs-btn-accion').forEach(c => c.classList.remove('cs-btn-accion--activo'));
     });
-
+ 
     document.getElementById('cs-btn-guardar').addEventListener('click', () => _enviarFormCS(tipo));
 }
-
+ 
 async function _enviarFormCS(tipo) {
     const errorEl = document.getElementById('cs-error-msg');
     errorEl.textContent = '';
     errorEl.hidden = true;
-
+ 
     const nombreCat   = document.getElementById('cs-nombreCat')?.value.trim()   ?? '';
     const descCat     = document.getElementById('cs-descCat')?.value.trim()     ?? '';
     const nombreSabor = document.getElementById('cs-nombreSabor')?.value.trim() ?? '';
     const descSabor   = document.getElementById('cs-descSabor')?.value.trim()   ?? '';
-
+ 
     // Expresión regular que acepta solo letras (incluyendo tildes y ñ), espacios y guiones.
     // Se usa para rechazar nombres que contengan números u otros caracteres no válidos.
     const soloLetras = /^[a-zA-ZáéíóúÁÉÍÓÚüÜñÑ\s\-]+$/;
-
+ 
     // Validaciones de nombre de categoría
     if (tipo === 'Categoria' || tipo === 'Ambos') {
         if (!nombreCat) {
@@ -2318,7 +2553,7 @@ async function _enviarFormCS(tipo) {
             errorEl.hidden = false; return;
         }
     }
-
+ 
     // Validaciones de nombre de sabor
     if (tipo === 'Sabor' || tipo === 'Ambos') {
         if (!nombreSabor) {
@@ -2334,7 +2569,7 @@ async function _enviarFormCS(tipo) {
             errorEl.hidden = false; return;
         }
     }
-
+ 
     if (tipo === 'Categoria') {
         const sel = document.getElementById('cs-idSaborExistente');
         if (!sel || !sel.value) { errorEl.textContent = 'Selecciona un sabor existente.'; errorEl.hidden = false; return; }
@@ -2343,11 +2578,11 @@ async function _enviarFormCS(tipo) {
         const sel = document.getElementById('cs-idCatExistente');
         if (!sel || !sel.value) { errorEl.textContent = 'Selecciona una categoría existente.'; errorEl.hidden = false; return; }
     }
-
+ 
     const fd = new FormData();
     fd.append('accion', 'crearDirecto');
     fd.append('tipo', tipo);
-
+ 
     if (tipo === 'Categoria' || tipo === 'Ambos') {
         fd.append('nombreCat', nombreCat);
         fd.append('descCat',   descCat);
@@ -2364,24 +2599,24 @@ async function _enviarFormCS(tipo) {
     if (tipo === 'Sabor') {
         fd.append('idCatExistente', document.getElementById('cs-idCatExistente').value);
     }
-
+ 
     const btn = document.getElementById('cs-btn-guardar');
     btn.disabled = true;
     btn.textContent = 'Guardando…';
-
+ 
     try {
         const res  = await fetch(`${BASE_URL}/SolicitudesServlet`, { method: 'POST', body: fd });
         const data = await res.json();
-
+ 
         if (data.ok) {
             document.getElementById('cs-formulario').style.display = 'none';
             document.querySelectorAll('.cs-opcion-card').forEach(c => c.classList.remove('cs-opcion-card--activo'));
-
+ 
             const fb = document.getElementById('cs-feedback');
             const _fbDiv = document.createElement('div'); _fbDiv.className = 'feedback feedback--ok cs-feedback-ok'; _fbDiv.textContent = `✅ ${data.mensaje}`; fb.innerHTML = ''; fb.appendChild(_fbDiv);
             fb.style.display = 'block';
             setTimeout(() => { fb.style.display = 'none'; fb.innerHTML = ''; }, 3000);
-
+ 
             // Recargar lista para próximo uso y actualizar vistas
             await _cargarListasCatSabor();
             _renderizarListasExistentes();
@@ -2396,9 +2631,7 @@ async function _enviarFormCS(tipo) {
         btn.textContent = 'Guardar';
     }
 }
-// ─────────────────────────────────────────────────────────────────────────────
-// Editar / Toggle Categorías y Sabores
-// ─────────────────────────────────────────────────────────────────────────────
+// ── Editar / Toggle Categorías y Sabores ──────────────────────────────────────
 function _abrirModalEditarCat(cat) {
     // Se obtiene el set de IDs de sabor ya relacionados con esta categoría, a partir de los pares
     // idCategoria/idSabor cargados desde listarCatSaborAdmin, para marcarlos como ya relacionados.
@@ -2406,7 +2639,7 @@ function _abrirModalEditarCat(cat) {
     const saboresYaRelacionados = new Set(
         relaciones.filter(r => r.idCategoria === cat.idCategoria).map(r => r.idSabor)
     );
-
+ 
     const opcionesSabor = (_catSaborData.sabores ?? []).map(s => {
         const yaRelacionado = saboresYaRelacionados.has(s.idSabor);
         return {
@@ -2415,7 +2648,7 @@ function _abrirModalEditarCat(cat) {
             disabled: yaRelacionado
         };
     });
-
+ 
     _renderModalEditar({
         titulo: 'Editar Categoría',
         campos: [
@@ -2431,14 +2664,14 @@ function _abrirModalEditarCat(cat) {
             const img        = document.getElementById('edit-imagen').files[0];
             const idSaborNvo = document.getElementById('edit-sabor-nuevo').value;
             if (!nombre) { _modalError('El nombre es obligatorio.'); return; }
-
+ 
             // Se valida de nuevo aquí (además de deshabilitar la opción en el select) por si la lista
             // quedó desactualizada en el navegador; evita enviar al servidor una combinación duplicada.
             if (idSaborNvo && saboresYaRelacionados.has(Number(idSaborNvo))) {
                 _modalError('Esta categoría ya está relacionada con ese sabor.');
                 return;
             }
-
+ 
             const fd = new FormData();
             fd.append('accion',      'editarCategoria');
             fd.append('idCategoria', cat.idCategoria);
@@ -2450,7 +2683,7 @@ function _abrirModalEditarCat(cat) {
         }
     });
 }
-
+ 
 function _abrirModalEditarSabor(sabor) {
     // Se obtiene el set de IDs de categoría ya relacionados con este sabor, a partir de los pares
     // idCategoria/idSabor cargados desde listarCatSaborAdmin, para marcarlos como ya relacionados.
@@ -2458,7 +2691,7 @@ function _abrirModalEditarSabor(sabor) {
     const categoriasYaRelacionadas = new Set(
         relaciones.filter(r => r.idSabor === sabor.idSabor).map(r => r.idCategoria)
     );
-
+ 
     const opcionesCat = (_catSaborData.categorias ?? []).map(c => {
         const yaRelacionada = categoriasYaRelacionadas.has(c.idCategoria);
         return {
@@ -2467,7 +2700,7 @@ function _abrirModalEditarSabor(sabor) {
             disabled: yaRelacionada
         };
     });
-
+ 
     _renderModalEditar({
         titulo: 'Editar Sabor',
         campos: [
@@ -2481,14 +2714,14 @@ function _abrirModalEditarSabor(sabor) {
             const desc     = document.getElementById('edit-descripcion').value.trim();
             const idCatNva = document.getElementById('edit-cat-nueva').value;
             if (!nombre) { _modalError('El nombre es obligatorio.'); return; }
-
+ 
             // Se valida de nuevo aquí (además de deshabilitar la opción en el select) por si la lista
             // quedó desactualizada en el navegador; evita enviar al servidor una combinación duplicada.
             if (idCatNva && categoriasYaRelacionadas.has(Number(idCatNva))) {
                 _modalError('Este sabor ya está relacionado con esa categoría.');
                 return;
             }
-
+ 
             const fd = new FormData();
             fd.append('accion',      'editarSabor');
             fd.append('idSabor',     sabor.idSabor);
@@ -2499,7 +2732,7 @@ function _abrirModalEditarSabor(sabor) {
         }
     });
 }
-
+ 
 async function _toggleCat(cat) {
     const activar = cat.activo === false;
     if (!confirm(`¿Seguro que deseas ${activar ? 'reactivar' : 'desactivar'} la categoría "${cat.nombreCategoria}"?`)) return;
@@ -2509,7 +2742,7 @@ async function _toggleCat(cat) {
     fd.append('activar',     activar);
     await _enviarCatSaborPost(fd);
 }
-
+ 
 async function _toggleSabor(sabor) {
     const activar = sabor.activo === false;
     if (!confirm(`¿Seguro que deseas ${activar ? 'reactivar' : 'desactivar'} el sabor "${sabor.nombreSabor}"?`)) return;
@@ -2519,7 +2752,7 @@ async function _toggleSabor(sabor) {
     fd.append('activar', activar);
     await _enviarCatSaborPost(fd);
 }
-
+ 
 async function _enviarCatSaborPost(fd) {
     try {
         const res  = await fetch(`${BASE_URL}/AdminServlet`, { method: 'POST', body: fd });
@@ -2545,7 +2778,7 @@ async function _enviarCatSaborPost(fd) {
         _modalError('Error de conexión: ' + e.message);
     }
 }
-
+ 
 function _renderModalEditar({ titulo, campos, onGuardar }) {
     document.getElementById('cs-modal-editar')?.remove();
     const overlay = document.createElement('div');
@@ -2591,42 +2824,42 @@ function _renderModalEditar({ titulo, campos, onGuardar }) {
     overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
     document.getElementById('cs-modal-guardar').addEventListener('click', onGuardar);
 }
-
+ 
 function _modalError(msg) {
     const el = document.getElementById('cs-modal-err');
     if (el) { el.textContent = msg; el.style.display = 'block'; }
     else    { alert(msg); }
 }
-
+ 
 // ─────────────────────────────────────────────────────────────────────────────
 // SECCIÓN BACKUP
 // ─────────────────────────────────────────────────────────────────────────────
 async function renderSeccionBackup() {
     await loadSection('main', '../partials/seccion-backup.html');
-
+ 
     const btn      = document.getElementById('btnDescargarBackup');
     const feedback = document.getElementById('feedbackBackup');
     const historial    = document.getElementById('backupHistorial');
     const listaBackups = document.getElementById('listaBackups');
-
+ 
     btn.addEventListener('click', async () => {
         // Estado de carga
         btn.disabled = true;
         btn.innerHTML = '<span class="backup-btn__icono" aria-hidden="true"></span> Generando copia…';
         feedback.style.display = 'none';
-
+ 
         try {
             const res = await fetch(`${BASE_URL}/BackupServlet`, { method: 'GET' });
-
+ 
             if (!res.ok) {
                 throw new Error(`El servidor respondió con estado ${res.status}`);
             }
-
+ 
             // Extraer nombre del archivo desde la cabecera Content-Disposition
             const disposition = res.headers.get('Content-Disposition') ?? '';
             const match = disposition.match(/filename="?([^"]+)"?/);
             const fileName = match ? match[1] : 'kurmi_backup.zip';
-
+ 
             // Descargar el blob
             const blob = await res.blob();
             const url  = URL.createObjectURL(blob);
@@ -2637,19 +2870,19 @@ async function renderSeccionBackup() {
             a.click();
             a.remove();
             URL.revokeObjectURL(url);
-
+ 
             // Feedback éxito
             feedback.className = 'feedback feedback--ok';
             feedback.textContent = '✅ Copia descargada correctamente: ' + fileName;
             feedback.style.display = 'block';
-
+ 
             // Agregar al historial de sesión
             const hora = new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
             const li = document.createElement('li');
             li.textContent = `${fileName}  —  ${hora}`;
             listaBackups.appendChild(li);
             historial.style.display = 'block';
-
+ 
         } catch (err) {
             feedback.className = 'feedback feedback--error';
             feedback.textContent = '❌ Error al generar la copia: ' + err.message;
