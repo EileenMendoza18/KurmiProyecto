@@ -122,7 +122,7 @@ public class PedidosServlet extends HttpServlet {
             // Se agrupa por ID_Carrito para que una compra con varios proveedores aparezca
             // como una sola tarjeta unificada con todos los productos y el total sumado.
             pedidos = pedidoDAO.obtenerPedidosEntregadosAgrupados(idUsuario);
-        } else if ("9".equals(estadoParam)) {
+        } else if ("9".equals(estadoParam) || "10".equals(estadoParam)) {
             // Se incluyen tanto el estado 9 (Devolución aprobada) como el estado 10
             // (Devolución Solicitada) en la pestaña "Devolución", porque ambos representan
             // pedidos que ya salieron del flujo normal y el cliente debe verlos aquí.

@@ -1955,11 +1955,13 @@ async function cargarPagosProveedores() {
                     .reduce((acc, p) => acc + (p.subtotal || 0), 0);
 
                 // Derivar estado del pago a partir del estado del pedido (igual que el backend)
-                // 1 = Pendiente, 2 = Completado (entregado=8), 3 = Cancelado (3 o 11)
+                // 1 = Pendiente, 2 = Completado (entregado=8), 3 = Cancelado (3, 9 o 11)
+                // El estado 9 (Devolución aprobada) también cancela el pago: el admin aprobó
+                // la devolución, lo que implica reembolso, por lo que el pago ya no es válido.
                 let estadoPago, nombreEstadoPago;
                 if (pedido.estadoPedido === 8) {
                     estadoPago = 2; nombreEstadoPago = 'Completado';
-                } else if (pedido.estadoPedido === 3 || pedido.estadoPedido === 11) {
+                } else if (pedido.estadoPedido === 3 || pedido.estadoPedido === 9 || pedido.estadoPedido === 11) {
                     estadoPago = 3; nombreEstadoPago = 'Cancelado';
                 } else {
                     estadoPago = 1; nombreEstadoPago = 'Pendiente';

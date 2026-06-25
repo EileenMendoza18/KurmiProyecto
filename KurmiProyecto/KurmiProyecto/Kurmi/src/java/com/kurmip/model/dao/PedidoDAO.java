@@ -458,12 +458,18 @@ public class PedidoDAO {
             if (psUpd.executeUpdate() == 0) { con.rollback(); return false; }
             psUpd.close();
 
-            // Se actualiza el método de pago y se restablece el Estado_Pago a 1 (pendiente) en Pago_Pedido.
+            // Efectivo (1) queda pendiente porque se paga en la entrega.
+            // Nequi (2) queda completado porque el pago es inmediato.
+            int estadoPago = (idMetodo == 1) ? 1 : 2;
+
             PreparedStatement psPago = con.prepareStatement(
-                "UPDATE Pago_Pedido SET ID_Metodo = ?, Estado_Pago = 1 " +
+                "UPDATE Pago_Pedido SET ID_Metodo = ?, Estado_Pago = ? " +
                 "WHERE ID_Pedido = ?");
-            psPago.setInt(1, idMetodo); psPago.setInt(2, idPedido);
-            psPago.executeUpdate(); psPago.close();
+            psPago.setInt(1, idMetodo);
+            psPago.setInt(2, estadoPago);
+            psPago.setInt(3, idPedido);
+            psPago.executeUpdate();
+            psPago.close();
 
             con.commit();
             return true;
@@ -544,17 +550,7 @@ public class PedidoDAO {
             "WHERE p.ID_Cliente = ? AND p.Estado_Pedido = ? " +
             "ORDER BY p.Fecha_Pedido DESC";
 
-        // Se traen los productos del carrito que coincidan con este pedido usando estado 3 (vendido) o 6 (devuelto).
-        // Se filtra además por Fecha_Venta para asociar cada producto a la compra exacta y no a ventas anteriores.
-        String sqlProductos =
-            "SELECT pr.ID_Producto, pr.Nombre_Producto, pr.Imagen_Producto, " +
-            "cd.Cantidad_producto, cd.Precio_Unitario_Momento, cd.SubTotal " +
-            "FROM Carrito_Detalle cd " +
-            "JOIN Productos pr ON cd.ID_Producto = pr.ID_Producto " +
-            "WHERE cd.ID_Carrito = ? " +
-            "AND cd.Estado_Carrito IN (3, 6) " +
-            "AND cd.Fecha_Venta = ?";
-
+        
         // Se declaran los recursos locales en null para cerrarlos de forma segura en el finally.
         Connection conLocal = null;
         PreparedStatement psLocal = null;
@@ -569,7 +565,7 @@ public class PedidoDAO {
 
             // Se delega la construcción del mapa de cada pedido al método helper para mantener este método limpio.
             while (rsLocal.next()) {
-                Map<String, Object> pedido = construirMapPedido(conLocal, rsLocal, sqlProductos);
+                Map<String, Object> pedido = construirMapPedido(conLocal, rsLocal);
                 listaPedidos.add(pedido);
             }
 
@@ -634,7 +630,7 @@ public class PedidoDAO {
             "JOIN RelaProductoVendedor rpv ON rpv.ID_Productos = cd.ID_Producto " +
             "JOIN Pedido_Proveedor_Estado ppe ON ppe.ID_Proveedor = rpv.ID_Usuario " +
             "JOIN Pedidos_Cliente pc ON pc.ID_Pedido = ppe.ID_Pedido " +
-            "WHERE cd.ID_Carrito = ? AND cd.Estado_Carrito IN (3, 6) AND cd.Fecha_Venta = ? " +
+            "WHERE cd.ID_Carrito = ? AND cd.Estado_Carrito IN (3) AND cd.Fecha_Venta = ? " +
             "AND pc.ID_Carrito = cd.ID_Carrito AND pc.Fecha_Pedido = cd.Fecha_Venta " +
             "AND pc.Estado_Pedido = 8";
 
@@ -776,16 +772,6 @@ public class PedidoDAO {
             "WHERE p.ID_Cliente = ? AND p.Estado_Pedido IN (4, 5, 6, 7) " +
             "ORDER BY p.Fecha_Pedido DESC";
 
-        // Se traen los productos vendidos (estado 3) o marcados para devolución (estado 6) del carrito.
-        String sqlProductos =
-            "SELECT pr.ID_Producto, pr.Nombre_Producto, pr.Imagen_Producto, " +
-            "cd.Cantidad_producto, cd.Precio_Unitario_Momento, cd.SubTotal " +
-            "FROM Carrito_Detalle cd " +
-            "JOIN Productos pr ON cd.ID_Producto = pr.ID_Producto " +
-            "WHERE cd.ID_Carrito = ? " +
-            "AND cd.Estado_Carrito IN (3, 6) " +
-            "AND cd.Fecha_Venta = ?";
-
         Connection conLocal = null;
         PreparedStatement psLocal = null;
         ResultSet rsLocal = null;
@@ -798,7 +784,7 @@ public class PedidoDAO {
 
             // Se construye el mapa de cada pedido usando el helper reutilizable para mantener consistencia.
             while (rsLocal.next()) {
-                Map<String, Object> pedido = construirMapPedido(conLocal, rsLocal, sqlProductos);
+                Map<String, Object> pedido = construirMapPedido(conLocal, rsLocal);
                 listaPedidos.add(pedido);
             }
 
@@ -833,8 +819,7 @@ public class PedidoDAO {
      * @param sqlProductosIgnorado Se recibe el SQL de productos pero se ignora; se construye internamente con filtro de proveedor.
      * @return                     Se retorna el Map con todos los datos del pedido y su lista de productos anidada.
      */
-    private Map<String, Object> construirMapPedido(Connection conLocal, ResultSet rs,
-                                                    String sqlProductosIgnorado) throws SQLException {
+    private Map<String, Object> construirMapPedido(Connection conLocal, ResultSet rs) throws SQLException {
         // Se extraen los campos clave del ResultSet para usarlos en las subconsultas.
         int    idPedido    = rs.getInt("ID_Pedido");
         int    idCarrito   = rs.getInt("ID_Carrito");
@@ -851,22 +836,20 @@ public class PedidoDAO {
             if (rsProv.next()) idProveedorPedido = rsProv.getInt("ID_Proveedor");
             rsProv.close();
         }
-
+        // Si no se encontró proveedor, este pedido tiene datos inconsistentes → retornar vacío
+        if (idProveedorPedido == 0) {
+            System.err.println("Advertencia: Pedido " + idPedido + " no tiene proveedor en Pedido_Proveedor_Estado");
+            return new java.util.LinkedHashMap<>(); // mapa vacío, el while lo agrega pero no tiene productos
+        }
         // Se construye la consulta de productos con filtro de proveedor si se encontró uno en PPE.
-        // Se usa la versión sin filtro como fallback para pedidos legacy que no tienen PPE registrado.
-        String sqlProd = idProveedorPedido > 0
-            ? "SELECT pr.ID_Producto, pr.Nombre_Producto, pr.Imagen_Producto, " +
-              "cd.Cantidad_producto, cd.Precio_Unitario_Momento, cd.SubTotal " +
-              "FROM Carrito_Detalle cd " +
-              "JOIN Productos pr ON cd.ID_Producto = pr.ID_Producto " +
-              "JOIN RelaProductoVendedor rpv ON rpv.ID_Productos = cd.ID_Producto " +
-              "WHERE cd.ID_Carrito = ? AND cd.Estado_Carrito IN (3, 6) " +
-              "AND cd.Fecha_Venta = ? AND rpv.ID_Usuario = ?"
-            : "SELECT pr.ID_Producto, pr.Nombre_Producto, pr.Imagen_Producto, " +
-              "cd.Cantidad_producto, cd.Precio_Unitario_Momento, cd.SubTotal " +
-              "FROM Carrito_Detalle cd " +
-              "JOIN Productos pr ON cd.ID_Producto = pr.ID_Producto " +
-              "WHERE cd.ID_Carrito = ? AND cd.Estado_Carrito IN (3, 6) AND cd.Fecha_Venta = ?";
+        String sqlProd =
+            "SELECT pr.ID_Producto, pr.Nombre_Producto, pr.Imagen_Producto, " +
+            "cd.Cantidad_producto, cd.Precio_Unitario_Momento, cd.SubTotal " +
+            "FROM Carrito_Detalle cd " +
+            "JOIN Productos pr ON cd.ID_Producto = pr.ID_Producto " +
+            "JOIN RelaProductoVendedor rpv ON rpv.ID_Productos = cd.ID_Producto " +
+            "WHERE cd.ID_Carrito = ? AND cd.Estado_Carrito IN (3) " +
+            "AND cd.Fecha_Venta = ? AND rpv.ID_Usuario = ?";
 
         // Se inicializan la lista de productos y el contador de unidades totales del pedido.
         List<Map<String, Object>> listaProds = new ArrayList<>();
@@ -875,8 +858,7 @@ public class PedidoDAO {
         PreparedStatement psP = conLocal.prepareStatement(sqlProd);
         psP.setInt(1, idCarrito);
         psP.setString(2, fechaPedido);
-        // Se añade el tercer parámetro de proveedor solo si se encontró uno en PPE.
-        if (idProveedorPedido > 0) psP.setInt(3, idProveedorPedido);
+        psP.setInt(3, idProveedorPedido);
         ResultSet rsP = psP.executeQuery();
 
         // Se recorre cada producto del pedido para construir su mapa y acumular el total de unidades.
@@ -931,16 +913,18 @@ public class PedidoDAO {
 
     // =========================================================================
     // OBTENER PEDIDOS EN PROCESO CON SUB-PEDIDOS POR PROVEEDOR (Cliente)
-    // Se derivan los sub-pedidos directamente desde Carrito_Detalle+RelaProductoVendedor
-    // sin depender de que PPE esté poblada. El estado del sub-pedido se lee de PPE
-    // si existe, o se calcula desde el estado global del pedido si no.
+    // Se derivan los sub-pedidos directamente desde Carrito_Detalle+RelaProductoVendedor.
+    // El "estadoItem" de cada sub-pedido es siempre el estado global del pedido (no se
+    // consulta PPE aquí), porque el frontend del cliente solo pinta el estado global;
+    // el desglose individual por proveedor lo consume exclusivamente el panel del admin.
     // =========================================================================
 
+    
     /**
      * Se consultan los pedidos activos del cliente (estados 1, 4, 5, 6, 7) agrupando los productos por proveedor
-     * dentro de cada pedido como sub-pedidos para que el cliente vea el estado de avance de cada proveedor.
-     * Se usa PPE como fuente de verdad del estado individual de cada sub-pedido si existe, o el estado
-     * global del pedido como fallback para datos legacy.
+     * dentro de cada pedido como sub-pedidos, para que el cliente vea sus productos organizados por proveedor.
+     * El estado mostrado en cada sub-pedido es el estado global del pedido (Pedidos_Cliente.Estado_Pedido),
+     * ya que el frontend del cliente no muestra el avance individual por proveedor (eso es exclusivo del admin).
      *
      * @param idUsuario  Se recibe el ID del cliente autenticado en sesión.
      * @return           Se retorna la lista de pedidos con sub-pedidos por proveedor anidados dentro de cada uno.
@@ -978,11 +962,6 @@ public class PedidoDAO {
             "JOIN Usuario u ON u.UsuarioID = rpv.ID_Usuario " +
             "WHERE p.ID_Pedido = ? " +
             "ORDER BY rpv.ID_Usuario";
-
-        // Se consulta el estado real del sub-pedido desde PPE para reemplazar el fallback del estado global.
-        String sqlEstadoPPE =
-            "SELECT Estado_Item FROM Pedido_Proveedor_Estado " +
-            "WHERE ID_Pedido = ? AND ID_Proveedor = ?";
 
         Connection conLocal = null;
         try {
@@ -1042,19 +1021,15 @@ public class PedidoDAO {
                 }
                 rsProv.close(); psProv.close();
 
-                // Se sobreescribe el estado inicial (fallback) con el estado real leído desde PPE si existe.
-                for (Map.Entry<Integer, Map<String, Object>> entry : mapaProveedores.entrySet()) {
-                    PreparedStatement psEst = conLocal.prepareStatement(sqlEstadoPPE);
-                    psEst.setInt(1, idPedido);
-                    psEst.setInt(2, entry.getKey());
-                    ResultSet rsEst = psEst.executeQuery();
-                    if (rsEst.next()) {
-                        int estadoReal = rsEst.getInt("Estado_Item");
-                        entry.getValue().put("estadoItem",   estadoReal);
-                        entry.getValue().put("nombreEstado", etiquetaEstado(estadoReal));
-                    }
-                    rsEst.close(); psEst.close();
-                }
+                // NOTA: anteriormente aquí se consultaba Pedido_Proveedor_Estado (PPE) para
+                // sobreescribir el "estadoItem"/"nombreEstado" de cada sub-pedido con su estado
+                // individual real. Se quitó esa consulta porque el frontend del cliente
+                // (pedidos.js) nunca lee esos campos: solo usa pedido.nombreEstado (el estado
+                // GLOBAL en Pedidos_Cliente, controlado por el admin) para el badge que ve el
+                // cliente, y solo usa sub.productos para listar los productos. El admin sí
+                // necesita el desglose por proveedor, pero lo obtiene de su propia consulta en
+                // PedidosAdminServlet, no de este método. Cada sub-pedido se queda con el valor
+                // de fallback puesto en la línea de creación (el estado global del pedido).
 
                 // Se convierte el mapa de proveedores a lista para serializarlo como array en el JSON.
                 List<Map<String, Object>> subpedidos = new ArrayList<>(mapaProveedores.values());

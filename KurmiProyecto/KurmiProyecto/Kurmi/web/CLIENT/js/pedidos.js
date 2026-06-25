@@ -1,29 +1,41 @@
 import { components } from '../../helpers/index.js';
 
 async function cargarModulos() {
+    // Paso 1: Carga los componentes visuales repetitivos de la página
     await Promise.all([
         components('header', '../../components/header.html'),
         components('footer', '../../components/footer.html')
     ]);
-
+    // Paso 2: Invoca al guardián de seguridad del Frontend
     const tieneSesion = await verificarSesion();
+    // Paso 3: ¡El freno de mano! Si verificarSesion devolvió 'false', detiene todo.
     if (!tieneSesion) return;
-
+    // Paso 4: Si todo está en orden, inicializa la página normalmente
     inicializarFiltros();
-    cargarPedidos('1'); // Inicia en Pendiente
+    cargarPedidos('1'); // Inicia cargando la pestaña de "Pendientes"
 }
 cargarModulos();
 
 // ── Verificar sesión ──────────────────────────────────────────────────────────
 async function verificarSesion() {
     try {
+        // 1. Toca la puerta del servidor en el PerfilServlet
         const res = await fetch('/KurmiProyect/PerfilServlet');
+        // 2. El AuthHelper de Java respondió con un 401 Unauthorized
         if (res.status === 401) { window.location.replace('/KurmiProyect/inicioSesion.html'); return false; }
+        if (res.status === 403) {
+            // Sí está logueado, pero es un intruso en este módulo
+            alert('No tienes permisos de Administrador/Proveedor para ver esta sección.');
+            return false;
+        }
+        // 3. Si no fue 401, significa que sí hay sesión. Extrae los datos del UsuarioDTO
         const usuario = await res.json();
+        // 4. Busca el elemento HTML y le pinta el nombre real del usuario logueado (ej: Eileen)
         const span = document.getElementById('nombreUsuario');
         if (span) span.textContent = usuario.nombres || '';
-        return true;
+        return true;// Le da luz verde a cargarModulos()
     } catch (e) {
+        // Si el servidor está caído o hay un error de red catastrófico, también lo bota al login
         window.location.replace('/KurmiProyect/inicioSesion.html');
         return false;
     }
@@ -174,7 +186,7 @@ function crearTarjetaPedido(pedido, filtroActivo) {
     // Botón devolver — SOLO en Entregado (8) y si no pasó más de 24 horas.
     // Se muestra aquí solo cuando el pedido tiene un único proveedor (un solo sub-pedido),
     // porque en ese caso no hay ambigüedad sobre a cuál sub-pedido aplica la devolución.
-    // Cuando hay varios proveedores, el cliente debe abrir "Ver factura" y usar el botón
+    // Cuando hay varios proveedores, el cliente abre el modal y usa el botón
     // de devolución de cada producto individual (cada uno apunta a su propio sub-pedido).
     const esUnSoloProveedor = !pedido.idsPedidos || pedido.idsPedidos.length <= 1;
     if (filtroActivo === '8' && pedido.estadoPedido === 8 && esUnSoloProveedor) {
@@ -549,6 +561,10 @@ async function cargarMisDevoluciones() {
     try {
         const res  = await fetch('/KurmiProyect/DevolucionServlet?accion=misDevoluciones');
         if (res.status === 401) { window.location.replace('/KurmiProyect/inicioSesion.html'); return; }
+        if (res.status === 403) { 
+            alert(' No tienes permisos para acceder a esta sección.');
+            return; 
+        }
         const data = await res.json();
 
         grid.innerHTML = '';
@@ -629,15 +645,26 @@ async function crearTarjetaDevolucion(dev) {
     // Bug fix 2: click abre el modal con los productos del pedido original
     card.addEventListener('click', async () => {
         try {
-            const res = await fetch('/KurmiProyect/PedidosServlet?estado=9');
+            // Mapeamos el nombre del estado al ID en la base de datos
+            let idEstadoNum = '9'; // Por defecto estado Devolucion
+            if (dev.estado === 'Devolucion Solicitada') {
+                idEstadoNum = '10'; // ID del script SQL para solicitada
+            }
+
+            // Enviamos el ID dinámico al Servlet
+            const res = await fetch(`/KurmiProyect/PedidosServlet?estado=${idEstadoNum}`);
             if (!res.ok) return;
+
             const pedidos = await res.json();
             const pedido  = pedidos.find(p => p.idPedido === dev.idPedido);
-            if (pedido) abrirModal(pedido, '9');
+
+            // Abrimos el modal pasándole el estado correcto
+            if (pedido) abrirModal(pedido, idEstadoNum);
         } catch (e) {
             console.error('Error al abrir detalle de devolución:', e);
         }
     });
+    
 
     return card;
 }
