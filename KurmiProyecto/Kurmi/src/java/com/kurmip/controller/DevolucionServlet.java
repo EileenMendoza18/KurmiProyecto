@@ -35,26 +35,28 @@ import java.util.*;
  * URL base: /DevolucionServlet
  *
  * Acciones GET (parámetro "accion"):
- *   misDevoluciones   → Cliente consulta sus propias solicitudes (rol 1).
- *   todasDevoluciones → Admin consulta todas las solicitudes (rol 2),
- *                       con filtro opcional ?estado=Pendiente|Aprobada|Rechazada.
+ * misDevoluciones   → Cliente consulta sus propias solicitudes (rol 1).
+ * todasDevoluciones → Admin consulta todas las solicitudes (rol 2),
+ * con filtro opcional ?estado=Pendiente|Aprobada|Rechazada.
  *
  * Acciones POST (parámetro "accion", multipart/form-data):
- *   crearDevolucion     → Cliente abre una solicitud con motivo e imagen opcional.
- *   responderDevolucion → Admin aprueba o rechaza una solicitud existente.
+ * crearDevolucion     → Cliente abre una solicitud con motivo e imagen opcional.
+ * responderDevolucion → Admin aprueba o rechaza una solicitud existente.
  *
  * Roles: 1 = Cliente · 2 = Administrador
  *
  * Límites de archivo (multipart):
- *   umbral en memoria  : 1 MB
- *   tamaño máx. imagen : 5 MB
- *   tamaño máx. request: 10 MB
+ * umbral en memoria  : 1 MB
+ * tamaño máx. imagen : 5 MB
+ * tamaño máx. request: 10 MB
  */
+// @WebServlet registra la clase como un componente web escuchando en la ruta especificada.
 @WebServlet(name = "DevolucionServlet", urlPatterns = {"/DevolucionServlet"})
+// @MultipartConfig habilita al servlet para recibir archivos (imágenes de prueba en los formularios).
 @MultipartConfig(
-    fileSizeThreshold = 1024 * 1024,
-    maxFileSize       = 5 * 1024 * 1024,
-    maxRequestSize    = 10 * 1024 * 1024
+    fileSizeThreshold = 1024 * 1024,      // 1 MB: Si el archivo mide menos, se procesa en RAM; si no, va a disco temporal.
+    maxFileSize       = 5 * 1024 * 1024,  // 5 MB: Tamaño máximo permitido por cada archivo individual adjuntado.
+    maxRequestSize    = 10 * 1024 * 1024  // 10 MB: Tamaño máximo total permitido para toda la petición HTTP (datos + archivos).
 )
 public class DevolucionServlet extends HttpServlet {
 
@@ -72,56 +74,62 @@ public class DevolucionServlet extends HttpServlet {
     protected void doGet(HttpServletRequest req, HttpServletResponse res)
             throws ServletException, IOException {
 
-        // Se establece el tipo de contenido de la respuesta como JSON en UTF-8.
+        // Se establece el tipo de contenido de la respuesta como JSON en formato UTF-8 (crucial para tildes y eñes).
         res.setContentType("application/json;charset=UTF-8");
 
-        // Se inicializa el mapa de salida que se serializará a JSON al final de cada caso.
+        // Se inicializa el mapa de salida que contendrá los pares clave-valor que se transformarán a JSON.
         Map<String, Object> out = new HashMap<>();
 
         // Se delega en AuthHelper la verificación de sesión activa.
-        // Si no hay sesión, AuthHelper escribe el 401 y retorna null.
+        // Si no hay sesión, AuthHelper escribe el 401 Unauthorized en la respuesta y retorna null.
         UsuarioDTO usuario = AuthHelper.obtenerUsuario(req, res);
 
-        // Se corta la ejecución si AuthHelper ya escribió la respuesta de error.
+        // Se corta inmediatamente la ejecución del método si AuthHelper determinó que no hay sesión activa o que no tiene permisos.
         if (usuario == null) return;
 
-        // Se lee el parámetro "accion" para determinar qué operación ejecutar.
+        // Se lee el parámetro "accion" desde la URL para determinar qué listado desea el usuario.
         String accion = param(req, "accion");
 
+        // Bloque try-with-resources que abre el escritor de respuesta; se cerrará solo automáticamente al terminar.
         try (PrintWriter pw = res.getWriter()) {
             switch (accion) {
 
+                // Caso en que un Cliente solicita el historial de sus devoluciones personales.
                 case "misDevoluciones" -> {
-                    // Se restringe el acceso: solo el rol Cliente (1) puede consultar sus propias devoluciones.
+                    // Control de Acceso: Si el rol del usuario no es 1 (Cliente), se le deniega el acceso con 403.
                     if (usuario.getIdRol() != 1) { forbidden(res, pw); return; }
 
-                    // Se consultan en el DAO todas las solicitudes del cliente logueado.
+                    // Se consulta a la base de datos (vía DAO) pasando el ID numérico del cliente logueado.
                     List<Map<String, Object>> lista = devolucionDAO.obtenerPorCliente(usuario.getId());
 
-                    // Se arma la respuesta exitosa con la lista de devoluciones encontradas.
+                    // Se construye el mapa con éxito y la lista de datos obtenidos.
                     out.put("ok", true);
                     out.put("devoluciones", lista);
+                    // Convierte el mapa a texto JSON y lo escribe en el flujo de respuesta hacia el cliente.
                     pw.print(gson.toJson(out));
                 }
 
+                // Caso en que el Administrador solicita ver el panel general de devoluciones del sistema.
                 case "todasDevoluciones" -> {
-                    // Se restringe el acceso: solo el rol Administrador (2) puede ver todas las devoluciones.
+                    // Control de Acceso: Si el rol del usuario no es 2 (Administrador), se activa la protección 403.
                     if (usuario.getIdRol() != 2) { forbidden(res, pw); return; }
 
-                    // Se lee el filtro de estado opcional; si viene vacío el DAO retorna todas.
+                    // Se lee el parámetro opcional "estado" para filtrar (ej. ?estado=Pendiente).
                     String filtro = param(req, "estado");
 
-                    // Se consultan en el DAO todas las solicitudes, aplicando el filtro si viene.
+                    // Se consulta al DAO trayendo todas las solicitudes que coincidan con dicho filtro.
                     List<Map<String, Object>> lista = devolucionDAO.obtenerTodas(filtro);
 
-                    // Se arma la respuesta exitosa con la lista completa o filtrada.
+                    // Se empaquetan los datos de respuesta para el administrador.
                     out.put("ok", true);
                     out.put("devoluciones", lista);
+                    // Se envía el resultado JSON al panel de administración.
                     pw.print(gson.toJson(out));
                 }
 
+                // Bloque por defecto si el parámetro "accion" en GET no coincide con ninguno de los dos casos anteriores.
                 default -> {
-                    // Se rechaza con 400 cualquier acción no contemplada en el switch.
+                    // Se asigna el estado HTTP 400 Bad Request debido a una petición incorrecta de la interfaz.
                     res.setStatus(HttpServletResponse.SC_BAD_REQUEST);
                     out.put("ok", false);
                     out.put("error", "Acción no reconocida: " + accion);
@@ -139,95 +147,97 @@ public class DevolucionServlet extends HttpServlet {
     protected void doPost(HttpServletRequest req, HttpServletResponse res)
             throws ServletException, IOException {
 
-        // Se establece el tipo de contenido de la respuesta como JSON en UTF-8.
+        // Se predetermina el formato de salida como JSON con codificación universal UTF-8.
         res.setContentType("application/json;charset=UTF-8");
 
-        // Se inicializa el mapa de salida que se serializará a JSON al final de cada caso.
+        // Se prepara el mapa que recolectará las respuestas de estado, errores o confirmaciones de escritura.
         Map<String, Object> out = new HashMap<>();
 
-        // Se delega en AuthHelper la verificación de sesión activa.
-        // Si no hay sesión, AuthHelper escribe el 401 y retorna null.
+        // Se valida la identidad del usuario a través de las cookies/sesión procesadas por AuthHelper.
         UsuarioDTO usuario = AuthHelper.obtenerUsuario(req, res);
 
-        // Se corta la ejecución si AuthHelper ya escribió la respuesta de error.
+        // Si la sesión caducó o no existe, detenemos el flujo (AuthHelper ya habrá enviado la respuesta correspondiente).
         if (usuario == null) return;
 
-        // Se lee el parámetro "accion" para determinar qué operación ejecutar.
+        // Se extrae la acción a ejecutar (viene dentro del cuerpo o parámetros de la petición POST).
         String accion = param(req, "accion");
 
+        // Se abre de forma segura el PrintWriter utilizando el try-with-resources.
         try (PrintWriter pw = res.getWriter()) {
             switch (accion) {
 
+                // Caso en el que un cliente envía el formulario para registrar una nueva devolución de productos.
                 case "crearDevolucion" -> {
-                    // Se restringe el acceso: solo el rol Cliente (1) puede abrir solicitudes de devolución.
+                    // Capa de seguridad: Solo usuarios con Rol 1 (Clientes) tienen autorización para esta acción.
                     if (usuario.getIdRol() != 1) { forbidden(res, pw); return; }
 
-                    // Se leen los parámetros obligatorios enviados por el formulario del cliente.
+                    // Se extraen las variables del formulario enviado por el cliente.
                     String idPedidoStr = param(req, "idPedido");
                     String motivo      = param(req, "motivo");
 
-                    // Se valida que el ID del pedido esté presente antes de continuar.
+                    // Validación del ID de Pedido: No puede procesarse una solicitud sin saber a qué pedido pertenece.
                     if (idPedidoStr.isEmpty()) { badRequest(res, pw, "Falta idPedido"); return; }
 
-                    // Se valida que el cliente haya escrito un motivo para la solicitud.
+                    // Validación del Motivo: Es obligatorio que el cliente explique por qué requiere devolver los productos.
                     if (motivo.isEmpty()) { badRequest(res, pw, "Debes indicar el motivo de la devolución"); return; }
 
-                    // Se valida que el motivo no supere el límite de caracteres definido por la BD.
+                    // Validación de Longitud: Se previene un desbordamiento de datos en la columna correspondiente de la BD.
                     if (motivo.length() > 500) { badRequest(res, pw, "El motivo no puede superar 500 caracteres"); return; }
 
-                    // Se convierte el ID del pedido de String a int para pasarlo al DAO.
+                    // Transformación segura: Se pasa el ID del pedido de texto a entero.
                     int idPedido = Integer.parseInt(idPedidoStr);
 
-                    // Se verifica en el DAO que no exista ya una solicitud para este pedido.
+                    // Regla de Negocio: No se permiten duplicados. Se valida que el pedido no tenga ya un trámite de devolución iniciado.
                     if (devolucionDAO.existeParaPedido(idPedido)) {
-                        // Se informa al cliente que el pedido ya tiene una solicitud activa.
                         out.put("ok", false);
                         out.put("error", "Ya existe una solicitud de devolución para este pedido");
                         pw.print(gson.toJson(out));
-                        return;
+                        return; // Se detiene el proceso para evitar duplicar registros en la BD.
                     }
 
-                    // Se intenta leer la imagen de prueba adjuntada por el cliente en el campo "imagenPrueba".
+                    // Inicialización de variables para la carga y gestión de la imagen adjunta de prueba.
                     String nombreImagen = null;
                     Part filePart = null;
+                    // Se intenta capturar el binario de la imagen; si falla (ej. formulario sin archivo), se ignora el error de manera controlada.
                     try { filePart = req.getPart("imagenPrueba"); } catch (Exception ignored) {}
 
-                    // Se procesa la imagen únicamente si el cliente adjuntó un archivo con contenido.
-                    if (filePart != null && filePart.getSize() > 0) {
+                    // Procesamiento del archivo: Se valida que exista el archivo físico y que su peso en bytes sea mayor a cero.
+                    if (filePart != null && filePart.getSize() > 0) { // getSize = tamaño de la imagen
 
-                        // Se extrae la extensión del archivo para validar el formato antes de guardarlo.
-                        String ext = obtenerExtension(filePart.getSubmittedFileName());
+                        // Se extrae la extensión del nombre original enviado por el cliente (ej. "foto.PNG" -> "png").
+                        String ext = obtenerExtension(filePart.getSubmittedFileName()); // ObtenerExtension es un metodo privado, filePart.getSubmittedFileName() obtiene el nombre original del archivo
 
-                        // Se rechaza la petición si la extensión no corresponde a un formato de imagen permitido.
-                        if (!List.of("jpg", "jpeg", "png", "webp", "gif").contains(ext.toLowerCase())) {
-                            badRequest(res, pw, "Solo se aceptan imágenes (jpg, png, webp, gif)");
+                        // Filtro de Formatos: Se restringe la subida únicamente a extensiones gráficas Web seguras.
+                        if (!List.of("jpg", "jpeg", "png", "webp", "gif").contains(ext.toLowerCase())) { // El ext seconvierte en minusculas y si no esta en la lista se lleva al metodo badrequest
+                            badRequest(res, pw, "Solo se aceptan imágenes (jpg, png, webp, gif)"); // que manda el error con el mensaje 
                             return;
                         }
 
-                        // Se genera un nombre único combinando el ID del pedido y el timestamp para evitar colisiones.
+                        // Generación de un nombre único en el servidor para evitar que dos clientes sobreescriban fotos con el mismo nombre.
                         nombreImagen = "dev_" + idPedido + "_" + System.currentTimeMillis() + "." + ext;
 
-                        // Se resuelve la ruta absoluta del directorio de imágenes de devoluciones en el servidor.
+                        // Se localiza la ruta física real de despliegue dentro del servidor Apache Tomcat / GlassFish.
                         String uploadDir = getServletContext().getRealPath("/RESOURCES/img/devoluciones");
 
-                        // Se crea el directorio de destino si aún no existe en el sistema de archivos.
+                        // Si la estructura de carpetas en el servidor no existe (primera ejecución), se crea inmediatamente en el disco duro.
                         Files.createDirectories(Paths.get(uploadDir));
 
-                        // Se escribe el archivo en disco con el nombre único generado.
+                        // Se guarda físicamente la imagen subida dentro del directorio configurado usando el separador de archivos del S.O.
                         filePart.write(uploadDir + File.separator + nombreImagen);
                     }
 
-                    // Se delega en el DAO la inserción de la solicitud con todos sus datos.
+                    // Se envía toda la información recopilada al DAO para realizar el INSERT en la base de datos.
                     int idGenerado = devolucionDAO.insertar(idPedido, usuario.getId(), motivo, nombreImagen);
 
-                    // Se retorna 201 Created si el DAO generó un ID válido para la nueva solicitud.
+                    // Verificación del resultado del INSERT.
                     if (idGenerado > 0) {
+                        // Código HTTP 201 Created: Respuesta estándar de éxito para la creación de nuevos recursos.
                         res.setStatus(HttpServletResponse.SC_CREATED);
                         out.put("ok", true);
                         out.put("idDevolucion", idGenerado);
                         out.put("mensaje", "Solicitud de devolución enviada correctamente");
                     } else {
-                        // Se retorna 500 si el DAO no pudo insertar la solicitud.
+                        // Código HTTP 500 Internal Server Error: Ocurrió un fallo no controlado al guardar en la BD.
                         res.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
                         out.put("ok", false);
                         out.put("error", "No se pudo registrar la solicitud. Intenta de nuevo.");
@@ -235,47 +245,48 @@ public class DevolucionServlet extends HttpServlet {
                     pw.print(gson.toJson(out));
                 }
 
+                // Caso en el que el Administrador aprueba o rechaza una solicitud existente en el sistema.
                 case "responderDevolucion" -> {
-                    // Se restringe el acceso: solo el rol Administrador (2) puede responder solicitudes.
+                    // Control de Acceso: Únicamente el Administrador (Rol 2) tiene autorización para resolver flujos.
                     if (usuario.getIdRol() != 2) { forbidden(res, pw); return; }
 
-                    // Se leen los parámetros de la respuesta enviados por el panel de administración.
+                    // Se capturan las variables de resolución desde los parámetros del formulario de gestión.
                     String idDevStr    = param(req, "idDevolucion");
                     String nuevoEstado = param(req, "estado");
                     String motivoResp  = param(req, "motivoRespuesta");
 
-                    // Se valida que el ID de la devolución esté presente.
+                    // Validación: Es obligatorio conocer exactamente qué registro de devolución se va a actualizar.
                     if (idDevStr.isEmpty()) { badRequest(res, pw, "Falta idDevolucion"); return; }
 
-                    // Se valida que el estado recibido sea uno de los dos valores aceptados por la BD.
+                    // Validación del Estado: Se restringe el flujo a los únicos dos estados lógicos finales permitidos.
                     if (!nuevoEstado.equals("Aprobada") && !nuevoEstado.equals("Rechazada")) {
                         badRequest(res, pw, "Estado inválido. Use: Aprobada o Rechazada"); return;
                     }
 
-                    // Se exige motivo de rechazo para garantizar trazabilidad cuando se niega la devolución.
+                    // Validación de Trazabilidad: Si la solicitud es denegada, se vuelve obligatorio justificar la causa.
                     if (nuevoEstado.equals("Rechazada") && motivoResp.isEmpty()) {
                         badRequest(res, pw, "Debes indicar el motivo del rechazo"); return;
                     }
 
-                    // Se convierte el ID de la devolución de String a int para pasarlo al DAO.
+                    // Se convierte el ID de la devolución a entero para ser compatible con la clave primaria de la BD.
                     int     idDev = Integer.parseInt(idDevStr);
 
-                    // Se delega en el DAO la actualización del estado y la restitución de stock si aplica.
+                    // Se delega al DAO la ejecución del UPDATE (actualiza estados y restituye inventario en caso de aprobación).
                     boolean ok    = devolucionDAO.responder(idDev, nuevoEstado, motivoResp);
 
-                    // Se retorna el resultado indicando si la operación fue exitosa y el nuevo estado aplicado.
+                    // Se conforma la respuesta estructurada según el éxito de la consulta SQL.
                     out.put("ok", ok);
                     out.put("mensaje", ok
                         ? "Devolución " + nuevoEstado.toLowerCase() + " correctamente"
                         : "No se pudo actualizar la solicitud");
 
-                    // Se marca con 500 la respuesta si el DAO reportó fallo en la operación.
+                    // Si el proceso interno de base de datos reportó un error (`ok == false`), se le asigna un estado HTTP 500.
                     if (!ok) res.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
                     pw.print(gson.toJson(out));
                 }
 
+                // Caso de respaldo si el parámetro "accion" enviado mediante POST no está implementado.
                 default -> {
-                    // Se rechaza con 400 cualquier acción no contemplada en el switch.
                     res.setStatus(HttpServletResponse.SC_BAD_REQUEST);
                     out.put("ok", false);
                     out.put("error", "Acción no reconocida: " + accion);
@@ -284,15 +295,15 @@ public class DevolucionServlet extends HttpServlet {
             }
 
         } catch (NumberFormatException e) {
-            // Se captura un ID malformado antes de que llegue al DAO y se responde con 400.
+            // Manejador preventivo: Evita un quiebre crítico (500) si mandan letras en campos que deben ser números.
             res.setStatus(HttpServletResponse.SC_BAD_REQUEST);
             res.getWriter().print("{\"ok\":false,\"error\":\"ID inválido\"}");
 
         } catch (Exception e) {
-            // Se captura cualquier error inesperado y se registra en el log del servidor.
-            e.printStackTrace();
+            // Captura general de contingencia ante cualquier error imprevisto (ej. problemas de permisos en el disco duro, etc.).
+            e.printStackTrace(); // Imprime la traza completa del error en los logs del servidor para depuración (consola).
 
-            // Se escribe el error en la respuesta solo si esta aún no fue enviada al cliente.
+            // Si la cabecera de la respuesta no ha sido enviada al cliente, estructuramos un mensaje JSON de contingencia.
             if (!res.isCommitted()) {
                 res.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
                 res.getWriter().print("{\"ok\":false,\"error\":\"" +
@@ -302,7 +313,7 @@ public class DevolucionServlet extends HttpServlet {
     }
 
     // =========================================================================
-    // UTILIDADES
+    // UTILIDADES (Métodos auxiliares internos de soporte)
     // =========================================================================
 
     /**

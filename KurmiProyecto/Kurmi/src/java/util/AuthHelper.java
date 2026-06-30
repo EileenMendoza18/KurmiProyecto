@@ -28,9 +28,9 @@ import java.io.IOException;
  * y si el rol del usuario era el correcto.
  *
  * Se ofrecen tres métodos de uso estático:
- *   obtenerUsuario()     → Se verifica únicamente que haya una sesión activa (cualquier rol).
- *   verificarAdmin()     → Se verifica sesión activa y que el rol sea Administrador.
- *   verificarProveedor() → Se verifica sesión activa y que el rol sea Proveedor.
+ * obtenerUsuario()     → Se verifica únicamente que haya una sesión activa (cualquier rol).
+ * verificarAdmin()     → Se verifica sesión activa y que el rol sea Administrador.
+ * verificarProveedor() → Se verifica sesión activa y que el rol sea Proveedor.
  *
  * Se retorna el UsuarioDTO si la verificación es exitosa, o null si ya se escribió
  * la respuesta de error al cliente. Se permite así que el servlet que llame a estos
@@ -51,7 +51,7 @@ public final class AuthHelper {
      * @param request   Se recibe la petición HTTP del servlet para acceder a la sesión del usuario.
      * @param response  Se recibe la respuesta HTTP para escribir el error 401 si no hay sesión.
      * @return          Se retorna el UsuarioDTO con los datos del usuario si hay sesión activa,
-     *                  o null si no la hay (en cuyo caso ya se escribió el error en la respuesta).
+     * o null si no la hay (en cuyo caso ya se escribió el error en la respuesta).
      * @throws IOException  Se propaga si ocurre un error al escribir en la respuesta HTTP.
      */
     public static UsuarioDTO obtenerUsuario(HttpServletRequest request,
@@ -93,7 +93,7 @@ public final class AuthHelper {
      * @param request   Se recibe la petición HTTP del servlet.
      * @param response  Se recibe la respuesta HTTP para escribir el error 401 o 403 si corresponde.
      * @return          Se retorna el UsuarioDTO si la sesión es válida y el rol es Administrador,
-     *                  o null si cualquiera de las dos verificaciones falla.
+     * o null si cualquiera de las dos verificaciones falla.
      * @throws IOException  Se propaga si ocurre un error al escribir en la respuesta HTTP.
      */
     public static UsuarioDTO verificarAdmin(HttpServletRequest request,
@@ -139,7 +139,7 @@ public final class AuthHelper {
      * @param request   Se recibe la petición HTTP del servlet.
      * @param response  Se recibe la respuesta HTTP para escribir el error 401 o 403 si corresponde.
      * @return          Se retorna el UsuarioDTO si la sesión es válida y el rol es Proveedor,
-     *                  o null si cualquiera de las dos verificaciones falla.
+     * o null si cualquiera de las dos verificaciones falla.
      * @throws IOException  Se propaga si ocurre un error al escribir en la respuesta HTTP.
      */
     public static UsuarioDTO verificarProveedor(HttpServletRequest request,
