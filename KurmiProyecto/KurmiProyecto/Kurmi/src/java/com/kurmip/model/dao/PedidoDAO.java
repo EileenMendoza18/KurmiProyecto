@@ -1021,16 +1021,6 @@ public class PedidoDAO {
                 }
                 rsProv.close(); psProv.close();
 
-                // NOTA: anteriormente aquí se consultaba Pedido_Proveedor_Estado (PPE) para
-                // sobreescribir el "estadoItem"/"nombreEstado" de cada sub-pedido con su estado
-                // individual real. Se quitó esa consulta porque el frontend del cliente
-                // (pedidos.js) nunca lee esos campos: solo usa pedido.nombreEstado (el estado
-                // GLOBAL en Pedidos_Cliente, controlado por el admin) para el badge que ve el
-                // cliente, y solo usa sub.productos para listar los productos. El admin sí
-                // necesita el desglose por proveedor, pero lo obtiene de su propia consulta en
-                // PedidosAdminServlet, no de este método. Cada sub-pedido se queda con el valor
-                // de fallback puesto en la línea de creación (el estado global del pedido).
-
                 // Se convierte el mapa de proveedores a lista para serializarlo como array en el JSON.
                 List<Map<String, Object>> subpedidos = new ArrayList<>(mapaProveedores.values());
 
@@ -1964,23 +1954,18 @@ public class PedidoDAO {
                 int    idProvCancelado = rsCarrito.getInt("ID_Proveedor");
                 rsCarrito.close(); psCarrito.close();
 
-                // Se suman las cantidades de los productos del proveedor cancelado agrupando por producto.
-                // Se usa la query con filtro de proveedor si existe, o sin él como fallback para datos legacy.
-                String sqlItems3 = idProvCancelado > 0
-                    ? "SELECT cd.ID_Producto, SUM(cd.Cantidad_Producto) AS totalCantidad " +
-                      "FROM Carrito_Detalle cd " +
-                      "JOIN RelaProductoVendedor rpv ON rpv.ID_Productos = cd.ID_Producto " +
-                      "WHERE cd.ID_Carrito = ? AND cd.Estado_Carrito = 3 AND cd.Fecha_Venta = ? " +
-                      "AND rpv.ID_Usuario = ? GROUP BY cd.ID_Producto"
-                    : "SELECT ID_Producto, SUM(Cantidad_Producto) AS totalCantidad " +
-                      "FROM Carrito_Detalle " +
-                      "WHERE ID_Carrito = ? AND Estado_Carrito = 3 AND Fecha_Venta = ? " +
-                      "GROUP BY ID_Producto";
+                // query única, siempre filtra por proveedor
+                // Se suman las cantidades agrupando por producto solo para los ítems del proveedor cancelado.
+                String sqlItems3 = "SELECT cd.ID_Producto, SUM(cd.Cantidad_Producto) AS totalCantidad " +
+                                   "FROM Carrito_Detalle cd " +
+                                   "JOIN RelaProductoVendedor rpv ON rpv.ID_Productos = cd.ID_Producto " +
+                                   "WHERE cd.ID_Carrito = ? AND cd.Estado_Carrito = 3 AND cd.Fecha_Venta = ? " +
+                                   "AND rpv.ID_Usuario = ? GROUP BY cd.ID_Producto";
 
                 PreparedStatement psItems = conLocal.prepareStatement(sqlItems3);
                 psItems.setInt(1, idCarrito);
                 psItems.setString(2, fechaPedido);
-                if (idProvCancelado > 0) psItems.setInt(3, idProvCancelado);
+                psItems.setInt(3, idProvCancelado); 
                 ResultSet rsItems = psItems.executeQuery();
 
                 // Se recorre cada producto devuelto para reingresarlo al inventario y reactivarlo si estaba agotado.
