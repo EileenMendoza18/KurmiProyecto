@@ -682,7 +682,9 @@ async function cargarCarrito() {
             const confirmarCantidadManual = async () => {
                 let nueva = parseInt(cantidadValor.value);
                 if (isNaN(nueva) || nueva < 1) { cantidadValor.value = parseInt(cantidadValor.dataset.prev || 1); return; }
-                cantidadValor.dataset.prev = nueva;
+                // Se guarda el valor anterior ANTES de sobrescribir dataset.prev, para poder
+                // revertir correctamente si el servidor rechaza la cantidad por stock superado.
+                const anterior = cantidadValor.dataset.prev || 1;
                 try {
                     const res = await fetch(`/KurmiProyect/CarritoServlet`, {
                         method: 'POST',
@@ -690,9 +692,13 @@ async function cargarCarrito() {
                         body: `accion=actualizarCantidad&idDetalle=${item.idDetalleCarrito}&cantidad=${nueva}&idProducto=${item.idProducto}`
                     });
                     const msg = (await res.text()).trim();
-                    if (msg === 'STOCK_SUPERADO') {
-                        alert('⚠️ Has alcanzado el límite de stock disponible para este producto.');
-                        cantidadValor.value = cantidadValor.dataset.prev || 1;
+                    if (msg.startsWith('STOCK_SUPERADO')) {
+                        const stockDisponible = msg.split(':')[1];
+                        alert(`Este producto solo tiene ${stockDisponible} unidades disponibles`);
+                        cantidadValor.value = anterior;
+                        cantidadValor.dataset.prev = anterior;
+                    } else {
+                        cantidadValor.dataset.prev = nueva;
                     }
                 } catch (e) { console.error("Error actualizando cantidad:", e); }
                 actualizarTotal();
@@ -720,7 +726,7 @@ async function cargarCarrito() {
                             body: `accion=actualizarCantidad&idDetalle=${item.idDetalleCarrito}&cantidad=${actual}&idProducto=${item.idProducto}`
                         });
                         const msg = (await res.text()).trim();
-                        if (msg === 'STOCK_SUPERADO') {
+                        if (msg.startsWith('STOCK_SUPERADO')) {
                             cantidadValor.value = actual + 1;
                             cantidadValor.dataset.prev = actual + 1;
                         }
@@ -747,10 +753,11 @@ async function cargarCarrito() {
                         body: `accion=actualizarCantidad&idDetalle=${item.idDetalleCarrito}&cantidad=${actual}&idProducto=${item.idProducto}`
                     });
                     const msg = (await res.text()).trim();
-                    if (msg === 'STOCK_SUPERADO') {
-                        alert(`Este producto solo tiene ${actual-1} unidades disponibles`);
-                        cantidadValor.value = actual - 1;
-                        cantidadValor.dataset.prev = actual - 1;
+                    if (msg.startsWith('STOCK_SUPERADO')) {
+                        const stockDisponible = msg.split(':')[1];
+                        alert(`Este producto solo tiene ${stockDisponible} unidades disponibles`);
+                        cantidadValor.value = stockDisponible;
+                        cantidadValor.dataset.prev = stockDisponible;
                     }
                 } catch (e) { console.error("Error actualizando cantidad:", e); }
                 actualizarTotal();

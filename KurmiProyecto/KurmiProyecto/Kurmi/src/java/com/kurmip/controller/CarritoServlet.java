@@ -164,13 +164,23 @@ public class CarritoServlet extends HttpServlet {
                 if (nuevaCantidad < 1) nuevaCantidad = 1;
 
                 // Se delega en CarritoDAO.actualizarCantidad() la validación de stock y el UPDATE.
-                // Códigos de retorno del DAO: -1 = supera el stock, 0 = error/fila no encontrada, 1 = éxito.
+                // Códigos de retorno del DAO: negativo = supera el stock (codifica el stock real
+                // disponible como -(resultado + 1)), 0 = error/fila no encontrada, 1 = éxito.
                 int resultado = carritoDAO.actualizarCantidad(idDetalle, nuevaCantidad, idProducto);
 
                 // Se traduce el código numérico del DAO al texto plano que espera el frontend.
-                if      (resultado == -1) response.getWriter().write("STOCK_SUPERADO");
-                else if (resultado ==  1) response.getWriter().write("OK");
-                else                      response.getWriter().write("ERROR");
+                // Cuando se supera el stock, se decodifica e incluye la cantidad real disponible
+                // (formato "STOCK_SUPERADO:<n>") para que el frontend muestre siempre el mismo
+                // mensaje exacto, sin importar si la cantidad se cambió con los botones +/- o
+                // escribiéndola manualmente.
+                if (resultado < 0) {
+                    int stockDisponible = -resultado - 1;
+                    response.getWriter().write("STOCK_SUPERADO:" + stockDisponible);
+                } else if (resultado == 1) {
+                    response.getWriter().write("OK");
+                } else {
+                    response.getWriter().write("ERROR");
+                }
             } catch (NumberFormatException e) {
                 // Se captura específicamente el caso de un parámetro no numérico (idDetalle,
                 // cantidad o idProducto mal formados) y se responde "ERROR" sin propagar la excepción.

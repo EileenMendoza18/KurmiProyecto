@@ -471,7 +471,8 @@ public class CarritoDAO {
      * El subtotal se recalcula directamente en la base de datos para evitar inconsistencias.
      *
      * Códigos de retorno:
-     *  -1 = la cantidad solicitada supera el stock disponible
+     *  negativo = la cantidad solicitada supera el stock disponible. El stock real se
+     *             codifica en el valor: stockDisponible = -(resultado + 1).
      *   0 = error de base de datos o fila no encontrada
      *   1 = cantidad actualizada correctamente
      *
@@ -501,7 +502,10 @@ public class CarritoDAO {
             psStock.close();
 
             // Se rechaza la operación si la cantidad solicitada supera el stock real disponible.
-            if (nuevaCantidad > stockDisponible) return -1;
+            // Se codifica el stock disponible en el valor de retorno como -(stockDisponible + 1),
+            // para que el Servlet pueda extraerlo y mostrar siempre la cantidad real al usuario,
+            // sin importar si el código 0 (stock=0) coincida con el código de error genérico.
+            if (nuevaCantidad > stockDisponible) return -(stockDisponible + 1);
 
             // Se actualiza la cantidad en la fila del detalle y se recalcula el subtotal directamente en SQL
             // multiplicando Precio_Unitario_Momento (precio vigente de esta línea) por la nueva cantidad.
