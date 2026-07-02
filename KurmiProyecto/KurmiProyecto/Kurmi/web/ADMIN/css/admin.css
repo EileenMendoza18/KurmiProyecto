@@ -2457,3 +2457,11 @@ html, body {
     font-size: .8rem;
     color: #9ca3af;
 }
+.sol-btn-aprobar, .sol-btn-rechazar, .sol-btn-cancelar, .sol-btn-confirmar{
+    background: #7c3aed;
+    color: white;
+    border-color: #7c3aed;
+    border-radius: 10px;
+    padding:10px;
+}
+
